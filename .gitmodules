@@ -1,0 +1,3 @@
+[submodule "lib/mlapptools"]
+	path = lib/mlapptools
+	url = https://github.com/Khlick/mlapptools.git
