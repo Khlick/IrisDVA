@@ -1,0 +1,157 @@
+
+@keyframes customtooltips-vert {
+  to {
+    opacity: 0.9;
+    transform: translate(-50%, 0);
+  }
+}
+@keyframes customtooltips-horz {
+  to {
+    opacity: 0.9;
+    transform: translate(0, -50%);
+  }
+}
+/* FX All The Things */
+[customtooltip] {
+  position: relative;
+}
+[customtooltip]::before {
+  text-transform: none;
+  font-size: 0.9em;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+  position: absolute;
+  display: none;
+  opacity: 0;
+  content: '';
+  border: 5px solid transparent;
+  z-index: 1001;
+}
+[customtooltip]::after {
+  text-transform: none;
+  font-size: 0.9em;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+  position: absolute;
+  display: none;
+  opacity: 0;
+  content: attr(customtooltip);
+  font-family: Times New Roman, serif;
+  font-size: 1em;
+  text-align: left;
+  min-width: 10em;
+  max-width: 80em;
+  white-space: pre-wrap;
+  overflow: hidden;
+  padding: 1ch 1.5ch;
+  border-radius: 0.3ch;
+  box-shadow: 0 1em 2em -0.5em rgba(0, 0, 0, 0.328);
+  background: rgba(98, 98, 98, 0.815);
+  color: #ffffff;
+  z-index: 1000;
+}
+[customtooltip]:hover::before {
+  display: block;
+}
+[customtooltip]:hover::after {
+  display: block;
+  box-shadow: -2px -2px 18x rgba(55, 56, 59, 0.281) inset, 4px 4px 9px rgba(143, 145, 160, 0.63) inset;
+}
+[customtooltip]:not([flow])::before {
+  bottom: calc(100% + 5px);
+  border-bottom-width: 0;
+  border-top-color: rgba(98, 98, 98, 0.815);
+  left: 50%;
+  transform: translate(-50%, -0.5em);
+}
+[customtooltip]:not([flow])::after {
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translate(-50%, -0.5em);
+}
+[customtooltip]:not([flow]):hover::before {
+  animation: customtooltips-vert 300ms ease-out forwards;
+}
+[customtooltip]:not([flow]):hover::after {
+  animation: customtooltips-vert 300ms ease-out forwards;
+}
+[customtooltip='']::before {
+  display: none !important;
+}
+[customtooltip='']::after {
+  display: none !important;
+}
+[customtooltip][flow^='up']::before {
+  bottom: calc(100% + 5px);
+  border-bottom-width: 0;
+  border-top-color: rgba(98, 98, 98, 0.815);
+  left: 50%;
+  transform: translate(-50%, -0.5em);
+}
+[customtooltip][flow^='up']::after {
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translate(-50%, -0.5em);
+}
+[customtooltip][flow^='up']:hover::before {
+  animation: customtooltips-vert 300ms ease-out forwards;
+}
+[customtooltip][flow^='up']:hover::after {
+  animation: customtooltips-vert 300ms ease-out forwards;
+}
+[customtooltip][flow^='down']::before {
+  top: calc(100% + 5px);
+  border-top-width: 0;
+  border-bottom-color: rgba(98, 98, 98, 0.815);
+  left: 50%;
+  transform: translate(-50%, 0.5em);
+}
+[customtooltip][flow^='down']::after {
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translate(-50%, 0.5em);
+}
+[customtooltip][flow^='down']:hover::before {
+  animation: customtooltips-vert 300ms ease-out forwards;
+}
+[customtooltip][flow^='down']:hover::after {
+  animation: customtooltips-vert 300ms ease-out forwards;
+}
+[customtooltip][flow^='left']::before {
+  top: 50%;
+  border-right-width: 0;
+  border-left-color: rgba(98, 98, 98, 0.815);
+  left: calc(0em - 10px);
+  transform: translate(-0.5em, -50%);
+}
+[customtooltip][flow^='left']::after {
+  top: 50%;
+  right: calc(100% + 10px);
+  transform: translate(-0.5em, -50%);
+}
+[customtooltip][flow^='left']:hover::before {
+  animation: customtooltips-horz 300ms ease-out forwards;
+}
+[customtooltip][flow^='left']:hover::after {
+  animation: customtooltips-horz 300ms ease-out forwards;
+}
+[customtooltip][flow^='right']::before {
+  top: 50%;
+  border-left-width: 0;
+  border-right-color: rgba(98, 98, 98, 0.815);
+  right: calc(0em - 10px);
+  transform: translate(0.5em, -50%);
+}
+[customtooltip][flow^='right']::after {
+  top: 50%;
+  left: calc(100% + 10px);
+  transform: translate(0.5em, -50%);
+}
+[customtooltip][flow^='right']:hover::before {
+  animation: customtooltips-horz 300ms ease-out forwards;
+}
+[customtooltip][flow^='right']:hover::after {
+  animation: customtooltips-horz 300ms ease-out forwards;
+}

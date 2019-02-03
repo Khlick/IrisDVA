@@ -1,0 +1,42 @@
+.asym-panel {
+  border-radius: 5px 5px 12px 12px !important;
+  /* Prevent background color leak outs */
+  -webkit-background-clip: padding-box !important;
+  -moz-background-clip: padding !important;
+  background-clip: padding-box !important;
+}
+
+.mild-round {
+  border-radius: 10px !important;
+  /* Prevent background color leak outs */
+  -webkit-background-clip: padding-box !important;
+  -moz-background-clip: padding !important;
+  background-clip: padding-box !important;
+}
+
+
+img.plain {
+  border: none !important;
+  box-shadow: none !important;
+  background: none !important;
+  margin: none !important;
+  position: relative !important;
+}
+
+.border-grad {
+  box-shadow: -2px -2px 8px rgba(94, 94, 99, 0.308) inset, 2px 2px 5px
+   rgba(105, 105, 105, 0.794) inset !important;
+}
+
+.border-grad-inv {
+  box-shadow: -4px -4px 8px rgba(182, 182, 182, 0.103) inset, 
+  6px 6px 8px rgba(255, 255, 255, 0.281) inset !important;
+}
+
+.transparent-panel-50 {
+  opacity: 0.5 !important;
+}
+
+.transparent-panel-85 {
+  opacity: 0.85 !important;
+}

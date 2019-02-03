@@ -1,0 +1,53 @@
+#logo {
+    width: 348px;
+    height: 348px;
+    margin: 2px;
+    overflow: visible;
+    animation-name: spinner;
+    animation-duration: 424.6s;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+    display: inline-block;
+    transform-origin: 50% 50%;
+}
+#logo svg {
+  display: block;
+  margin: auto;
+}
+
+@keyframes spinner {
+  0% {
+    transform: rotate(0.1deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.labDiv {
+  word-wrap: break-word !important;
+  width: auto !important;
+  float: left !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+.lab {
+  color: rgb(160, 160, 160) !important;
+  text-align: left !important;
+  font-family: "Times New Roman", Times, serif !important;
+  font-size: 14px !important;
+  position:relative; top:100%; left:0; width:100%;
+  word-wrap: break-word !important;
+  white-space: normal !important;
+}
+.inc {
+  font-size: 120% !important;
+}
+.dec {
+  font-size: 80% !important;
+}
+.b {
+  font-weight: bold !important;
+}
+.i {
+  font-style: italic !important;
+}

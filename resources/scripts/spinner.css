@@ -1,0 +1,33 @@
+
+.fa-cog {
+  width:60px !important;
+  height:60px !important;
+  margin: 0;
+  padding: 0;
+}
+
+#gear {
+  width: 60px;
+  height: 60px;
+  margin: 2px;
+  overflow: visible;
+  animation-name: spinner;
+  animation-duration: 4.6s;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  display: inline-block;
+  transform-origin: 50% 50%;
+}
+#gear svg {
+  display: block;
+  margin: auto;
+}
+
+@keyframes spinner {
+  0% {
+    transform: rotate(0.1deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
