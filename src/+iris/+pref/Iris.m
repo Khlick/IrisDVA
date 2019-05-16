@@ -2,6 +2,7 @@ classdef Iris < iris.infra.StoredPrefs
 
   properties
     UserDirectory
+    PreviousExtension
   end
   
   methods
@@ -14,6 +15,16 @@ classdef Iris < iris.infra.StoredPrefs
       validateattributes(d,{'char'}, {'nonempty'});
       obj.put('UserDirectory', d);
     end
+    
+    function d = get.PreviousExtension(obj)
+      d = obj.get('PreviousExtension', '*.h5');
+    end
+    
+    function set.PreviousExtension(obj,d)
+      validateattributes(d,{'char'}, {'nonempty'});
+      obj.put('PreviousExtension', d);
+    end
+    
     
   end
   

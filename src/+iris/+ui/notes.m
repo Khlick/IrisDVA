@@ -30,6 +30,12 @@ classdef notes < iris.ui.UIContainer
         'IRIS:NOTES:setNotes', 'noteCell');
       obj.NotesTable.Data = noteCell;
     end
+    
+    function selfDestruct(obj)
+      % required for integration with menuservices
+      obj.shutdown;
+    end
+    
   end
   %% Startup and Callback Methods
   methods (Access = protected)

@@ -30,6 +30,12 @@ classdef protocols < iris.ui.UIContainer
         'IRIS:Protocols:setProtocols', 'protocolCell');
       obj.ProtocolsTable.Data = protocolCell;
     end
+    
+    function selfDestruct(obj)
+      % required for integration with menuservices
+      obj.shutdown;
+    end
+    
   end
   %% Startup and Callback Methods
   methods (Access = protected)
@@ -55,7 +61,7 @@ classdef protocols < iris.ui.UIContainer
 
       % Create ProtocolsTable
       obj.ProtocolsTable = uitable(obj.container);
-      obj.ProtocolsTable.ColumnName = {'Timestamp'; 'Note'};
+      obj.ProtocolsTable.ColumnName = {'Property'; 'Value'};
       obj.ProtocolsTable.ColumnWidth = {200, 'auto'};
       obj.ProtocolsTable.RowName = {};
       obj.ProtocolsTable.HandleVisibility = 'off';

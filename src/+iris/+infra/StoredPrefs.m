@@ -1,7 +1,7 @@
 classdef (Abstract) StoredPrefs < handle
 %% STOREDPREFS Modified from Settings class at:
 % https://github.com/cafarm/appbox/tree/017bb417e6519db79434fd004904a9cee8264303
-  properties
+  properties (Hidden)
     settingsKey
   end
 

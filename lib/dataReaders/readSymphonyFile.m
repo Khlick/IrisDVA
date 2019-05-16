@@ -183,7 +183,10 @@ function Data = getDataV1()
       responseData.duration{devNum} = dur;
       responseData.x{devNum} = linspace(0,dur-1/fs, dur*fs)';
       responseData.y{devNum} = d.quantity;
-      responseData.units(devNum) = unique(cellstr(d.unit'));
+      responseData.units{devNum} = struct( ...
+        'x', {'sec'}, ...
+        'y', unique(cellstr(d.unit'),'stable') ...
+        );
     end
     nStims = length(curEpoch.Groups(stims).Groups);
     for stimNum = 1:nStims
@@ -256,12 +259,14 @@ function Notes = getNotesV2()
     % first get from group
     epochNotes = getNoteStruct({epochGroups.Groups.Name}');
     % then look for each experiment
-    for g = 1:numel(epochGroups.Groups)
+    for I = 1:numel(epochGroups.Groups)
       epochBlockIndex = ~cellfun(@isempty,...
-        strfind({epochGroups.Groups(g).Groups.Name}', '/epochBlocks'),'unif',1); %#ok
-      epochBlocks = epochGroups.Groups(g).Groups(epochBlockIndex);
+        strfind({epochGroups.Groups(I).Groups.Name}', '/epochBlocks'),'unif',1); %#ok
+      epochBlocks = epochGroups.Groups(I).Groups(epochBlockIndex);
       % get each experiment for this epoch block
-      blockNotes = [blockNotes;getNoteStruct({epochBlocks.Groups.Name}')];%#ok<AGROW>
+      try %#ok<TRYNC>
+        blockNotes = [blockNotes;getNoteStruct({epochBlocks.Groups.Name}')];%#ok<AGROW>
+      end
     end
   end
 
@@ -290,14 +295,14 @@ function Notes = getNotesV2()
       loc = cellstr(loc);
     end
     nStruct(1:numel(loc),1) = struct('time',{''},'text',{''});
-    for g = 1:numel(loc)
+    for L = 1:numel(loc)
       try
-        notedata = h5read(fileName,[loc{g},'/notes']);
+        notedata = h5read(fileName,[loc{L},'/notes']);
       catch
         continue
       end
-      [~,nStruct(g).time] = sec2str(double(notedata.time.ticks)*1e-7);
-      nStruct(g).text = notedata.text;
+      [~,nStruct(L).time] = sec2str(double(notedata.time.ticks)*1e-7);
+      nStruct(L).text = notedata.text;
     end
   end
 end %notes  
@@ -617,7 +622,10 @@ function Data = getDataV2(grp)
       responseData.devices{r} = h5readatt(fileName, rlink,'name');
       d = h5read(fileName,[responseMap.Name,'/data']);
       responseData.y{r} = d.quantity;
-      responseData.units(r) = unique(cellstr(d.units'));
+      responseData.units{r} = struct( ...
+        'x', {'sec'}, ...
+        'y', unique(cellstr(d.units'),'stable') ...
+        );
       fs = double(h5readatt(fileName, ...
         responseMap.Name, ...
         'sampleRate' ...
@@ -632,11 +640,14 @@ function Data = getDataV2(grp)
           [responseMap.Name,'/dataConfigurationSpans/span_0'], ...
           'startTimeSeconds' ...
         );
-      responseData.x{r} = linspace(...
-        startTimeSec, ...
-        startTimeSec+dur-1/fs, ...
-        dur * fs ...
-        )';
+      % set X to a function handle from a formatted string
+      responseData.x{r} = str2func(sprintf( ...
+        '@()((1:%d)-1)''./%f + %f', ...
+        length(responseData.y{r}), ...
+        fs, ...
+        startTimeSec ...
+        ));
+      %responseData.x{r} = ((1:length(responseData.y{r}))-1)'./fs + startTimeSec;
     end
     % Get configuration for each stimulus data
     nConfigs = length(epochStimuli{rGroup}.Groups);

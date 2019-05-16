@@ -2,8 +2,8 @@
 .fa-cog {
   width:60px !important;
   height:60px !important;
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 #gear {

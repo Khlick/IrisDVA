@@ -95,7 +95,7 @@ classdef Tracker < handle
     end
     
     function tf = get.isready(obj)
-      tf = ~~obj.total && obj.currentIndex(1);
+      tf = ~~obj.total && ~isempty(obj.inclusions);
     end
     
     function len = get.total(obj)
@@ -141,8 +141,9 @@ classdef Tracker < handle
         'inclusions', obj.inclusions ...
         );
     end
+    
     function ind = validateIndex(obj,value)
-      if all(value == 0)
+      if ~obj.isready
         ind = 0;
         return
       end
@@ -192,6 +193,10 @@ classdef Tracker < handle
       obj = builtin('subsasgn',obj,s,varargin{:});
     end
           
+    function s = saveobj(obj)
+      s = struct();
+      s.inclusions = obj.inclusions;
+    end
     
   end
 end

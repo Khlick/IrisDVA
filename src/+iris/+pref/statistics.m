@@ -7,6 +7,7 @@ classdef statistics < iris.infra.StoredPrefs
     BaselinePoints
     BaselineRegion
     ShowOriginal
+    isBaselined
   end
 
   methods
@@ -75,6 +76,17 @@ classdef statistics < iris.infra.StoredPrefs
     function set.ShowOriginal(obj,v)
       validateattributes(v,{'logical'},{'scalar'});
       obj.put('ShowOriginal',v);
+    end
+    
+    
+    % isBaselined
+    function v = get.isBaselined(obj)
+      v = obj.get('isBaselined',false);
+    end
+
+    function set.isBaselined(obj,v)
+      validateattributes(v,{'logical','numeric'},{'binary','scalar'});
+      obj.put('isBaselined',boolean(v));
     end
 
   end

@@ -4,15 +4,12 @@ classdef (Abstract) Container < handle
     didStop
   end
   
-  properties (SetAccess = private)
-    isStopped
-  end
-  
   properties (SetAccess = protected)
     handler   iris.data.Handler
     ui        iris.ui.primary
     services  iris.infra.menuServices
     options
+    isStopped
   end
   
   properties (Access = private)
@@ -28,7 +25,7 @@ classdef (Abstract) Container < handle
       obj.handler = dataHandler;
       obj.services = menuService;
       obj.listeners = cell(0);
-      cName = regexp(class(obj), '(?<=\.)\w*$', 'match', 'once');
+      cName = regexp(class(obj), '(?<=\.?)\w*$', 'match', 'once');
       try
         options = iris.pref.(cName);
       catch
@@ -51,16 +48,17 @@ classdef (Abstract) Container < handle
     end
     
     function stop(obj)
+      obj.isStopped = true;
       obj.preStop;
       obj.unbind;
       obj.close;
-      obj.isStopped = true;
       obj.postStop;
       notify(obj,'didStop');
     end
     
     function show(obj)
-      obj.ui.show;
+      obj.ui.show();
+      obj.ui.focus();
     end
     
   end
@@ -145,6 +143,22 @@ classdef (Abstract) Container < handle
       for o = 1:length(obj.listeners)
         obj.listeners{o}.Enabled = false;
       end
+    end
+    
+    function evt = eventsListened(obj)
+      evt = cellfun(@(l)l.EventName, obj.listeners,'unif',0);
+    end
+    
+    function lsnr = getListenerByEvent(obj,evt)
+      evts = obj.eventsListened;
+      evt = validatestring(evt,evts);
+      lsnr = obj.listeners(ismember(evts,evt));
+    end
+    
+    function lsnr = getListenersBySource(obj,src)
+      srcs = cellfun(@(l)class(l.Source{1}), obj.listeners,'unif',0);
+      src = validatestring(src,srcs);
+      lsnr = obj.listeners(ismember(srcs,src));
     end
     
     function onUIClose(obj,~,~)

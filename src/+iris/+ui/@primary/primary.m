@@ -1,6 +1,5 @@
 classdef primary < iris.ui.UIContainer
   %PRIMARY Main view of Iris app
-  
   events
     MenuCalled
     LoadData
@@ -11,16 +10,17 @@ classdef primary < iris.ui.UIContainer
     ShowNotes
     ShowProtocols
     ShowPreferences
+    ShowStatistics
+    SwitchToggled
     ImportAnalysis
     DoAnalysis
-    ShowOverview
     CreateNewAnalysis
     ExportDataView
     SendToCmd
     ShowHelpDocs
     TickerChanged
     NavigateData
-    SwitchChanged
+    EpochToggled
     DeviceViewChanged
   end
   
@@ -47,11 +47,13 @@ classdef primary < iris.ui.UIContainer
     CreateNewMenu            matlab.ui.container.Menu
     ExportFigureMenuD        matlab.ui.container.Menu
     SendtoCmdMenuD           matlab.ui.container.Menu
+    ModulesMenuD             matlab.ui.container.Menu
+    ModulesContainer         cell
     HelpMenu                 matlab.ui.container.Menu
     AboutMenu                matlab.ui.container.Menu
     DocumentationMenu        matlab.ui.container.Menu
     AxesPanel                matlab.ui.container.Panel
-    %Axes                     matlab.ui.control.UIAxes
+    Axes                     iris.ui.elements.AxesPanel%matlab.ui.control.UIAxes
     CurrentInfo              matlab.ui.container.Panel
     ExtendedInfo             matlab.ui.container.Panel
     ShowingLabel             matlab.ui.control.Label
@@ -64,7 +66,7 @@ classdef primary < iris.ui.UIContainer
     PlotControlTools         matlab.ui.container.Panel
     OverlapLabel             matlab.ui.control.Label
     OverlapTicker            matlab.ui.control.EditField
-    CurrentDataLabel         matlab.ui.control.Label
+    CurrentEpochLabel         matlab.ui.control.Label
     CurrentEpochTicker       matlab.ui.control.EditField
     CurrentEpochSlider       matlab.ui.control.Slider
     CurrentEpochDecSmall     matlab.ui.control.Button
@@ -75,6 +77,9 @@ classdef primary < iris.ui.UIContainer
     CurrentEpochDecBig       matlab.ui.control.Button
     SelectionNavigatorLabel  matlab.ui.control.Label
     SwitchPanel              matlab.ui.container.Panel
+    StatsLabel               matlab.ui.control.Label
+    StatsLamp                matlab.ui.control.Lamp
+    StatsSwitch              matlab.ui.control.ToggleSwitch
     ScaleLabel               matlab.ui.control.Label
     ScaleLamp                matlab.ui.control.Lamp
     ScaleSwitch              matlab.ui.control.ToggleSwitch
@@ -89,20 +94,28 @@ classdef primary < iris.ui.UIContainer
     EpochSwitch              matlab.ui.control.ToggleSwitch
     StartPanel              matlab.ui.container.Panel
     StartLabel              matlab.ui.control.Label
-    KeyboardButton           matlab.ui.control.Button
+    %KeyboardButton           matlab.ui.control.Button
   end
   
-  properties (Access = private)
+  properties (Access = public,SetObservable = true)
     LUT %lookup for html to matlab elements
+    selection
+    layout
+  end
+  
+  properties (Dependent)
+    isFiltered
+    isScaled
+    isBaselined
   end
   
   %% Public Functions
   methods (Access = public)
     % External Methods
     % UI update
-    updateView(obj,data,layout)
-    % Plot update
-    updatePlot(obj,data,layout)
+    updateView(obj,handler)
+    % Update view during selection changes
+    onSelectionUpdate(obj)
     
     function toggleDataDependentUI(obj,status)
       %data dependent menu items
@@ -122,15 +135,38 @@ classdef primary < iris.ui.UIContainer
       controls = uiObjs( ...
         contains( ...
           uiObjs, ...
-          {'Ticker', 'Button','Selection','Slider','Dec','Inc'} ...
+          {'Ticker','Devices','Showing','Button','Selection','Overlap','CurrentEpoch'} ...
         ));
       obj.setUI(controls, 'Enable', status);
+      if isempty(obj.selection) || (length(obj.selection.selected) < 2)
+        obj.setSlider('off');
+      end
       if invStatus
         %turning on UI so hide startpanel
         obj.StartPanel.Visible = 'off';
       else
         obj.StartPanel.Visible = 'on';
       end
+    end
+    
+    function setSlider(obj, status)
+      status = validatestring(status,{'off','on'});
+      obj.setUI( ...
+          {'CurrentEpochSlider','SelectionNavigatorLabel'}, ...
+          'Enable', status ...
+          );
+    end
+    
+    function updateInclusion(obj,value)
+      % toggle the epoch lamp/switch for the selected EPOCH
+      if value
+        col = iris.app.Aes.appColor(1,'green');
+      else
+        col = iris.app.Aes.appColor(1,'red');
+      end
+      obj.EpochLamp.Color = col;
+      obj.EpochSwitch.Value = num2str(value);
+      
     end
     
     function runJS(obj, jsString)
@@ -144,6 +180,9 @@ classdef primary < iris.ui.UIContainer
         return
       end
       A = obj.window.getScreenshot;
+      f = figure;
+      a = axes(f,'Visible', 'off');
+      image(a,A);
     end
   
   end
@@ -154,11 +193,11 @@ classdef primary < iris.ui.UIContainer
     startupFcn(obj,varargin)
     % Construct view
     createUI(obj)
+    
     % Validate epoch ticker and overlay ticker values
     function ValidateTicker(obj,tag,event)
       switch tag
         case {'Overlap','CurrentEpoch'}
-          disp('ticker modified')
           try
             num = eval(sprintf('[%s]',event.Value));
           catch
@@ -171,6 +210,7 @@ classdef primary < iris.ui.UIContainer
           end
         case 'Slider'
           num = round(event.Value);
+          if ~ismember(num,obj.selection.selected), return; end
           obj.CurrentEpochTicker.Value = sprintf('%d',num);
           % quantize slider position
           obj.CurrentEpochSlider.Value = num;
@@ -180,10 +220,22 @@ classdef primary < iris.ui.UIContainer
           struct('Type', tag, 'Value', num)) ...
         );
     end
+    
     % Epoch slider changing
-    function SliderChanging(obj,~,event)
+    function SliderChanging(obj,source,event)
       num = round(event.Value);
+      if (source.Value == num)
+        return;
+      end
+      if ~ismember(num,obj.selection.selected), return; end
+      source.Value = num;
       obj.CurrentEpochTicker.Value = sprintf('%d',num);
+      dOpts = iris.pref.display.getDefault();
+      obj.Axes.setHighlighted(num,dOpts.LineWidth);
+      %{
+      if num == obj.selection.highlighted, return; end
+      obj.selection.highlighted = num;
+      %}
     end
     
     % Display control switch flipped
@@ -195,27 +247,73 @@ classdef primary < iris.ui.UIContainer
         col = iris.app.Aes.appColor(1,'red');
       end
       obj.([source.Tag,'Lamp']).Color = col;
-      notify(obj, 'SwitchChanged', ...
-        iris.infra.eventData(struct('Type', source.Tag, 'Value', value)) ...
-        );
-    end
-    
-    % Track keypresses (2018a -> using javascript hack)
-    function KeypressCapture(obj,~,~)
-      try
-        keyData = obj.window.executeJS('keyData');
-      catch x %#ok
-        %log
-        return
-      end
       
-      %parse data from window
-      keyData = jsondecode(keyData);
-      if ismember(keyData.SOURCE, obj.LUT.keys())
+      % if we are toggling the epoch, send the info to Iris for handling
+      if strcmp(source.Tag,'Epoch')
+        notify(obj, 'EpochToggled', ...
+          iris.infra.eventData( ...
+          struct( ...
+            'index', obj.selection.highlighted, ...
+            'value', value ...
+            ) ...
+          ) ...
+          );
         return;
       end
-      disp(keyData)
+      % otherwise, notify for redraw
+      notify(obj,'SwitchToggled', ...
+        iris.infra.eventData(struct('source',source.Tag,'value',value)));
+      
+    end
+    
+    % Track keypresses (<=2018a:  using javascript hack)
+    function KeypressCapture(obj,~,event)
+      if isempty(event.Character), return; end
+      
+      keyData = struct(...
+        'SOURCE', class(event.Source), ...
+        'CTRL', ismember('control', event.Modifier), ...
+        'SHIFT', ismember('shift', event.Modifier), ...
+        'ALT', ismember('alt', event.Modifier), ...
+        'KEY', event.Key, ...
+        'CHAR', event.Character, ...
+        'CODE', unicode2native(event.Character) ...
+        );
+      %{
+      v = ver('matlab');
+      if str2double(v.Version) < 9.5
+        try
+          keyData = obj.window.executeJS('keyData');
+          disp('keyData');
+          
+        catch x %#ok
+          %log
+          return
+        end
+
+        %parse data from window
+        keyData = jsondecode(keyData);
+        %if ismember(keyData.SOURCE, obj.LUT.keys())
+        %  return;
+        %end
+      else
+        
+      end
+      %}
       notify(obj,'KeyPress',iris.infra.eventData(keyData));
+    end
+    
+    function populateModules(obj)
+      builtinModules = cellstr(ls( ...
+        fullfile( ...
+          iris.app.Info.getResourcePath, ...
+          'Modules', ...
+          '*.mlapp' ...
+          ) ...
+        ));
+      % get custom from preferences Module directory.
+      disp('TODO:Iris.ui.populateModules');
+        
     end
     
   end
@@ -235,6 +333,31 @@ classdef primary < iris.ui.UIContainer
       getContainerPrefs@iris.ui.UIContainer(obj);
     end
     
+  end
+  
+  %% Get methods
+  methods
+    
+    function tf = get.isScaled(obj)
+      tf = false;
+      try %#ok<TRYNC>
+        tf = obj.ScaleSwitch.Value == '1';
+      end
+    end
+    
+    function tf = get.isBaselined(obj)
+      tf = false;
+      try %#ok<TRYNC>
+        tf = obj.BaselineSwitch.Value == '1';
+      end
+    end
+    
+    function tf = get.isFiltered(obj)
+      tf = false;
+      try %#ok<TRYNC>
+        tf = obj.FilterSwitch.Value == '1';
+      end
+    end
   end
 end
 

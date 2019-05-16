@@ -34,6 +34,10 @@ classdef fileInfo < iris.ui.UIContainer
       tf = ~isempty(obj.PropNodes);
     end
     
+    function selfDestruct(obj)
+      obj.shutdown;
+    end
+    
   end
   %% Startup and Callback Methods
   methods (Access = protected)

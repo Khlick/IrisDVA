@@ -23,6 +23,11 @@ switch resp
     obj.options.reset();
     obj.getContainerPrefs();
     obj.update();
+    notify(obj, 'AxesChanged');
+    notify(obj, 'DisplayChanged');
+    notify(obj, 'FilterChanged');
+    notify(obj, 'StatisticsChanged');
+    notify(obj, 'ScalingChanged');
     return
   case 'Cancel'
     return 

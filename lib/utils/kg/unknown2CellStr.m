@@ -2,6 +2,10 @@ function strNow = unknown2CellStr(cellIn)
   cellAr = cellIn(~cellfun(@isempty,cellIn));
   caClass = cellfun(@class, cellAr, 'uniformoutput', false);
   testClass = unique(caClass);
+  if isempty(testClass)
+    strNow = {''};
+    return
+  end
   switch testClass{1}
     case 'char'
       strNow = unique(cellAr(:));

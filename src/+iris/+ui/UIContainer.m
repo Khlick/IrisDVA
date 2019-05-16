@@ -9,7 +9,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     isready
   end
   
-  properties (Access = protected)
+  properties (Access = public)
     container
     window
   end
@@ -35,7 +35,6 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
         'Color', [1,1,1], ...
         'AutoResizeChildren', 'off', ...
         'Resize', 'off', ...
-        'NextPlot', 'replacechildren', ...
         'CloseRequestFcn', ...
           @(src,evnt)notify(obj, 'Close'),...
         'DefaultUicontrolFontName', Aes.uiFontName, ...
@@ -76,12 +75,18 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       %}
       
       try
-        obj.createUI();
+        obj.createUI(varargin{:});
         drawnow;
         pause(0.2);
-      catch x
-        delete(obj.container);
-        rethrow(x)
+      catch
+        try
+          obj.createUI();
+          drawnow;
+          pause(0.2);
+        catch x
+          delete(obj.container);
+          rethrow(x)
+        end
       end
       % now gather the web window for the container
       while ~obj.isready
@@ -128,6 +133,14 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
 
     function f = get.position(obj)
       f = obj.get('position', []);
+      if isempty(f), return; end
+      rootMonitors = get(groot,'MonitorPositions');
+      if f(1) > (max(rootMonitors(:,3)) - f(3))
+        f(1) = max(rootMonitors(:,3)) - f(3);
+      end
+      if f(2) > (max(rootMonitors(:,4))-f(4))
+        f(2) = max(rootMonitors(:,4)) - f(4);
+      end
     end
     
     function tf = get.isClosed(obj)
@@ -151,8 +164,12 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       uiObj = validatestring(uiObj,properties(obj));
       v = obj.(uiObj).(propName);
     end
+      
+    function tf = isVisible(obj)
+      tf = strcmpi(obj.container.Visible, 'on');
+    end
+ 
     
-  
     %% interactive functions
     
     function startup(obj,varargin)
@@ -160,13 +177,13 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       try
         obj.startupFcn(varargin{:}); %abstract
       catch x
-        delete(obj.container);
+        delete(obj);
         rethrow(x)
       end
       import iris.app.*;
       obj.window.Icon = fullfile(Info.getResourcePath,'icn','favicon.ico');
       % remove focus from window
-      obj.window.executeJS('window.blur();');
+      %obj.window.executeJS('window.blur();');
     end
     
     function shutdown(obj)
@@ -187,10 +204,14 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       if strcmpi(obj.container.Visible, 'off')
         obj.container.Visible = 'on';
       end
+      obj.window.show;
       obj.window.bringToFront;
     end
     
     function hide(obj)
+      if strcmpi(obj.container.Visible, 'on')
+        obj.container.Visible = 'off';
+      end
       obj.window.hide;
       obj.window.executeJS('window.blur();');
       obj.resume();
@@ -207,7 +228,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     end
     
     function update(obj)%#ok
-      drawnow('update');
+      drawnow();
     end
     
     function executeJSFile(obj,fileName, timeOut)
@@ -229,20 +250,22 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       end
     end
     
+    function focus(obj)
+      obj.window.bringToFront;
+    end
     
   end
   
   methods (Access = private)  
     %% base routines
     function close(obj)
-      delete(obj.container);
-      try %#ok
-        delete(obj.window);
+      if ~obj.isClosed
+        obj.delete();
       end
     end
 
     function wait(obj)
-      uiwait(obj.container);
+      waitfor(obj,'isready');
     end
 
     function resume(obj)
@@ -250,9 +273,10 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     end
     
     function delete(obj)
-      if ~obj.isClosed
-        obj.close();
+      try %#ok
+        delete(obj.window);
       end
+      delete(obj.container);
     end
     
     function destroy(obj)

@@ -3,9 +3,11 @@ classdef menuServices < handle
   events
     % listened to by main application
     preferenceUpdated
+    onDisplayChanged
     dataUpdated
     analyzeCurrent
     dataRequest
+    onReaderAdded
   end
   
   properties
@@ -17,7 +19,7 @@ classdef menuServices < handle
     Notes           iris.ui.notes
     Protocols       iris.ui.protocols
     About           iris.ui.about
-    %Help            iris.ui.help
+    Help            %empty
   end
   
   properties (Access = private)
@@ -33,14 +35,68 @@ classdef menuServices < handle
       obj.bind('Preferences');
     end
     
+    function tf = isOpen(obj,menuName)
+      mName = validatestring(menuName,properties(obj));
+      tf = ~isempty(obj.(mName)) && ~(~obj.(mName).isvalid || ~obj.(mName).isready);
+    end
+    
+    function openList = getOpenMenus(obj)
+      openList = {};
+      for p = properties(obj)'
+        if ~obj.isOpen(p{1}), continue; end
+        openList(1,end+1) = p; %#ok<AGROW>
+      end
+    end
+    
+    function tf = isVisible(obj,menuNames)
+      if nargin < 2
+        menuNames = 'all';
+      end
+      if ~iscellstr(menuNames)
+        menuNames = cellstr(menuNames);
+      end
+      
+      if any(strcmp(menuNames,'all'))
+        menuNames = properties(obj)';
+      else
+        menuNames = cellfun( ...
+          @(s)validatestring(s,properties(obj)), ...
+          menuNames, ...
+          'UniformOutput', false ...
+          );
+      end
+      % get the isVisible return from each menu
+      tf = zeros(length(menuNames),1);
+      for I = 1:length(menuNames)
+        tf(I) = obj.isOpen(menuNames{I}) && obj.(menuNames{I}).isVisible;
+      end
+      
+    end
+    
+    function updateMenus(obj)
+      openMenus = obj.getOpenMenus;
+      if sum( ...
+          ismember( ...
+            openMenus, ...
+            {'Analyze','Protocols'} ...
+            ) ...
+          )
+        % there are open menus which need updating
+        fprintf('%s.updateMenus()\n',class(obj));
+      end
+    end
+    
     function bind(obj,menuName)
+      import iris.infra.eventData;
+      
       if nargin < 2, error('Provide valid menu name.'); end
       menuName = validatestring(lower(menuName),properties(obj));
       switch menuName
         case 'Analyze'
           az = obj.Analyze;
           obj.addListener(az, 'Close', @obj.destroyWindow);
-          obj.addListener(az, 'requestData', @obj.dataRequested);
+          obj.addListener(az, 'requestData', ...
+            @(s,e) notify(obj,'dataRequested'));
         case 'NewAnalysis'
           na = obj.NewAnalysis;
           obj.addListener(na, 'Close', @obj.destroyWindow);
@@ -48,11 +104,37 @@ classdef menuServices < handle
         case 'Preferences'
           pr = obj.Preferences;
           obj.addListener(pr, 'Close', @obj.destroyWindow);
+          obj.addListener(pr, 'NewReaderCreated', ...
+            @(s,e)notify(obj, 'onReaderAdded', eventData(e.Data)) ...
+            );
+          obj.addListener(pr, 'DisplayChanged', ...
+            @(s,e) notify(obj,'onDisplayChanged', eventData(e.Data)) ...
+            );
+          obj.addListener(pr, 'StatisticsChanged', ...
+            @(s,e) notify(obj,'onDisplayChanged', eventData(e.Data)) ...
+            );
+          obj.addListener(pr, 'FilterChanged', ...
+            @(s,e) notify(obj,'onDisplayChanged', eventData(e.Data)) ...
+            );
+          obj.addListener(pr, 'ScalingChanged', ...
+            @(s,e) notify(obj,'onDisplayChanged', eventData(e.Data)) ...
+            );
+            
         case 'FileInfo'
+          fi = obj.FileInfo;
+          obj.addListener(fi,'Close', @obj.destroyWindow);
         case 'DataOverview'
+          ov = obj.DataOverview;
+          obj.addListener(ov,'Close', @obj.destroyWindow);
         case 'Notes'
+          nt = obj.Notes;
+          obj.addListener(nt,'Close', @obj.destroyWindow);
         case 'Protocols'
+          ps = obj.Protocols;
+          obj.addListener(ps,'Close', @obj.destroyWindow);
         case 'About'
+          ab = obj.About;
+          obj.addListener(ab,'Close',@obj.destroyWindow);
         case 'Help'
       end
     end
@@ -71,7 +153,7 @@ classdef menuServices < handle
         cellfun(@(l)l.EventName, obj.listeners,'unif',0),...
         listener.EventName);
       if ~any(loc), disp('Listener non-existent'); end
-      delete(listener)
+      delete(listener);
       obj.listeners(loc) = [];
     end
     
@@ -83,7 +165,7 @@ classdef menuServices < handle
       % Once rebuild() is implemented on all objects
       switch menuName
         case 'Analyze'
-          if isempty(obj.Analyze) || obj.Analyze.isClosed
+          if isempty(obj.Analyze) || ~obj.isOpen('Analyze')
             obj.Analyze = iris.ui.analyze();
           end
           if nargin > 2
@@ -91,15 +173,15 @@ classdef menuServices < handle
             obj.Analyze.EpochNumbers = varargin{1};
           end
         case 'NewAnalysis'
-          if isempty(obj.NewAnalysis) || obj.NewAnalysis.isClosed
+          if isempty(obj.NewAnalysis) || ~obj.isOpen('NewAnalysis')
             obj.NewAnalysis = iris.ui.newAnalysis;
           end
         case 'Preferences'
-          if isempty(obj.Preferences) || obj.Preferences.isClosed
+          if isempty(obj.Preferences) || ~obj.isOpen('Preferences')
             obj.Preferences = iris.ui.preferences();
           end
         case 'FileInfo'
-          if isempty(obj.FileInfo) || obj.FileInfo.isClosed
+          if isempty(obj.FileInfo) || ~obj.isOpen('FileInfo')
             obj.FileInfo = iris.ui.fileInfo(); 
           end
           if nargin < 3
@@ -110,7 +192,7 @@ classdef menuServices < handle
           % varargin should be cell array of structs
           obj.FileInfo.buildUI(varargin{:});
         case 'DataOverview'
-          if isempty(obj.DataOverview) || obj.DataOverview.isClosed
+          if isempty(obj.DataOverview) || ~obj.isOpen('DataOverview')
             obj.DataOverview = iris.ui.dataOverview(); 
           end
           if nargin < 3
@@ -119,7 +201,7 @@ classdef menuServices < handle
           % varargin should contain data Handler
           obj.DataOverview.buildUI(varargin{:});
         case 'Notes'
-          if isempty(obj.Notes) || obj.Notes.isClosed
+          if isempty(obj.Notes) || ~obj.isOpen('Notes')
             obj.Notes = iris.ui.notes(); 
           end
           if nargin < 3
@@ -127,7 +209,7 @@ classdef menuServices < handle
           end
           obj.Notes.buildUI(varargin{:});
         case 'Protocols'
-          if isempty(obj.Protocols) || obj.Protocols.isClosed
+          if isempty(obj.Protocols) || ~obj.isOpen('Protocols')
             obj.Protocols = iris.ui.protocols();
           end
           if nargin < 3
@@ -138,9 +220,12 @@ classdef menuServices < handle
           end
           obj.Protocols.buildUI(varargin{:});
         case 'About'
-          if isempty(obj.About) || obj.About.isClosed
+          if isempty(obj.About) || ~obj.isOpen('About')
             obj.About = iris.ui.about();
           end
+        case 'Help'
+          web(iris.app.Info.site(), '-browser');
+          return;
       end
       % bind the appropriate listeners
       obj.bind(menuName);
@@ -157,7 +242,7 @@ classdef menuServices < handle
         uis = uis(ismember(uis,menuName));
       end
       for p = 1:length(uis)
-        if isempty(obj.(uis{p})) || obj.(uis{p}).isClosed()
+        if ~obj.isOpen(uis{p})
           continue;
         end
         obj.(uis{p}).shutdown();
@@ -194,6 +279,7 @@ classdef menuServices < handle
       obj.(uis{p}).reset();
       end
     end
+    
     function removeAllListeners(obj)
       while ~isempty(obj.listeners)
         delete(obj.listeners{1});
@@ -229,6 +315,16 @@ classdef menuServices < handle
       end
     end
     
+    function updateAnalysesList(obj)
+      %%% TODO
+      % if obj.Analyze is open, update the dropdown list.
+      fprintf( ...
+        ['(TODO) menuServices.updateAnalysesList: ',...
+        'Update obj.Analyze if open.\n' ...
+        ] ...
+        );
+      % otherwise, do nothing
+    end
     
   end
   
@@ -239,10 +335,11 @@ classdef menuServices < handle
     
     function destroyWindow(obj,src,~)
       srcClass = class(src);
+      
       try
         src.selfDestruct();
       catch x
-        warning([x.message,'\nDeleting object...']);
+        warning([x.message,' Deleting object...']);
         delete(src);
       end
       obj.cleanListeners(srcClass);

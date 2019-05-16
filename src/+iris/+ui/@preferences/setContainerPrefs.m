@@ -28,11 +28,32 @@ function setContainerPrefs(obj)
   %% Workspace
   Analysis.OutputDirectory = obj.OutputDirectoryInput.Value;
   Analysis.AnalysisDirectory = obj.AnalysisDirectoryInput.Value;
+  Analysis.ExternalModulesDirectory = obj.ModulesDirectoryInput.Value;
+  Analysis.ExternalReadersDirectory = obj.ReaderDirectoryInput.Value;
+  % prefix handler
   pfx = obj.AnalysisPrefixInput.Value;
-  if ~contains(pfx,'@')
+  if ~strcmpi(pfx(1),'@')
     pfx = ['@()',pfx];
   end
-  Analysis.AnalysisPrefix = str2func(pfx);
+  nIter = 0;
+  while true
+    nIter = nIter+1;
+    pfxx = str2func(pfx);
+    try
+      pfxx();
+    catch exception
+      if nIter > 5, rethrow(exception); end
+      if contains(lower(exception.identifier), 'undefined')
+        % like a string was entered only
+        pfx = sprintf('@()''%s''',pfx(4:end));
+        continue;
+      else
+        rethrow(exception);  
+      end
+    end
+    break;
+  end
+  Analysis.AnalysisPrefix = pfxx;
   %% Filter
   Signal.Order = str2double(obj.FilterOrderSelect.Value);
   Signal.LowPassFrequency = str2double(obj.FilterFrequencyLowSelect.Value);
@@ -54,4 +75,6 @@ function setContainerPrefs(obj)
   obj.options.FilterProps = Signal ;
   obj.options.StatisticsProps = Stats ;
   obj.options.ScaleProps = Scale ;
+  %% SAVE
+  obj.options.save();
 end

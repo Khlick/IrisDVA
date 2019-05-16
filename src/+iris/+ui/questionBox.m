@@ -19,7 +19,6 @@ classdef questionBox < iris.ui.JContainer
       
       addlistener(obj,'Close', @obj.onCloseRequest);
       
-      
       obj.show;
       
       defaultMember = ismember( ...
@@ -29,8 +28,8 @@ classdef questionBox < iris.ui.JContainer
         ), ...
         obj.default ...
         );
-      obj.setWindowStyle('modal');
       uicontrol(obj.buttons{defaultMember});
+      obj.wait();
     end
     
     function createUI(obj,varargin)
@@ -41,8 +40,8 @@ classdef questionBox < iris.ui.JContainer
       ip.addParameter('Title', 'Question Box', @ischar);
       ip.addParameter('Options', {'Yes', 'No'}, ...
         @(x)validateattributes(x, ...
-          {'cell'}, ...
-          {'vector'} ...
+          {'cell','char'}, ...
+          {'nonempty'} ...
           ) ...
         );
       ip.addParameter('Prompt', 'Question box prompt.', ...
@@ -57,35 +56,63 @@ classdef questionBox < iris.ui.JContainer
       
       opts = unique(ip.Results.Options,'stable');
       nButtons = length(opts);
+      %{
       if (nButtons < 2) || (nButtons > 5)
         error('Prompt must have between 2 and 5 buttons.');
       end
-      
+      %}
       obj.response = ip.Results.Default;
       
-      %%% TODO
-      % determine if width needs to be longer.
-      %promptSize = length(ip.Results.Prompt);
+      [spaces,tmp] = deal(regexp(ip.Results.Prompt, '\s'));
+      promptLength = length(ip.Results.Prompt);
       
-      % always init with the same size
+      splits = [];
+      
+      while any(spaces <= 42 & spaces >= 30)
+        splitIndex = find(spaces <= 42 & spaces > 0, 1, 'last'); 
+        splits(end+1) = tmp(splitIndex); %#ok<AGROW>
+        spaces = spaces - splits(end);
+      end
+      
+      nLines = length(splits)+1;           
+      startInds = [0,splits,promptLength];
+      difInds = diff(startInds);
+      nChars = max(difInds);
+      
+      if mod(nChars,2)
+        %make odd length
+        nChars = nChars+1;
+      end
+      
+      splitText = cell(1,nLines);
+      for c = 1:nLines
+        splitText{c} = regexprep( ...
+          ip.Results.Prompt((startInds(c)+1):startInds(c+1)), ...
+          '^\s* | \s*$', ...
+          '' ...
+          );
+      end
+      
+      
+      formattedPrompt = pad(splitText,nChars,'both');
+      % window init size
       w = 265;
       h = 115;
-      pos = centerFigPos(w,h);
-      obj.position = pos;
-      set(obj.container, ...
-        'Name', ip.Results.Title, ...
-        'Units', 'pixels', ...
-        'resize', 'off' ...
-        );
       
-      obj.prompt = uicontrol(obj.container, ...
-        'Style', 'text', ...
-        'Units', 'pixels', ...
-        'Position', [15,h/3*2-7,(w-30),15], ...
-        'String', ip.Results.Prompt,  ...
-        'FontSize', 10, ...
-        'BackgroundColor', [1 1 1] ...
-        );
+      % alter height:
+      promptHeight = 15*nLines;
+      promptY = max([2*h/3-7-7*(nLines-1), 2*h/3-15]);
+      
+      if nLines > 2
+        h = h+(nLines-2)*15;
+      end
+      
+      % calculate buttons
+      
+      if w < (nButtons*73+30)
+        w = nButtons*73+30+2;
+      end
+      
       
       obj.buttons = cell(nButtons,1);
       buttonBounds = (0:nButtons).* (w-30)/nButtons + 15;
@@ -95,8 +122,30 @@ classdef questionBox < iris.ui.JContainer
       buttonStarts = buttonCenters - buttonWidth/2;
       
       
+      % always init with the same size
+      
+      pos = centerFigPos(w,h);
+      obj.position = pos;
+      
+      set(obj.container, ...
+        'Name', ip.Results.Title, ...
+        'Units', 'pixels', ...
+        'resize', 'off' ...
+        );
+      
+      obj.prompt = uicontrol(obj.container, ...
+        'Style', 'text', ...
+        'Units', 'pixels', ...
+        'Position', [15,promptY,(w-30),promptHeight], ...
+        'String', formattedPrompt,  ...
+        'FontSize', 10, ...
+        'BackgroundColor', [1 1 1] ...
+        );
+      
+      
       for b = 1:nButtons
         button = uicontrol(obj.container, ...
+          'Style', 'pushbutton', ...
           'Units', 'pixels', ...
           'Position', [buttonStarts(b), 15, buttonWidth, 20], ...
           'String', opts{b}, ...
@@ -127,5 +176,12 @@ classdef questionBox < iris.ui.JContainer
     end
     
   end
+  methods
+    
+    function selfDestruct(obj)
+      % required for integration with menuservices
+      obj.onCloseRequest([],[]);
+    end
   
+  end
 end

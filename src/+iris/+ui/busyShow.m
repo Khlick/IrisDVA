@@ -109,6 +109,10 @@ classdef busyShow < iris.ui.JContainer
       end
       delete(obj);
     end
+    function selfDestruct(obj)
+      % required for integration with menuservices
+      obj.doClose([],[]);
+    end
   end
   
   methods (Access = private)

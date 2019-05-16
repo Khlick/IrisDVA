@@ -17,7 +17,7 @@ classdef dataOverview < iris.ui.UIContainer
   properties (Hidden)
     InclusionIcon = fullfile(iris.app.Info.getResourcePath,'icn','Epoch_Iconincl.png')
     ExclusionIcon = fullfile(iris.app.Info.getResourcePath,'icn','Epoch_Iconexcl.png')
-    
+    selectionListener
   end
     
   
@@ -35,12 +35,15 @@ classdef dataOverview < iris.ui.UIContainer
       obj.show;
       
       obj.clearView;
-      
-      obj.Handler = handler;
+      if ~isequal(handler,obj.Handler)
+        obj.Handler = handler;
+      end
       obj.FileNodes = cell(handler.nFiles,1);
       obj.PropNodes = {};
+      obj.SelectSubsetLabel.Text = 'Loading epochs...';
       for p = 1:handler.nFiles
-        dataInds = handler.membership{p}.data;
+        mbr = handler.membership{p};
+        dataInds = mbr.data;
         inclStatus = handler.Tracker.getStatus.inclusions(dataInds);
         d = handler(dataInds);
         [~,fn,ex] = fileparts(handler.fileList{p});
@@ -67,8 +70,23 @@ classdef dataOverview < iris.ui.UIContainer
           obj.update;
           obj.PropNodes{end+1} = thisChildNode;
         end
+        thisNode.expand;
         obj.FileNodes{p} = thisNode;
       end
+      obj.SelectSubsetLabel.Text = 'Select File Subset';
+      % set selected from handler
+      obj.onHandlerUpdate;
+      % set and enable listener
+      obj.selectionListener = addlistener( ...
+        handler, ...
+        'onSelectionUpdated', @(s,e)obj.onHandlerUpdate ...
+        );
+    end
+    
+    function selfDestruct(obj)
+      % required for integration with menuservices
+      delete(obj.selectionListener);
+      obj.shutdown;
     end
     
   end
@@ -80,6 +98,14 @@ classdef dataOverview < iris.ui.UIContainer
       if nargin < 2, return; end
       obj.buildUI(handler);
     end    
+    
+    %handler selection was updated
+    function onHandlerUpdate(obj)
+      obj.FileTree.SelectedNodes = [obj.PropNodes{obj.Handler.currentSelection.selected}];
+      obj.getSelectedInfo();
+      obj.PropTable.Visible = 'on';
+      obj.SelectSubsetPanel.Visible = 'off';
+    end
     
     % Set Table Data
     function setData(obj,d)
@@ -227,7 +253,6 @@ classdef dataOverview < iris.ui.UIContainer
         otherwise
           return
       end
-      
     end
     % Selection Node changed.
     function nodeChanged(obj,~,evt)
@@ -269,13 +294,15 @@ classdef dataOverview < iris.ui.UIContainer
         'UniformOutput', false ...
         );
       selectedIndex = cellfun( ...
-        @(v) v{ismember(v(:,1),'index'),2}, ...
+        @(v) str2double(v{ismember(v(:,1),'index'),2}), ...
         infos, ...
         'UniformOutput', true ...
         );
       
       if ~nargout
-        obj.Handler.currentSelection = selectedIndex;
+        if ~isequal(obj.Handler.currentSelection.selected, selectedIndex)
+          obj.Handler.currentSelection = selectedIndex;
+        end
         obj.setData(cat(1,infos{:}));
         obj.update;
       end

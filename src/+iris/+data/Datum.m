@@ -11,11 +11,17 @@ classdef Datum < matlab.mixin.Copyable
     displayProperties
     responseConfiguration
     deviceConfiguration
+    inclusion
   end
   
   properties (Transient = true)
     index
+  end
+  properties (Dependent)
     nDevices
+  end
+  properties (Transient=true, Dependent=true, Hidden=true)
+    plotData
   end
   
   methods
@@ -29,6 +35,7 @@ classdef Datum < matlab.mixin.Copyable
       dataStruct
         - protocols: Nx2 cell
         - displayProperties: Nx2 cell
+        - inclusion: scalar logical (optional)
         - responses: struct
         -- sampleRate: cell, in Hz e.g. {10000, 10000}
         -- duration: cell, in sec e.g. {3, 3} %unused
@@ -51,6 +58,13 @@ classdef Datum < matlab.mixin.Copyable
         if ~isempty(idLoc) && ~isempty(dataStruct(ix).(fns{idLoc}))
           obj(ix).id = dataStruct(ix).(fns{idLoc});
         end
+        % inclusion status
+        if ismember('inclusion',fns)
+          obj(ix).inclusion = dataStruct(ix).inclusion;
+        else
+          obj(ix).inclusion = true;
+        end
+        
         % data
         d = dataStruct(ix).responses;
         obj(ix).units = d.units;
@@ -64,13 +78,10 @@ classdef Datum < matlab.mixin.Copyable
           if ~iscell(devices)
             devices = cellstr(devices);
           end
-          ndevs = length(devices);
         else
           if isvector(dataStruct(ix).responses.y)
-            ndevs = 1;
             devices = {'Device 1'};
           elseif istable(dataStruct(ix).responses.y)
-            ndevs = size(dataStruct(ix).responses.y,2);
             devices = dataStruct(ix).responses.y.Properties.VariableNames;
           elseif ismatrix(dataStruct(ix).responses.y)
             ndevs = size(dataStruct(ix).responses.y,2);
@@ -78,7 +89,6 @@ classdef Datum < matlab.mixin.Copyable
           end
         end
         obj(ix).devices = devices;
-        obj(ix).nDevices = ndevs;
         obj(ix).x = d.x;
         obj(ix).y = d.y;
         obj(ix).protocols = dataStruct(ix).protocols;
@@ -103,11 +113,123 @@ classdef Datum < matlab.mixin.Copyable
       obj.id = sprintf('Ep%04d', uint64(value));
     end
     
+    function setInclusion(obj,value)
+      % expected to be scalar value to set only the first datum in the
+      % array. If not a scalar value, then it must be as long as the whole
+      % array.
+      n = length(obj);
+      validateattributes(value,{'logical','numeric'},{'binary'});
+      if ~isscalar(value) && (length(value) ~= n)
+        iris.app.Info.showWarning( ...
+          sprintf( ...
+            'Setting Inclusions require scalar logical or %d values.', ...
+            n ...
+            ) ...
+          );
+        return
+      end
+      for I = 1:length(value)
+        obj(I).inclusion = value(I);
+      end
+    end
+    
+    function n = get.nDevices(obj)
+      n = zeros(1,length(obj));
+      for I = 1:length(obj)
+        n(I) = length(obj(I).devices);
+      end
+    end
+    
+    function dat = get.plotData(obj)
+      dPrefs = iris.pref.display.getDefault();
+      % plotData() cycles through data and creates an object for each device
+      dat = iris.data.encode.plotData(obj,dPrefs);
+    end
+    
+    function propC = getProps(obj)
+      propC = cell(length(obj),1);
+      for o = 1:length(obj)
+        propC{o} = [ ...
+          { ...
+            'id', obj(o).id; ...
+            'index', obj(o).index; ...
+            'nDevices', obj(o).nDevices; ...
+            'devices', sprintf('(%s)',strjoin(obj(o).devices,'|')) ...
+          }; ...
+          obj(o).protocols ...
+          ];
+      end
+    end
+    
     function pCell = getPropsAsCell(obj)
-      pCell = [ ...
-        {'id', obj.id; 'index', obj.index; 'nDevices', obj.nDevices}; ...
-        obj.protocols ...
-        ];
+      propC = obj.getProps();
+      propC = cat(1,propC{:});
+      %uniqueify
+      pCell = collapseUnique(propC,1);
+    end
+    
+    function tab = getPropTable(obj)
+      % getPropTable 
+      % Collect properties for all datums into a table.
+      % Each row in the output table will represent 1 datum with the
+      % variable names representing all available properties. Empty entries
+      % in the table will indicate either an empty value or an unused
+      % value. This will allow the table to hold all possible properties
+      % while keeping those datums that don't contain a particular
+      % property.
+      props = obj.getPropsAsCell(); % all possible props
+      epochProps = obj.getProps(); % each epoch's props
+      propCells = cell(length(obj),size(props,1));
+      for I = 1:length(epochProps)
+        % find the intersection between the current datum's properties and
+        % all properties in the data.
+        currentProps = epochProps{I};
+        [~,iP,iE] = intersect(props(:,1),currentProps(:,1),'stable');
+        % Convert everything to char arrays to prevent differences in the
+        % rows from raising errors.
+        propCells(I,iP) = arrayfun( ...
+          @unknownCell2Str, ...
+          currentProps(iE,2), ...
+          'UniformOutput', false ...
+          )';
+        propCells(I,cellfun(@isempty,propCells(I,:),'unif',1)) = {''};
+      end
+      tab = cell2table(propCells, 'VariableNames', props(:,1)');
+    end
+    
+    function lengths = getDataLengths(obj,device)
+      lengths = cell(length(obj),1);
+      keeps = boolean(ones(1,length(obj)));
+      for I = 1:length(obj)
+        deviceIndex = strcmp(obj(I).devices,device);
+        if ~any(deviceIndex)
+          keeps(I) = false;
+          continue;
+        end
+        % get matrix size
+        lengths{I} = cellfun( ...
+          @(d) size(d,1)*size(d,2), ...
+          obj(I).y(deviceIndex), ...
+          'UniformOutput', true ...
+          );
+      end
+      lengths = lengths(keeps);
+    end
+    
+    function S = getDataByDeviceName(obj,deviceName)
+      % preallocate maximum length
+      S(length(obj),1) = struct('device', '', 'y', 0.0); 
+      keepInds = boolean(ones(1,length(obj)));
+      for I = 1:length(obj)
+        deviceIndex = strcmp(obj(I).devices,deviceName);
+        if ~any(deviceIndex)
+          keepInds(I) = false;
+          continue;
+        end
+        S(I).device = deviceName;
+        S(I).y = obj(I).y{deviceIndex};
+      end
+      S = S(keepInds);
     end
     
   end
@@ -127,7 +249,7 @@ classdef Datum < matlab.mixin.Copyable
       d.responseConfiguration = obj.responseConfiguration;
       d.deviceConfiguration = obj.deviceConfiguration;
       d.index = obj.index;
-      d.nDevices = obj.nDevices;
+      d.inclusion = obj.inclusion;
     end
     
   end
@@ -147,6 +269,7 @@ classdef Datum < matlab.mixin.Copyable
         o = obj(d);
         s(d).protocols = o.protocols;
         s(d).displayProperties = o.displayProperties;
+        s(d).inclusion = o.inclusion;
 
         r = struct();
         r.sampleRate = o.sampleRate; % cell, in Hz e.g. {10000, 10000}
@@ -164,6 +287,41 @@ classdef Datum < matlab.mixin.Copyable
 
         s(d).responses = r;
       end
+    end
+    
+    function d = subsetDevice(obj,include)
+      keepIndex = ismember(obj.devices,include);
+      if all(keepIndex)
+        % send the handle to make it quick and memory efficient
+        d = obj;
+        return;
+      end
+      d = iris.data.Datum();
+      d.id = obj.id;
+      d.devices = obj.devices(keepIndex);
+      d.sampleRate = obj.sampleRate(keepIndex);
+      d.x = obj.x(keepIndex);
+      d.y = obj.y(keepIndex);
+      d.units = obj.units(keepIndex);
+      d.protocols = obj.protocols;
+      d.displayProperties = obj.displayProperties;
+      d.responseConfiguration = obj.responseConfiguration;
+      d.deviceConfiguration = obj.deviceConfiguration(keepIndex);
+      d.index = obj.index;
+      d.inclusion = obj.inclusion;
+    end
+    
+    function dat = getPlotArray(obj, varargin)
+      p = inputParser;
+      p.addParameter('color',[0,0,0], ...
+        @(x)validateattributes(x,{'numeric'},{'size',[NaN,3],'>=',0,'<=',1}) ...
+        );
+      p.parse(varargin{:});
+      
+      dat = obj.plotData;
+      %for I = 1:length(dat)
+      %  % Set colors and linewidth?
+      %end
     end
     
   end

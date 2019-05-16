@@ -102,7 +102,9 @@ classdef Info < handle
         return;
       end
       p = strcat(pathname, filename);
-      [varargout{1:(nargout-1)}] = deal(fdx,pathname);
+      nOut = nargout-1;
+      [varargout{1:2}] = deal(fdx,pathname);
+      varargout(nOut+1:end) = [];
     end
     
     %Get folder
@@ -118,10 +120,10 @@ classdef Info < handle
     end
     
     %
-    function checkDir(pathname)
+    function s = checkDir(pathname)
       [s,mg,~] = mkdir(pathname);
-      if ~s
-        error('IRIS:CHECKDIR',mg);
+      if ~s && ~nargout
+        iris.app.Info.showWarning(mg);
       end
     end
     
@@ -135,7 +137,8 @@ classdef Info < handle
         Info.description, ...
         Info.version('public'), ...
         Info.owner, ...
-        Info.author ...
+        Info.author, ...
+        Info.site
         };
       
     end

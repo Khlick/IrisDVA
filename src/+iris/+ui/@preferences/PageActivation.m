@@ -1,4 +1,5 @@
 function PageActivation(obj,~,~)
+obj.setContainerPrefs;
 selectedNodes = obj.PreferencesTree.SelectedNodes;
 panels = properties(obj);
 panels = panels(contains(panels,'Panel'));

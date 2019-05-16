@@ -154,6 +154,10 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
       v = obj.(uiObj).(propName);
     end
     
+    function tf = isVisible(obj)
+      tf = strcmpi(obj.container.Visible, 'on');
+    end
+    
     %% interactive functions
     
     function startup(obj,varargin)
@@ -201,22 +205,26 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
     end
     
     function update(obj)%#ok
-      drawnow('update');
+      drawnow();
     end
     
     function setWindowStyle(obj, s)
       set(obj.container, 'WindowStyle', s);
     end
+    
+    function wait(obj)
+      waitfor(obj,'isready');
+    end
 
+    function focus(obj)
+      figure(obj.container);
+    end
+    
   end
   methods (Access = private)  
     %% base routines
     function close(obj)
       delete(obj.container);
-    end
-
-    function wait(obj)
-      uiwait(obj.container);
     end
 
     function resume(obj)

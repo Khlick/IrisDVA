@@ -1,4 +1,3 @@
-// Iris Container
 class IrisContainer {
   constructor(parentNode,layoutOpts) {
     this.layout = {
@@ -10,14 +9,14 @@ class IrisContainer {
         size: layoutOpts.font.size || 16
       },
       yaxis: {
-        title: layoutOpts.yaxis.title || "Y",
+        title: layoutOpts.yaxis.title || "",
         zerolinecolor: layoutOpts.yaxis.zerolinecolor || "rgba(174,174,174,0.45)",
         zeroline: layoutOpts.yaxis.zeroline || true,
         scale: layoutOpts.yaxis.scale || "linear",
         grid: layoutOpts.yaxis.grid || false
       },
       xaxis: {
-        title: layoutOpts.xaxis.title || "X",
+        title: layoutOpts.xaxis.title || "",
         zerolinecolor: layoutOpts.xaxis.zerolinecolor || "rgba(174,174,174,0.45)",
         zeroline: layoutOpts.xaxis.zeroline || true,
         scale: layoutOpts.xaxis.scale || "linear",
@@ -85,13 +84,13 @@ class IrisContainer {
     this.pointctx.rect(1,1,this.layout.extents.width-7,this.layout.extents.height-1);
     this.pointctx.clip();
 
-    this.databin = d3.select(document.createElement("custom"));
-    this.pointbin = d3.select(document.createElement("custom"));
+    //this.databin = d3.select(document.createElement("custom"));
+    //this.pointbin = d3.select(document.createElement("custom"));
     
+    // Data
+    this.data = [];
     this.dataBound = false;
   }// end Constructor
-  
-
   // SET GET
   get styles() {
     return  `
@@ -145,6 +144,7 @@ class IrisContainer {
       }
     `;
   }
+  // Methods
   update(layout) {
     for (let prop in layout) {
       if (!layout.hasOwnProperty(prop)) continue;
@@ -154,7 +154,6 @@ class IrisContainer {
     this.stylesElem.innerHTML = this.styles;
 
   }
-  // Methods
   drawLabel(obj,g){
     const axClass = g.attr("class");
     let whichAx = axClass === "y-label"? "y-axis" : "x-axis";
@@ -190,50 +189,7 @@ class IrisContainer {
     return new Promise(
       (rv,rj) => {
         try {
-          let lineBins = that.databin.selectAll("custom.lines")
-            .data(inputData);
-          let ptBins = that.pointbin.selectAll("custom.points")
-            .data(d3.merge(inputData.map( dd => dd.x.map( 
-                (v,i) => ({name:dd.name,mode:dd.mode,x:v,y:dd.y[i],marker:dd.marker}) 
-              ))));
-          // remove data
-          lineBins.exit().remove();
-          ptBins.exit().remove();
-          // add/modify data
-          lineBins
-            .enter()
-            .append("custom")
-              .attr("class", "lines")
-              .attr("lineInfo", d => JSON.stringify(d.line) )
-              .attr("x", d => d.x )
-              .attr("y", d => d.y )
-              .attr("name", d => d.name )
-              .attr("mode", d => d.mode )
-            .merge(lineBins)
-              .transition().duration(10)
-              .attr("lineInfo", d => JSON.stringify(d.line) )
-              .attr("x", d => d.x )
-              .attr("y", d => d.y )
-              .attr("name", d => d.name )
-              .attr("mode", d => d.mode );
-          
-          ptBins
-              .enter()
-              .append("custom")
-              .attr("class", "points")
-              .attr("markerInfo", d => JSON.stringify(d.marker) )
-              .attr("x", d => d.x )
-              .attr("y", d => d.y )
-              .attr("name", d => d.name )
-              .attr("mode", d => d.mode )
-            .merge(ptBins)
-              .transition().duration(10)
-              .attr("markerInfo", d => JSON.stringify(d.marker) )
-              .attr("x", d => d.x )
-              .attr("y", d => d.y )
-              .attr("name", d => d.name )
-              .attr("mode", d => d.mode );
-          that.dataBound = true;
+          that.data = inputData;
         } catch(ee) {
           rj(ee);
         }
@@ -243,9 +199,9 @@ class IrisContainer {
     ); 
   }
   
-} //endClass
+}
 
-// Iris Axes
+
 class IrisAxes extends IrisContainer {
   constructor(data, ...containerArgs) {
     // container args should contain parent and layoutOpts or just parent
@@ -257,19 +213,13 @@ class IrisAxes extends IrisContainer {
   }
   // SET GET
   get domains() {
-    const elems = this.databin.selectAll("custom.lines");
-    let x = [], y = [];
-    elems.each( d => {
-      x.push(d.x);
-      y.push(d.y);
-    } );
     return {
-      x: d3.extent(d3.merge(x)), 
-      y: d3.extent(d3.merge(y)).map( (v,i,ar) => v + (!i ? -this.diff(ar)*0.05 : this.diff(ar)*0.05) )
+      x: d3.extent(d3.merge(this.data.map( (d) => d.x ))), 
+      y: d3.extent(d3.merge(this.data.map( (d) => d.y ))).map( (v,i,ar) => v + (!i ? -this.diff(ar)*0.05 : this.diff(ar)*0.05) )
     };
   }
   get xScale() {
-    let xs = (this.layout.xaxis.scale === 'log') ? d3.scaleLog() : d3.scaleLinear();
+    let xs = (this.layout.xaxis.scale === 'logarithmic') ? d3.scaleLog() : d3.scaleLinear();
     xs = xs
       .range([0,this.layout.extents.width])
       .domain(this.domains.x)
@@ -277,7 +227,7 @@ class IrisAxes extends IrisContainer {
     return xs;
   }
   get yScale() {
-    let ys = (this.layout.yaxis.scale === 'log') ? d3.scaleLog() : d3.scaleLinear();
+    let ys = (this.layout.yaxis.scale === 'logarithmic') ? d3.scaleLog() : d3.scaleLinear();
     ys = ys 
       .range([this.layout.extents.height, 0])
       .domain(this.domains.y)
@@ -337,18 +287,16 @@ class IrisAxes extends IrisContainer {
     //
     this.svgX.call(this.xAxis.scale(sX));
     this.svgY.call(this.yAxis.scale(sY));
-    // get transforms for clearing
-    //let cT = this.linectx.getTransform();
-    //let pT = this.pointctx.getTransform();
+    // Clear the contexts before drawing on them again
     this.linectx.clearRect(0,0,this.layout.extents.width,this.layout.extents.height);
     this.pointctx.clearRect(0,0,this.layout.extents.width,this.layout.extents.height);
-    // draw the data bound to databin and pointbin
+    // draw the lines first
     this.drawLines(sX,sY,transform.k,this.linectx);
     // drawing points last draws them on top of the lines
     this.drawPoints(sX,sY,transform.k,this.linectx);
   }
   update(data,layout) {
-    this.dataBound  =false;
+    this.dataBound = false;
     var obj = this;
     // update styles
     super.update(layout);
@@ -368,8 +316,9 @@ class IrisAxes extends IrisContainer {
     const lineGen = d3.line()
       .x( d => sX(d.X) )
       .y( d => sY(d.Y) )
-      .curve(d3.curveNatural)
+      .curve(d3.curveLinear)
       .context(ctx);
+      
     // Update Grid------------------------------------------------------------------------------- GRID >
     if (this.layout.yaxis.grid || this.layout.xaxis.grid) {
       // draw grid lines
@@ -402,7 +351,6 @@ class IrisAxes extends IrisContainer {
           ctx.stroke();
         }
         ctx.save();
-        
       }
     }
     // Update Zeros -------------------------------------------------------------------------- ZERO >
@@ -435,8 +383,7 @@ class IrisAxes extends IrisContainer {
       }
     }
     // DATA -------------------------------------------------------------------------- DATA >
-    const elems = this.databin.selectAll("custom.lines");
-    elems.each( dat => {
+    this.data.forEach( dat => {
       if(!/lines/gi.test(dat.mode)){ 
         return;
       }
@@ -460,21 +407,27 @@ class IrisAxes extends IrisContainer {
   drawPoints(sX,sY,k,ctx) {
     //points drawn to scales
     let pointGen = d3.symbol().context(ctx);
-    const elems = this.pointbin.selectAll("custom.points");
-
-    elems.each( d => {
+    this.data.forEach( dat => {
       // each d in elems contains the stored data
-      if(!/markers/gi.test(d.mode)){ 
+      if(!/markers/gi.test(dat.mode)){ 
         return;
       }
-      ctx.save();
-      ctx.fillStyle = this.rgb2A(d.marker.color, d.marker.hasOwnProperty("opacity") ? d.marker.opacity : 1);
-      ctx.translate(sX(d.x),sY(d.y));
-      ctx.beginPath();
-      pointGen.type(this.markerType(d.marker.symbol)).size(d.marker.size**2 * (k>1?k*0.75:k))(d);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
+      //dd.x.map( 
+          //      (v,i) => ({name:dd.name,mode:dd.mode,x:v,y:dd.y[i],marker:dd.marker}) 
+          //   )
+      dat.x.map( (v,i) => {
+        let d = {x:v,y:dat.y[i]};
+        ctx.save();
+        ctx.fillStyle = this.rgb2A(dat.marker.color, dat.marker.hasOwnProperty("opacity") ? dat.marker.opacity : 1);
+        ctx.translate(sX(d.x),sY(d.y));
+        ctx.beginPath();
+        pointGen
+          .type(this.markerType(dat.marker.symbol))
+          .size(dat.marker.size**2 * (k>1?k*0.75:k))(d);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      });
     });
   }
   //static
@@ -543,18 +496,24 @@ class IrisAxes extends IrisContainer {
     let sx = currentZoom.rescaleX(obj.xScale);
     let sy = currentZoom.rescaleY(obj.yScale);
     let k = currentZoom.k;
-    //setup an aray to push the points to when > 1 point matches... i.e. two line pts.
+    //setup an array to push the points to when > 1 point matches... i.e. two line pts.
     let tooltipData = [];
     // get the "points" data
-    const elems = obj.pointbin.selectAll("custom.points");
-    // check the distance between current location and all points.
-    elems.each( (d) => {
-      let dx = sx(d.x) - cLocation[0];
-      let dy = sy(d.y) - cLocation[1];
-      // Check distance and return if cursor is too far from the point.
-      if ( Math.sqrt(dx**2 + dy**2) > Math.sqrt(d.marker.size**2 * (k>1?k*0.75:k)) ) return false;
-      // close enough, push tooltip data
-      tooltipData.push(d);
+    this.data.forEach( dat => {
+        // each d in elems contains the stored data
+        if(!/markers/gi.test(dat.mode)){ 
+          return;
+        }
+        
+        dat.x.map( (v,i) => {
+          let d = {x:v,y:dat.y[i],name:dat.name,marker:dat.marker};
+          let dx = sx(d.x) - cLocation[0];
+          let dy = sy(d.y) - cLocation[1];
+          // Check distance and return if cursor is too far from the point.
+          if ( Math.sqrt(dx**2 + dy**2) > Math.sqrt(dat.marker.size**2 * (k>1?k*0.75:k)) ) return false;
+          // close enough, push tooltip data
+          tooltipData.push(d);
+        });
     });
     
     // check if we didnt" find anything

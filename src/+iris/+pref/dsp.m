@@ -5,6 +5,7 @@ classdef dsp < iris.infra.StoredPrefs
     LowPassFrequency
     HighPassFrequency
     Type
+    isFiltered
   end
 
   methods
@@ -50,6 +51,16 @@ classdef dsp < iris.infra.StoredPrefs
     function set.Type(obj,v)
       v = validatestring(v,{'Lowpass','Highpass','Bandpass'});
       obj.put('Type',v);
+    end
+    
+    % isFiltered
+    function v = get.isFiltered(obj)
+      v = obj.get('isFiltered',false);
+    end
+
+    function set.isFiltered(obj,v)
+      validateattributes(v,{'logical','numeric'},{'binary','scalar'});
+      obj.put('isFiltered',boolean(v));
     end
 
   end

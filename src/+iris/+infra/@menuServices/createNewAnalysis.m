@@ -1,6 +1,4 @@
 function createNewAnalysis(obj,~,evt)
-disp(evt)
-
 params = evt.Data;
 
 oo = strjoin(params.output,', ');
@@ -40,8 +38,10 @@ fprintf(fid,'%s\n',analysisText{:});
 
 fclose(fid);
 
-addpath(fileparts(filename));
-
+% open in editor
 edit(filename);
+
+% update the analyze menu
+obj.updateAnalysesList();
 end
 

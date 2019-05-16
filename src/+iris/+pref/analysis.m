@@ -4,6 +4,8 @@ classdef analysis < iris.infra.StoredPrefs
     OutputDirectory
     AnalysisDirectory
     AnalysisPrefix
+    ExternalReadersDirectory
+    ExternalModulesDirectory
   end
 
   methods
@@ -44,6 +46,29 @@ classdef analysis < iris.infra.StoredPrefs
       obj.put('AnalysisPrefix',v);
     end
 
+    
+    % ExternalReadersDirectory
+    function v = get.ExternalReadersDirectory(obj)
+      v = obj.get('ExternalReadersDirectory', ...
+        fullfile(iris.app.Info.getUserPath,'Iris', 'Readers'));
+    end
+
+    function set.ExternalReadersDirectory(obj,v)
+      validateattributes(v,{'char'}, {'scalartext'});
+      obj.put('ExternalReadersDirectory',v);
+    end
+    
+    
+    % ExternalModulesDirectory
+    function v = get.ExternalModulesDirectory(obj)
+      v = obj.get('ExternalModulesDirectory', ...
+        fullfile(iris.app.Info.getUserPath,'Iris', 'Modules'));
+    end
+
+    function set.ExternalModulesDirectory(obj,v)
+      validateattributes(v,{'char'}, {'scalartext'});
+      obj.put('ExternalModulesDirectory',v);
+    end
     
   end
   

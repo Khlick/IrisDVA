@@ -1,5 +1,6 @@
 classdef newAnalysis < iris.ui.UIContainer
   %NEWANALYSIS User Interface for specifying name and parameters of new analysis for Iris
+  
   events
     createFunction
   end
@@ -36,6 +37,10 @@ classdef newAnalysis < iris.ui.UIContainer
         %prevent default input from being used
         tf = ~strcmpi(obj.analysisName.Value,'irisAnalysis');
       end
+    end
+    
+    function selfDestruct(obj)
+      obj.onCloseRequest;
     end
     
   end
@@ -176,8 +181,8 @@ classdef newAnalysis < iris.ui.UIContainer
       notify(obj, 'createFunction', iris.infra.eventData(package));
       % prompt to continue or quit
       qb = iris.ui.questionBox( ...
+        'Prompt', 'Would you like to create another?', ...
         'Title', 'Create another?', ...
-        'Prompt', {'Would you like to create another?'}, ...
         'Options', {'Yes', 'No'}, ...
         'Default', 'No' ...
         );

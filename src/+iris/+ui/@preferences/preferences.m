@@ -2,15 +2,16 @@ classdef preferences < iris.ui.UIContainer
 %PREFERENCES Preferences window. 
 
 events
-  AxesChanged
   DisplayChanged
   FilterChanged
   StatisticsChanged
   ScalingChanged
+  NewReaderCreated
 end
 
 % Properties that correspond to app components
 properties (Access = public)
+  % navigation
   PreferencesLabel               matlab.ui.control.Label
   PreferencesTree                matlab.ui.container.Tree
   NavigationNode                 matlab.ui.container.TreeNode
@@ -23,10 +24,13 @@ properties (Access = public)
   FilterNode                     matlab.ui.container.TreeNode
   StatisticsNode                 matlab.ui.container.TreeNode
   ScalingNode                    matlab.ui.container.TreeNode
+  % general landing
   SelectSubsetPanel              matlab.ui.container.Panel
   SelectSubsetLabel              matlab.ui.control.Label
+  % keyboard
   KeyboardPanel                  matlab.ui.container.Panel
   KeyboardConfig                 matlab.ui.container.Panel
+  % control
   ControlPanel                   matlab.ui.container.Panel
   EpochStepSmallLabel            matlab.ui.control.Label
   EpochStepSmallInput            matlab.ui.control.NumericEditField
@@ -37,18 +41,27 @@ properties (Access = public)
   OverlayBigLabel                matlab.ui.control.Label
   OverlayBigInput                matlab.ui.control.NumericEditField
   ControlValuesLabel             matlab.ui.control.Label
+  % workspace
   WorkspacePanel                 matlab.ui.container.Panel
-  WorkspaceVariablesLabel        matlab.ui.control.Label
-  OutputDirectoryLabel            matlab.ui.control.Label
-  OutputDirectoryInput            matlab.ui.control.EditField
-  OutputLocatoinButton           matlab.ui.control.Button
+  FileReaderButton               matlab.ui.control.Button
+  %WorkspaceVariablesLabel        matlab.ui.control.Label
+  OutputDirectoryLabel           matlab.ui.control.Label
+  OutputDirectoryInput           matlab.ui.control.EditField
+  OutputLocationButton           matlab.ui.control.Button
+  ModulesDirectoryLabel           matlab.ui.control.Label
+  ModulesDirectoryInput           matlab.ui.control.EditField
+  ModulesLocationButton           matlab.ui.control.Button
+  ReaderDirectoryLabel           matlab.ui.control.Label
+  ReaderDirectoryInput           matlab.ui.control.EditField
+  ReaderLocationButton           matlab.ui.control.Button
   AnalysisDirectoryButton        matlab.ui.control.Button
   AnalysisDirectoryLabel         matlab.ui.control.Label
   AnalysisDirectoryInput         matlab.ui.control.EditField
   AnalysisPrefixLabel            matlab.ui.control.Label
   AnalysisPrefixInput            matlab.ui.control.EditField
-  AnalysisPrefixPreviewLabel     matlab.ui.control.Label
+  %AnalysisPrefixPreviewLabel     matlab.ui.control.Label
   AnalysisPrefixPreviewString    matlab.ui.control.Label
+  % dsp
   FilterPanel                    matlab.ui.container.Panel
   FilterSettingsLabel            matlab.ui.control.Label
   FilterOrderLabel               matlab.ui.control.Label
@@ -59,6 +72,7 @@ properties (Access = public)
   FilterFrequencyHighSelect      matlab.ui.control.DropDown
   FilterTypeLabel                matlab.ui.control.Label
   FilterTypeSelect               matlab.ui.control.DropDown
+  % statistics
   StatisticsPanel                matlab.ui.container.Panel
   StatisticsLabel                matlab.ui.control.Label
   GroupByLabel                   matlab.ui.control.Label
@@ -71,12 +85,14 @@ properties (Access = public)
   BaselineRegionSelect           matlab.ui.control.DropDown
   PTSEditFieldLabel              matlab.ui.control.Label
   BaselinePoints                 matlab.ui.control.NumericEditField
+  % scale
   ScalingPanel                   matlab.ui.container.Panel
   ScalingLabel                   matlab.ui.control.Label
   ScalingmethodSelectLabel       matlab.ui.control.Label
   ScaleMethodSelect              matlab.ui.control.DropDown
   ScaleValueLabel                matlab.ui.control.Label
   ScaleValue                     matlab.ui.control.NumericEditField
+  % display
   DisplayPanel                   matlab.ui.container.Panel
   DisplayLabel                   matlab.ui.control.Label
   LineDisplayStyleDropDownLabel  matlab.ui.control.Label
@@ -95,6 +111,7 @@ properties (Access = public)
   AxesScaleX                     matlab.ui.control.DropDown
   YAxisDropDownLabel             matlab.ui.control.Label
   AxesScaleY                     matlab.ui.control.DropDown
+  % reset defaults
   ResetPreferences               matlab.ui.control.Button
 end
 
@@ -103,9 +120,14 @@ methods (Access = public)
   
   function styles = getStyles(obj)
     if ~obj.isClosed
-      obj.setContainerPrefs
+      obj.setContainerPrefs;
     end
     styles = obj.options.DisplayProps;
+  end
+  
+  function selfDestruct(obj)
+    % required for integration with menuservices
+    obj.onCloseRequest();
   end
   
 end
@@ -120,6 +142,10 @@ methods (Access = protected)
   createKeyboardMenu(obj)
   % switch settings pages
   PageActivation(obj,~,~)
+  % draw tool tips
+  injectTooltips(obj)
+  % reader File
+  createReader(obj)
   % update folder
   function updateDirectory(obj,~,event)
    loc = iris.app.Info.getFolder( ...
@@ -158,16 +184,14 @@ methods (Access = protected)
     obj.setContainerPrefs;
   end
   % handling scaling method internally before notify
-  function ScaleMethodChanged(obj,source,~)
+  function ScaleMethodChanged(obj,source,event)
     switch source.Value
       case 'Custom'
-        obj.ScaleValue.Value = 1;
         obj.ScaleValue.Editable = 'on';
         obj.ScaleValue.Enable = 'on';
       case 'Select'
         warning('Scale method, ''Select'' is not currently available.');
         obj.ScaleMethodSelect.Value = 'Custom';
-        obj.ScaleValue.Value = 1;
         obj.ScaleValue.Editable = 'on';
         obj.ScaleValue.Enable = 'on';
       otherwise
@@ -176,8 +200,7 @@ methods (Access = protected)
         obj.ScaleValue.Enable = 'off';
       end
     end
-    obj.setContainerPrefs;
-    notify(obj, 'ScalingChanged', iris.infra.eventData('ScaleValue'));
+    obj.Notify('ScalingChanged', iris.infra.eventData('ScaleValue'));
   end
   % Display control, slider changing
   function DisplaySliderChanging(obj, ~, event)
@@ -192,21 +215,32 @@ methods (Access = protected)
     if obj.(event.Data.Type).Value ~= value
       obj.(event.Data.Type).Value = value;
     end
-    notify(obj,'DisplayChanged', iris.infra.eventData({event.Data.Type,source.Value}));
-    obj.setContainerPrefs;
+    
+    obj.Notify('DisplayChanged', iris.infra.eventData({event.Data.Type,source.Value}));
   end
   
   function DisplayValueChanged(obj,~,event)
     value = event.Data{2};
     obj.([event.Data{1},'Slider']).Value = value;
+    obj.setContainerPrefs;
+    
     notify(obj,'DisplayChanged', event);
+  end
+  
+  function validateStepSize(obj,~,~)
     obj.setContainerPrefs;
   end
+  
 end
 
 %% Preferences
 
 methods (Access = protected)
+  
+  function Notify(obj,varargin)
+    obj.setContainerPrefs;
+    notify(obj,varargin{:});
+  end
   
   function onCloseRequest(obj)
     obj.setContainerPrefs;

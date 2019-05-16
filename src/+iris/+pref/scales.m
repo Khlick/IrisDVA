@@ -3,6 +3,7 @@ classdef scales < iris.infra.StoredPrefs
   properties
     Method
     Value
+    isScaled
   end
   
   methods
@@ -27,6 +28,16 @@ classdef scales < iris.infra.StoredPrefs
     function set.Value(obj,v)
       validateattributes(v,{'numeric'},{'numel',1});
       obj.put('Value',v);
+    end
+    
+    % isScaled
+    function v = get.isScaled(obj)
+      v = obj.get('isScaled',false);
+    end
+
+    function set.isScaled(obj,v)
+      validateattributes(v,{'logical','numeric'},{'binary','scalar'});
+      obj.put('isScaled',boolean(v));
     end
 
   end

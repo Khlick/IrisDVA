@@ -37,117 +37,67 @@ methods
   
   % ControlProps
   function v = get.ControlProps(obj)
-    v = struct();
-    v.StepSmall = obj.c.StepSmall;
-    v.StepBig = obj.c.StepBig;
-    v.OverlaySmall = obj.c.OverlaySmall;
-    v.OverlayBig = obj.c.OverlayBig;
+    v = iris.pref.preferences.getPropStruct(obj.c);
   end
 
   function set.ControlProps(obj,v)
     validateattributes(v,{'struct'},{'scalar'});
-    fnames = fieldnames(v);
-    fnames = fnames(contains(fnames,properties(obj.c)));
-    for nm = fnames(:)'
-      obj.c.(nm{1}) = v.(nm{1});
-    end
+    iris.pref.preferences.setPropStruct(obj.c,v);
   end
 
 
   % AnalysisProps
   function v = get.AnalysisProps(obj)
-    v = struct();
-    v.OutputDirectory = obj.a.OutputDirectory;
-    v.AnalysisDirectory = obj.a.AnalysisDirectory;
-    v.AnalysisPrefix = obj.a.AnalysisPrefix;
+    v = iris.pref.preferences.getPropStruct(obj.a);
   end
 
   function set.AnalysisProps(obj,v)
     validateattributes(v,{'struct'},{'scalar'});
-    fnames = fieldnames(v);
-    fnames = fnames(contains(fnames,properties(obj.a)));
-    for nm = fnames(:)'
-      obj.a.(nm{1}) = v.(nm{1});
-    end
+    iris.pref.preferences.setPropStruct(obj.a,v);
   end
 
 
   % DisplayProps
   function v = get.DisplayProps(obj)
-    v = struct();
-    v.LineStyle = obj.d.LineStyle;
-    v.LineWidth = obj.d.LineWidth;
-    v.Marker = obj.d.Marker;
-    v.MarkerSize = obj.d.MarkerSize;
-    v.XScale = obj.d.XScale;
-    v.YScale = obj.d.YScale;
-    v.Grid = obj.d.Grid;
+    v = iris.pref.preferences.getPropStruct(obj.d);
   end
 
   function set.DisplayProps(obj,v)
     validateattributes(v,{'struct'},{'scalar'});
-    fnames = fieldnames(v);
-    fnames = fnames(contains(fnames,properties(obj.d)));
-    for nm = fnames(:)'
-      obj.d.(nm{1}) = v.(nm{1});
-    end
+    iris.pref.preferences.setPropStruct(obj.d,v);
   end
 
 
   % FilterProps
   function v = get.FilterProps(obj)
-    v = struct();
-    v.Order = obj.f.Order;
-    v.LowPassFrequency = obj.f.LowPassFrequency;
-    v.HighPassFrequency = obj.f.HighPassFrequency;
-    v.Type = obj.f.Type;
+    v = iris.pref.preferences.getPropStruct(obj.f);
   end
 
   function set.FilterProps(obj,v)
     validateattributes(v,{'struct'},{'scalar'});
-    fnames = fieldnames(v);
-    fnames = fnames(contains(fnames,properties(obj.f)));
-    for nm = fnames(:)'
-      obj.f.(nm{1}) = v.(nm{1});
-    end
+    iris.pref.preferences.setPropStruct(obj.f,v);
   end
 
 
   % StatisticsProps
   function v = get.StatisticsProps(obj)
-    v = struct();
-    v.GroupBy = obj.st.GroupBy;
-    v.Aggregate = obj.st.Aggregate;
-    v.BaselineZeroing = obj.st.BaselineZeroing;
-    v.BaselinePoints = obj.st.BaselinePoints;
-    v.BaselineRegion = obj.st.BaselineRegion;
-    v.ShowOriginal = obj.st.ShowOriginal;
+    v = iris.pref.preferences.getPropStruct(obj.st);
   end
 
   function set.StatisticsProps(obj,v)
     validateattributes(v,{'struct'},{'scalar'});
-    fnames = fieldnames(v);
-    fnames = fnames(contains(fnames,properties(obj.st)));
-    for nm = fnames(:)'
-      obj.st.(nm{1}) = v.(nm{1});
-    end
+    iris.pref.preferences.setPropStruct(obj.st,v);
   end
 
 
   % ScaleProps
   function v = get.ScaleProps(obj)
-    v = struct();
-    v.Value = obj.sc.Value;
-    v.Method = obj.sc.Method;
+    v = iris.pref.preferences.getPropStruct(obj.sc);
   end
 
   function set.ScaleProps(obj,v)
     validateattributes(v,{'struct'},{'scalar'});
-    fnames = fieldnames(v);
-    fnames = fnames(contains(fnames,properties(obj.sc)));
-    for nm = fnames(:)'
-      obj.sc.(nm{1}) = v.(nm{1});
-    end
+    iris.pref.preferences.setPropStruct(obj.sc,v);
   end
 
 end
@@ -176,6 +126,26 @@ methods
       obj.(p).reset();
     end
     
+  end
+end
+
+
+methods (Static)
+  function s = getPropStruct(pObj)
+    s = struct();
+    names = string(properties(pObj))';
+    for name = names
+      s.(name) = pObj.(name);
+    end
+  end
+  
+  function setPropStruct(pObj, v)
+    fnames = fieldnames(v);
+    fnames = string(fnames(contains(fnames,properties(pObj))));
+    for nm = fnames(:)'
+      pObj.(nm) = v.(nm);
+    end
+    pObj.save();
   end
 end
 
