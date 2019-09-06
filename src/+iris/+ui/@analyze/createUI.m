@@ -5,7 +5,7 @@ import iris.ui.*;
 import iris.app.*;
 import iris.infra.*;
 
-obj.startUp;
+obj.Opts = iris.pref.analysis.getDefault();
 
 w = 550;
 h = 400;
@@ -27,10 +27,19 @@ obj.labelTitle.HorizontalAlignment = 'left';
 obj.selectAnalysis = uicontrol(obj.container,...
   'style', 'popupmenu', 'backgroundcolor', [1,1,1],...
   'units', 'pixels', 'String', obj.availableAnalyses);
-obj.selectAnalysis.Position = [115,h-29,140,25];
+obj.selectAnalysis.Position = [120,h-29,240,25];
 obj.selectAnalysis.FontSize = 9;
 obj.selectAnalysis.Callback = @(s,e) ...
   obj.setFxn(iris.infra.eventData(s.String{s.Value}));
+
+obj.refreshAnalysesButton = uicontrol(obj.container, ...
+  'style', 'pushbutton', ...
+  'string', 'Refresh',...
+  'backgroundColor', ones(1,3).*0.9804,...
+  'units', 'pixels');
+obj.refreshAnalysesButton.Position = [w-125,h-27,60,20];
+obj.refreshAnalysesButton.Callback = @obj.onRefreshAnalyses;
+obj.refreshAnalysesButton.Enable = 'on';
 
 obj.epochInput = uicontrol(obj.container, ...
   'style', 'edit', ...
@@ -38,13 +47,14 @@ obj.epochInput = uicontrol(obj.container, ...
   'String', 'Enter Epochs', ...
   'units', 'pixels' ...
   );
-obj.epochInput.Position = [w-270, h-25, w-20-270, 20];
-obj.epochInput.Callback = @(s,e)obj.setEpochs(s.String);
+obj.epochInput.Position = [20, h-55, w-40, 20];
+obj.epochInput.Callback = @obj.setEpochs;
 
 obj.labelFunction = uicontrol(obj.container,...
   'style', 'text', 'backgroundcolor', ones(1,3).*0.9601,...
   'units', 'pixels');
-obj.labelFunction.Position = [10,h-57,w-20,16];obj.labelFunction.String = 'Function Call';
+obj.labelFunction.Position = [10,h-75,w-20,12];
+obj.labelFunction.String = 'Function Call';
 obj.labelFunction.FontSize = 9;
 obj.labelFunction.FontName = 'Courier New';
 obj.labelFunction.HorizontalAlignment = 'center';
@@ -53,7 +63,7 @@ obj.labelFunction.HorizontalAlignment = 'center';
 obj.labelNargout = uicontrol(obj.container,...
   'style', 'text', 'backgroundColor', [1,1,1],...
   'units', 'pixels');
-obj.labelNargout.Position = [0, h-100, fix(w/2), 30];
+obj.labelNargout.Position = [0, h-110, fix(w/2), 30];
 obj.labelNargout.String = 'Output Arguments';
 obj.labelNargout.FontSize = 16;
 
@@ -61,7 +71,7 @@ obj.labelNargout.FontSize = 16;
 obj.labelNargin = uicontrol(obj.container,...
   'style', 'text', 'backgroundColor', [1,1,1],...
   'units', 'pixels');
-obj.labelNargin.Position = [fix(w/2)+1, h-100, fix(w/2), 30];
+obj.labelNargin.Position = [fix(w/2)+1, h-110, fix(w/2), 30];
 obj.labelNargin.String = 'Input Arguments';
 obj.labelNargin.FontSize = 16;
 
@@ -127,70 +137,83 @@ obj.panelInput.SizeChangedFcn = @obj.tableChangeSize;
 obj.editFileOutput = uicontrol(obj.container,...
   'style', 'edit',...
   'fontname', 'Courier New',...
-  'String', 'FileName',...
+  'String', obj.Opts.AnalysisPrefix(),...
   'units', 'pixels');
-obj.editFileOutput.Position = [20,20,220,20];
+obj.editFileOutput.Position = [20,30,315,20];
 obj.editFileOutput.Callback = @obj.validateFilename;
 
-%collect the position of the edit field and shift by 10 pixels
-pstrt = sum(obj.editFileOutput.Position([1,3]))+10;
+obj.labelFileRoot = uicontrol(obj.container,...
+  'style', 'text', 'backgroundColor', [1,1,1],...
+  'units', 'pixels');
+obj.labelFileRoot.Position = [10, 3, 360, 20];
+obj.labelFileRoot.String = obj.Opts.OutputDirectory;
+obj.labelFileRoot.FontSize = 10;
+
+obj.buttonPutFile = uicontrol(obj.container,...
+  'style', 'pushbutton', 'string', '...', ...
+  'backgroundColor', ones(1,3).*0.9804,...
+  'units', 'pixels');
+obj.buttonPutFile.Position = [340,30,21,21];
+obj.buttonPutFile.Callback = @obj.setFile;
 
 obj.checkboxSendToCmd = uicontrol(obj.container,...
   'style', 'checkbox', ...
   'units', 'pixels', ...
   'value', 1, ...
   'backgroundcolor', [1,1,1]);
-obj.checkboxSendToCmd.Position = [...
-  pstrt, 30, w-160-pstrt, 20];
+obj.checkboxSendToCmd.Position = [w-160-10, 30, 80, 20];
 obj.checkboxSendToCmd.String = ...
   ['<html><font ', ...
   'style="font-size:7px;generic-family:serif;">', ...
-  'Send copy to Command.</font>'];
+  'Send Global</font>'];
 
 obj.checkboxAppend= uicontrol(obj.container,...
   'style', 'checkbox', ...
   'units', 'pixels', ...
   'value', 1, ...
   'backgroundcolor', [1,1,1]);
-obj.checkboxAppend.Position = [...
-  pstrt, 10, w-160-pstrt, 20];
+obj.checkboxAppend.Position = [w-160-10, 10, 80, 20];
 obj.checkboxAppend.String = ...
   ['<html><font ', ...
   'style="font-size:7px;generic-family:serif;">', ...
-  'Append to existing.</font>'];
+  'Append</font>'];
 
 obj.buttonGo = uicontrol(obj.container,...
   'style', 'pushbutton', 'string', 'Go',...
   'backgroundColor', ones(1,3).*0.9804,...
   'units', 'pixels');
-obj.buttonGo.Position = [w-150,20,60,20];
+obj.buttonGo.Position = [w-80,10,60,20];
 obj.buttonGo.Callback = @obj.executeFunction;
-
+obj.buttonGo.Enable = 'off';
 
 obj.buttonClose = uicontrol(obj.container,...
   'style', 'pushbutton', 'string', 'Close', ...
   'backgroundColor', ones(1,3).*0.9804,...
   'units', 'pixels');
-obj.buttonClose.Position = [w-80,20,60,20];
+obj.buttonClose.Position = [w-80,35,60,20];
 obj.buttonClose.Callback = @(s,e)notify(obj,'Close');
 
 
 
 %tables made, now normalize the panels so the figure can be resized.
-obj.buttonClose.Units = 'normalized';
 obj.labelTitle.Units = 'normalized';
-obj.panelOutput.Units = 'normalized';
-obj.buttonGo.Units = 'normalized';
-obj.checkboxSendToCmd.Units = 'normalized';
-obj.editFileOutput.Units = 'normalized';
-obj.tableInput.Units = 'normalized';
-obj.panelInput.Units = 'normalized';
-obj.labelNargin.Units = 'normalized';
-obj.labelNargout.Units = 'normalized';
 obj.labelFunction.Units = 'normalized';
+obj.labelNargout.Units = 'normalized';
+obj.labelNargin.Units = 'normalized';
+obj.panelInput.Units = 'normalized';
+obj.panelOutput.Units = 'normalized';
+obj.tableInput.Units = 'normalized';
+obj.tableOutput.Units = 'normalized';
+obj.buttonGo.Units = 'normalized';
+obj.buttonClose.Units = 'normalized';
+obj.editFileOutput.Units = 'normalized';
+obj.checkboxSendToCmd.Units = 'normalized';
 obj.checkboxAppend.Units = 'normalized';
 obj.selectAnalysis.Units = 'normalized';
 obj.epochInput.Units = 'normalized';
+obj.refreshAnalysesButton.Units = 'normalized';
+obj.buttonPutFile.Units = 'normalized';
+obj.labelFileRoot.Units = 'normalized';
 %% Now change the size
 pos = obj.position;
 if isempty(pos)

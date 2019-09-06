@@ -2,15 +2,12 @@ classdef primary < iris.ui.UIContainer
   %PRIMARY Main view of Iris app
   events
     MenuCalled
+    ModuleCalled
     LoadData
     LoadSession
     ImportData
     ImportSession
     SaveSession
-    ShowNotes
-    ShowProtocols
-    ShowPreferences
-    ShowStatistics
     SwitchToggled
     ImportAnalysis
     DoAnalysis
@@ -22,10 +19,15 @@ classdef primary < iris.ui.UIContainer
     NavigateData
     EpochToggled
     DeviceViewChanged
+    RequestRedraw
+    SessionConversionCalled
+    FixLayoutRequest
+    PlotCompletedUpdate
+    RevertView
   end
   
   
-  properties (Access = public)
+  properties (Access = public) %private)
     FileMenu                 matlab.ui.container.Menu
     NewMenu                  matlab.ui.container.Menu
     DataMenu                 matlab.ui.container.Menu
@@ -49,9 +51,12 @@ classdef primary < iris.ui.UIContainer
     SendtoCmdMenuD           matlab.ui.container.Menu
     ModulesMenuD             matlab.ui.container.Menu
     ModulesContainer         cell
+    ModulesRefresh           matlab.ui.container.Menu
     HelpMenu                 matlab.ui.container.Menu
     AboutMenu                matlab.ui.container.Menu
     DocumentationMenu        matlab.ui.container.Menu
+    FixLayoutMenu            matlab.ui.container.Menu
+    SessionConverterMenu     matlab.ui.container.Menu
     AxesPanel                matlab.ui.container.Panel
     Axes                     iris.ui.elements.AxesPanel%matlab.ui.control.UIAxes
     CurrentInfo              matlab.ui.container.Panel
@@ -97,23 +102,30 @@ classdef primary < iris.ui.UIContainer
     %KeyboardButton           matlab.ui.control.Button
   end
   
-  properties (Access = public,SetObservable = true)
+  properties (Access= public, SetObservable = true)
     LUT %lookup for html to matlab elements
     selection
     layout
+  end
+  
+  properties (SetAccess= private, GetAccess= ?Iris, SetObservable= true)
+    lastDataPoint = [0,0]
   end
   
   properties (Dependent)
     isFiltered
     isScaled
     isBaselined
+    isAggregated
+    viewStatus
   end
   
   %% Public Functions
   methods (Access = public)
     % External Methods
     % UI update
-    updateView(obj,handler)
+    %updateView(obj,handler)
+    updateView(obj, newSelection, newDisplay, newData, newUnits)
     % Update view during selection changes
     onSelectionUpdate(obj)
     
@@ -152,9 +164,9 @@ classdef primary < iris.ui.UIContainer
     function setSlider(obj, status)
       status = validatestring(status,{'off','on'});
       obj.setUI( ...
-          {'CurrentEpochSlider','SelectionNavigatorLabel'}, ...
-          'Enable', status ...
-          );
+        {'CurrentEpochSlider','SelectionNavigatorLabel'}, ...
+        'Enable', status ...
+        );
     end
     
     function updateInclusion(obj,value)
@@ -184,6 +196,17 @@ classdef primary < iris.ui.UIContainer
       a = axes(f,'Visible', 'off');
       image(a,A);
     end
+    
+    function setDisplayData(obj,propCell)
+      % collapse to only unique entries in the first column.
+      propCell = collapseUnique(propCell,1,true);
+      % set the data
+      obj.CurrentInfoTable.Data = propCell;
+      % determine the best widths
+      lens = cellfun(@length,propCell(:,2),'UniformOutput',true);
+      tWidth = obj.CurrentInfoTable.Position(3)-127;
+      obj.CurrentInfoTable.ColumnWidth = {125,max([tWidth,max(lens)*6.56])};
+    end
   
   end
   
@@ -193,6 +216,10 @@ classdef primary < iris.ui.UIContainer
     startupFcn(obj,varargin)
     % Construct view
     createUI(obj)
+    % Bind elements
+    bindUI(obj)
+    % resize components
+    windowResized(obj,source,event)
     
     % Validate epoch ticker and overlay ticker values
     function ValidateTicker(obj,tag,event)
@@ -209,11 +236,25 @@ classdef primary < iris.ui.UIContainer
             return
           end
         case 'Slider'
+          % sliders case, round to nearest int and determine if it is one of the
+          % current selections.
           num = round(event.Value);
           if ~ismember(num,obj.selection.selected), return; end
           obj.CurrentEpochTicker.Value = sprintf('%d',num);
           % quantize slider position
           obj.CurrentEpochSlider.Value = num;
+          obj.selection.highlighted = num;
+        case 'selection'
+          % if we click the only line on the figure, do nothing
+          if length(obj.selection.selected) == 1, return; end
+          num = double(event.Data);
+          if isempty(num), return; end
+          if ~ismember(num,obj.selection.selected), return; end
+          obj.CurrentEpochTicker.Value = sprintf('%d',num);
+          obj.CurrentEpochSlider.Value = num;
+          obj.selection.highlighted = num;
+          % override tag so Iris knows what to do:
+          tag = 'Slider';
       end
       notify(obj, 'TickerChanged', ...
         iris.infra.eventData( ...
@@ -232,21 +273,27 @@ classdef primary < iris.ui.UIContainer
       obj.CurrentEpochTicker.Value = sprintf('%d',num);
       dOpts = iris.pref.display.getDefault();
       obj.Axes.setHighlighted(num,dOpts.LineWidth);
-      %{
+      obj.updateInclusion( ...
+        logical(obj.selection.inclusion(obj.selection.selected == num)) ...
+        );
+      
       if num == obj.selection.highlighted, return; end
       obj.selection.highlighted = num;
-      %}
+      
     end
     
     % Display control switch flipped
     function SwitchFlipped(obj,source,event)
       value = event.Value == '1';
-      if value
+      if value && strcmpi(source.Tag,'Epoch')
         col = iris.app.Aes.appColor(1,'green');
-      else
+      elseif ~value && strcmpi(source.Tag,'Epoch')
         col = iris.app.Aes.appColor(1,'red');
+      else
+        col = iris.app.Aes.appColor(1,'amber');
       end
       obj.([source.Tag,'Lamp']).Color = col;
+      pause(0.01);%drawnow('limitrate'); pause(0.01);
       
       % if we are toggling the epoch, send the info to Iris for handling
       if strcmp(source.Tag,'Epoch')
@@ -263,57 +310,78 @@ classdef primary < iris.ui.UIContainer
       % otherwise, notify for redraw
       notify(obj,'SwitchToggled', ...
         iris.infra.eventData(struct('source',source.Tag,'value',value)));
-      
-    end
-    
-    % Track keypresses (<=2018a:  using javascript hack)
-    function KeypressCapture(obj,~,event)
-      if isempty(event.Character), return; end
-      
-      keyData = struct(...
-        'SOURCE', class(event.Source), ...
-        'CTRL', ismember('control', event.Modifier), ...
-        'SHIFT', ismember('shift', event.Modifier), ...
-        'ALT', ismember('alt', event.Modifier), ...
-        'KEY', event.Key, ...
-        'CHAR', event.Character, ...
-        'CODE', unicode2native(event.Character) ...
-        );
-      %{
-      v = ver('matlab');
-      if str2double(v.Version) < 9.5
-        try
-          keyData = obj.window.executeJS('keyData');
-          disp('keyData');
-          
-        catch x %#ok
-          %log
-          return
-        end
-
-        %parse data from window
-        keyData = jsondecode(keyData);
-        %if ismember(keyData.SOURCE, obj.LUT.keys())
-        %  return;
-        %end
-      else
-        
-      end
-      %}
-      notify(obj,'KeyPress',iris.infra.eventData(keyData));
     end
     
     function populateModules(obj)
-      builtinModules = cellstr(ls( ...
-        fullfile( ...
-          iris.app.Info.getResourcePath, ...
-          'Modules', ...
-          '*.mlapp' ...
-          ) ...
-        ));
-      % get custom from preferences Module directory.
-      disp('TODO:Iris.ui.populateModules');
-        
+      modNames = Iris.getModules(); % will copy modules into +iris/+modules
+      
+      % First delete module links
+      cellfun(@delete,obj.ModulesContainer,'unif', false);
+      % build new modules
+      obj.ModulesContainer = cell(numel(modNames),1);
+      for I = 1:numel(modNames)
+        obj.ModulesContainer{I} = uimenu(obj.ModulesMenuD);
+        obj.ModulesContainer{I}.Text = camelizer(modNames{I},true);
+        obj.ModulesContainer{I}.Enable = 'on';
+        obj.ModulesContainer{I}.MenuSelectedFcn = ...
+          @(s,e) ...
+            notify(obj,'ModuleCalled', iris.infra.eventData(modNames{I}));
+        obj.ModulesContainer{I}.Tag = modNames{I};
+      end
+       % reorder menus to keep Reset on bottom
+       chld = obj.ModulesMenuD.Children;
+       
+       % locate Refresh
+       rfInd = strcmpi({chld.Text}, 'Refresh');
+       obj.ModulesMenuD.Children = [ ...
+         obj.ModulesMenuD.Children(rfInd); ...
+         obj.ModulesMenuD.Children(~rfInd) ...
+         ];
+       pause(0.01);%drawnow('limitrate');
+    end
+    
+    function onAxesDataSelected(obj,~,event)
+      import iris.infra.eventData;
+      % Send the index to the ticker validation method
+      obj.ValidateTicker('selection', eventData(event.Data.datumIndex) );
+      if ~isequal(obj.lastDataPoint, event.Data.lastDataCoordinates)
+        obj.lastDataPoint = event.Data.lastDataCoordinates;
+      end
+    end
+    
+    function SwitchDisabled(obj,source,~)
+      col = iris.app.Aes.appColor(1,'red');
+      obj.([source.Tag,'Lamp']).Color = col;
+      source.Value = '0';
+      %obj.drawnow();
+    end
+    
+    function onPlotUpdated(obj,~,~)
+      % update any switches that are amber to green.
+      
+      if obj.isAggregated
+        obj.StatsLamp.Color = iris.app.Aes.appColor(1,'green');
+      else
+        obj.StatsLamp.Color = iris.app.Aes.appColor(1,'red');
+      end
+      if obj.isBaselined
+        obj.BaselineLamp.Color = iris.app.Aes.appColor(1,'green');
+      else
+        obj.BaselineLamp.Color = iris.app.Aes.appColor(1,'red');
+      end
+      if obj.isFiltered
+        obj.FilterLamp.Color = iris.app.Aes.appColor(1,'green');
+      else
+        obj.FilterLamp.Color = iris.app.Aes.appColor(1,'red');
+      end
+      if obj.isScaled
+        obj.ScaleLamp.Color = iris.app.Aes.appColor(1,'green');
+      else
+        obj.ScaleLamp.Color = iris.app.Aes.appColor(1,'red');
+      end
+      %obj.drawnow();
+      % send notification to main class
+      notify(obj,'PlotCompletedUpdate');
     end
     
   end
@@ -335,7 +403,7 @@ classdef primary < iris.ui.UIContainer
     
   end
   
-  %% Get methods
+  %% Get/Set methods
   methods
     
     function tf = get.isScaled(obj)
@@ -357,6 +425,57 @@ classdef primary < iris.ui.UIContainer
       try %#ok<TRYNC>
         tf = obj.FilterSwitch.Value == '1';
       end
+    end
+    
+    function tf = get.isAggregated(obj)
+      tf = false;
+      try %#ok<TRYNC>
+        tf = obj.StatsSwitch.Value == '1';
+      end
+    end
+    
+    function s = get.viewStatus(obj)
+      s = struct();
+      s.switches = struct( ...
+        'scale', obj.isScaled, ...
+        'filter', obj.isFiltered, ...
+        'baseline', obj.isBaselined, ...
+        'aggregate', obj.isAggregated ...
+        );
+      s.selection = obj.selection;
+    end
+    
+    function toggleSwitches(obj,status)
+      if nargin < 2
+        status = 'off';
+      end
+      import iris.app.Aes;
+      
+      if strcmpi(status,'off')
+        v = '0';
+        col = Aes.appColor(1,'red');
+      else
+        v = '1';
+        col = Aes.appColor(1,'green');
+      end
+      if obj.isAggregated
+        obj.StatsSwitch.Value = v;
+        obj.StatsLamp.Color = col;
+      end
+      if obj.isFiltered
+        obj.FilterSwitch.Value = v;
+        obj.FilterLamp.Color = col;
+      end
+      if obj.isBaselined
+        obj.BaselineSwitch.Value = v;
+        obj.BaselineLamp.Color = col;
+      end
+      if obj.isScaled
+        obj.ScaleSwitch.Value = v;
+        obj.ScaleLamp.Color = col;
+      end
+      pause(0.01);%drawnow('limitrate');
+      notify(obj,'RequestRedraw');
     end
   end
 end

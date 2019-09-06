@@ -16,9 +16,12 @@ set(obj.container, ...
   'Position', pos ...
   );
 
-pause(0.3);
+%drawnow();
+pause(0.05);
 
 obj.layout = iris.data.encode.layout('X','Y');
+
+%% Menus
 
 % Create FileMenu
 obj.FileMenu = uimenu(obj.container);
@@ -31,14 +34,11 @@ obj.NewMenu.Text = 'Load';
 % Create NewMenu
 obj.DataMenu = uimenu(obj.NewMenu);
 obj.DataMenu.Tag = 'newFile';
-obj.DataMenu.MenuSelectedFcn = @(s,e)notify(obj,'LoadData',eventData(s.Tag));
 obj.DataMenu.Text = 'Data...';
 
 % Create SessionMenu
 obj.SessionMenu = uimenu(obj.NewMenu);
 obj.SessionMenu.Tag = 'newSession';
-obj.SessionMenu.MenuSelectedFcn = @(s,e)notify(obj,'LoadSession',eventData(s.Tag));
-
 obj.SessionMenu.Text = 'Session...';
 
 % Create ImportMenuD
@@ -48,27 +48,21 @@ obj.ImportMenuD.Text = 'Import';
 % Create FromDataMenuD
 obj.FromDataMenuD = uimenu(obj.ImportMenuD);
 obj.FromDataMenuD.Tag = 'importData';
-obj.FromDataMenuD.MenuSelectedFcn = @(s,e)notify(obj,'ImportData',eventData(s.Tag));
 obj.FromDataMenuD.Text = 'From Data...';
 
 % Create FromSessionMenuD
 obj.FromSessionMenuD = uimenu(obj.ImportMenuD);
 obj.FromSessionMenuD.Tag = 'importSession';
-obj.FromSessionMenuD.MenuSelectedFcn = @(s,e)notify(obj,'ImportSession',eventData(s.Tag));
 obj.FromSessionMenuD.Text = 'From Session...';
 
 % Create SaveMenu
 obj.SaveMenuD = uimenu(obj.FileMenu);
-obj.SaveMenuD.MenuSelectedFcn = @(s,e)notify(obj,'SaveSession');
 obj.SaveMenuD.Enable = 'off';
-
 obj.SaveMenuD.Text = 'Save';
 
 % Create QuitMenu
 obj.QuitMenu = uimenu(obj.FileMenu);
-obj.QuitMenu.MenuSelectedFcn = @(s,e)notify(obj,'Close');
 obj.QuitMenu.Separator = 'on';
-
 obj.QuitMenu.Text = 'Quit';
 
 % Create ViewMenu
@@ -77,34 +71,26 @@ obj.ViewMenu.Text = 'View';
 
 % Create FileInfoMenuD
 obj.FileInfoMenuD = uimenu(obj.ViewMenu);
-obj.FileInfoMenuD.MenuSelectedFcn = @(s,e)notify(obj,'MenuCalled',eventData('FileInfo'));
 obj.FileInfoMenuD.Enable = 'off';
-
 obj.FileInfoMenuD.Text = 'File Info...';
 
 % Create NotesMenuD
 obj.NotesMenuD = uimenu(obj.ViewMenu);
-obj.NotesMenuD.MenuSelectedFcn = @(s,e)notify(obj,'MenuCalled',eventData('Notes'));
 obj.NotesMenuD.Enable = 'off';
-
 obj.NotesMenuD.Text = 'Notes...';
 
 % Create ProtocolsMenuD
 obj.ProtocolsMenuD = uimenu(obj.ViewMenu);
-obj.ProtocolsMenuD.MenuSelectedFcn = @(s,e)notify(obj,'MenuCalled',eventData('Protocols'));
 obj.ProtocolsMenuD.Enable = 'off';
-
 obj.ProtocolsMenuD.Text = 'Protocols...';
 
 % Create OverviewMenuD
 obj.OverviewMenuD = uimenu(obj.ViewMenu);
-obj.OverviewMenuD.MenuSelectedFcn = @(s,e)notify(obj,'MenuCalled',eventData('DataOverview'));
 obj.OverviewMenuD.Enable = 'off';
 obj.OverviewMenuD.Text = 'Data Overview...';
 
 % Create PreferencesMenu
 obj.PreferencesMenu = uimenu(obj.ViewMenu);
-obj.PreferencesMenu.MenuSelectedFcn = @(s,e)notify(obj,'MenuCalled',eventData('Preferences'));
 obj.PreferencesMenu.Separator = 'on';
 obj.PreferencesMenu.Text = 'Preferences...';
 
@@ -114,30 +100,25 @@ obj.AnalysisMenu.Text = 'Analysis';
 
 % Create AnalyzeMenuD
 obj.AnalyzeMenuD = uimenu(obj.AnalysisMenu);
-obj.AnalyzeMenuD.MenuSelectedFcn = @(s,e)notify(obj,'MenuCalled',eventData('Analyze'));
 obj.AnalyzeMenuD.Enable = 'off';
 obj.AnalyzeMenuD.Text = 'Analyze...';
 
 % Create ImportAnalysisMenu
 obj.ImportAnalysisMenu = uimenu(obj.AnalysisMenu);
-obj.ImportAnalysisMenu.MenuSelectedFcn = @(s,e)notify(obj,'ImportAnalysis');
 obj.ImportAnalysisMenu.Text = 'Import Analysis...';
 
 % Create CreateNewMenu
 obj.CreateNewMenu = uimenu(obj.AnalysisMenu);
-obj.CreateNewMenu.MenuSelectedFcn = @(s,e)notify(obj,'MenuCalled',eventData('NewAnalysis'));
 obj.CreateNewMenu.Text = 'Create New...';
 
 % Create ExportFigureMenuD
 obj.ExportFigureMenuD = uimenu(obj.AnalysisMenu);
-obj.ExportFigureMenuD.MenuSelectedFcn = @(s,e)notify(obj,'ExportDataView');
 obj.ExportFigureMenuD.Enable = 'off';
 obj.ExportFigureMenuD.Separator = 'on';
 obj.ExportFigureMenuD.Text = 'Export...';
 
 % Create SendtoCmdMenuD
 obj.SendtoCmdMenuD = uimenu(obj.AnalysisMenu);
-obj.SendtoCmdMenuD.MenuSelectedFcn = @(s,e)notify(obj,'SendToCmd');
 obj.SendtoCmdMenuD.Enable = 'off';
 obj.SendtoCmdMenuD.Text = 'Send to Cmd';
 
@@ -145,20 +126,35 @@ obj.SendtoCmdMenuD.Text = 'Send to Cmd';
 obj.ModulesMenuD = uimenu(obj.container);
 obj.ModulesMenuD.Text = 'Modules';
 
+% Create ModulesRefreshD
+obj.ModulesRefresh = uimenu(obj.ModulesMenuD);
+obj.ModulesRefresh.Text = 'Refresh';
+obj.ModulesRefresh.Separator = 'on';
+obj.ModulesRefresh.Enable = 'on';
+
 % Create HelpMenu
 obj.HelpMenu = uimenu(obj.container);
 obj.HelpMenu.Text = 'Help';
 
 % Create AboutMenu
 obj.AboutMenu = uimenu(obj.HelpMenu);
-obj.AboutMenu.MenuSelectedFcn = @(s,e)notify(obj,'MenuCalled',eventData('About'));
 obj.AboutMenu.Text = 'About Iris';
 
 % Create DocumentationMenu
 obj.DocumentationMenu = uimenu(obj.HelpMenu);
-obj.DocumentationMenu.MenuSelectedFcn = @(s,e)notify(obj,'MenuCalled',eventData('Help'));
-
 obj.DocumentationMenu.Text = 'Documentation';
+
+% Create FixLayoutMenu
+obj.FixLayoutMenu = uimenu(obj.HelpMenu);
+obj.FixLayoutMenu.Text = 'Fix Layout!';
+
+% Create SessionConverterMenu
+obj.SessionConverterMenu = uimenu(obj.HelpMenu);
+obj.SessionConverterMenu.Separator = 'on';
+obj.SessionConverterMenu.Text = 'Session Converter';
+
+
+%% MAIN UI
 
 % Create Start Panel
 obj.StartPanel = uipanel(obj.container);
@@ -265,21 +261,17 @@ obj.DevicesSelection.Multiselect = 'on';
 obj.DevicesSelection.FontName = Aes.uiFontName;
 obj.DevicesSelection.Position = [20 52 331-40 145-(75+22)];
 obj.DevicesSelection.Value = {'Device 1', 'Device 2'};
-obj.DevicesSelection.ValueChangedFcn = @(s,e)...
-  notify(obj,'DeviceViewChanged',eventData(e));
 
 % Create ViewNotesButton
 obj.ViewNotesButton = uibutton(obj.ExtendedInfo, 'push');
-obj.ViewNotesButton.ButtonPushedFcn = @(s,e)notify(obj,'MenuCalled',eventData('Notes'));
 obj.ViewNotesButton.FontName = Aes.uiFontName;
-obj.ViewNotesButton.Text = 'View Notes';
+obj.ViewNotesButton.Text = 'Notes';
 obj.ViewNotesButton.Position = [45 7 100 38];
 
 % Create ExtendedInfoButton
 obj.ExtendedInfoButton = uibutton(obj.ExtendedInfo, 'push');
-obj.ExtendedInfoButton.ButtonPushedFcn = @(s,e)notify(obj,'ShowStatistics');
 obj.ExtendedInfoButton.FontName = Aes.uiFontName;
-obj.ExtendedInfoButton.Text = 'View Stats';
+obj.ExtendedInfoButton.Text = 'Overview';
 obj.ExtendedInfoButton.Position = [190 7 100 38];
 
 % Create PlotControlTools
@@ -302,7 +294,6 @@ obj.OverlapLabel.Text = 'Number of Overlayed';
 
 % Create OverlapTicker
 obj.OverlapTicker = uieditfield(obj.PlotControlTools, 'text');
-obj.OverlapTicker.ValueChangedFcn = @(s,e)obj.ValidateTicker(s.Tag,e);
 obj.OverlapTicker.HorizontalAlignment = 'center';
 obj.OverlapTicker.FontName = 'Courier New';
 obj.OverlapTicker.FontSize = 28;
@@ -323,7 +314,6 @@ obj.CurrentEpochLabel.Text = ':::::  Current Data  :::::';
 
 % Create CurrentEpochTicker
 obj.CurrentEpochTicker = uieditfield(obj.PlotControlTools, 'text');
-obj.CurrentEpochTicker.ValueChangedFcn = @(s,e)obj.ValidateTicker(s.Tag,e);
 obj.CurrentEpochTicker.HorizontalAlignment = 'center';
 obj.CurrentEpochTicker.FontName = 'Courier New';
 obj.CurrentEpochTicker.FontSize = 36;
@@ -350,8 +340,6 @@ obj.CurrentEpochSlider.MinorTicks = [];
 obj.CurrentEpochSlider.MajorTicks = 1;
 obj.CurrentEpochSlider.MajorTicksMode = 'manual';
 obj.CurrentEpochSlider.Limits = [0.5, 1.49];
-obj.CurrentEpochSlider.ValueChangedFcn = @(s,e)obj.ValidateTicker(s.Tag,e);
-obj.CurrentEpochSlider.ValueChangingFcn = @obj.SliderChanging;
 obj.CurrentEpochSlider.FontName = Aes.uiFontName;
 obj.CurrentEpochSlider.Position = [992 64 218 3];
 obj.CurrentEpochSlider.Tag = 'Slider';
@@ -359,12 +347,6 @@ obj.CurrentEpochSlider.Enable = 'off';
 
 % Create CurrentEpochDecSmall
 obj.CurrentEpochDecSmall = uibutton(obj.PlotControlTools, 'push');
-obj.CurrentEpochDecSmall.ButtonPushedFcn = @(s,e) ...
-  notify(obj,'NavigateData', ...
-  eventData( ...
-    struct('Direction','Decrement', 'Amount', 'Small', 'Type', 'Epoch') ...
-  ) ...
-  );
 obj.CurrentEpochDecSmall.FontName = 'Courier New';
 obj.CurrentEpochDecSmall.FontSize = 36;
 obj.CurrentEpochDecSmall.FontWeight = 'bold';
@@ -373,12 +355,6 @@ obj.CurrentEpochDecSmall.Text = '<';
 
 % Create CurrentEpochIncSmall
 obj.CurrentEpochIncSmall = uibutton(obj.PlotControlTools, 'push');
-obj.CurrentEpochIncSmall.ButtonPushedFcn = @(s,e) ...
-  notify(obj,'NavigateData', ...
-  eventData( ...
-    struct('Direction','Increment', 'Amount', 'Small', 'Type', 'Epoch') ...
-  ) ...
-  );
 obj.CurrentEpochIncSmall.FontName = 'Courier New';
 obj.CurrentEpochIncSmall.FontSize = 36;
 obj.CurrentEpochIncSmall.FontWeight = 'bold';
@@ -387,12 +363,7 @@ obj.CurrentEpochIncSmall.Text = '>';
 
 % Create OverlapInc
 obj.OverlapInc = uibutton(obj.PlotControlTools, 'push');
-obj.OverlapInc.ButtonPushedFcn = @(s,e) ...
-  notify(obj,'NavigateData', ...
-  eventData( ...
-    struct('Direction','Increment', 'Amount', 'Small', 'Type', 'Overlay') ...
-  ) ...
-  );
+
 obj.OverlapInc.VerticalAlignment = 'top';
 obj.OverlapInc.FontName = 'Courier New';
 obj.OverlapInc.FontSize = 28;
@@ -402,12 +373,6 @@ obj.OverlapInc.Text = '}';
 
 % Create OverlapDec
 obj.OverlapDec = uibutton(obj.PlotControlTools, 'push');
-obj.OverlapDec.ButtonPushedFcn = @(s,e) ...
-  notify(obj,'NavigateData', ...
-  eventData( ...
-    struct('Direction','Decrement', 'Amount', 'Small', 'Type', 'Overlay') ...
-  ) ...
-  );
 obj.OverlapDec.VerticalAlignment = 'top';
 obj.OverlapDec.FontName = 'Courier New';
 obj.OverlapDec.FontSize = 28;
@@ -417,12 +382,6 @@ obj.OverlapDec.Text = '{';
 
 % Create CurrentEpochIncBig
 obj.CurrentEpochIncBig = uibutton(obj.PlotControlTools, 'push');
-obj.CurrentEpochIncBig.ButtonPushedFcn = @(s,e) ...
-  notify(obj,'NavigateData', ...
-  eventData( ...
-    struct('Direction','Increment', 'Amount', 'Big', 'Type', 'Epoch') ...
-  ) ...
-  );
 obj.CurrentEpochIncBig.FontName = 'Courier New';
 obj.CurrentEpochIncBig.FontSize = 28;
 obj.CurrentEpochIncBig.FontWeight = 'bold';
@@ -431,12 +390,6 @@ obj.CurrentEpochIncBig.Text = '>>';
 
 % Create CurrentEpochDecBig
 obj.CurrentEpochDecBig = uibutton(obj.PlotControlTools, 'push');
-obj.CurrentEpochDecBig.ButtonPushedFcn = @(s,e) ...
-  notify(obj,'NavigateData', ...
-  eventData( ...
-    struct('Direction','Decrement', 'Amount', 'Big', 'Type', 'Epoch') ...
-  ) ...
-  );
 obj.CurrentEpochDecBig.FontName = 'Courier New';
 obj.CurrentEpochDecBig.FontSize = 28;
 obj.CurrentEpochDecBig.FontWeight = 'bold';
@@ -470,7 +423,6 @@ obj.StatsLamp.Color = Aes.appColor(1,'red');
 obj.StatsSwitch = uiswitch(obj.SwitchPanel, 'toggle');
 obj.StatsSwitch.Items = {'', ''};
 obj.StatsSwitch.ItemsData = {'0', '1'};
-obj.StatsSwitch.ValueChangedFcn = @obj.SwitchFlipped;
 obj.StatsSwitch.HandleVisibility = 'off';
 obj.StatsSwitch.FontName = Aes.uiFontName;
 obj.StatsSwitch.Position = [15 36 22 50];
@@ -496,7 +448,6 @@ obj.ScaleLamp.Color = Aes.appColor(1,'red');
 obj.ScaleSwitch = uiswitch(obj.SwitchPanel, 'toggle');
 obj.ScaleSwitch.Items = {'', ''};
 obj.ScaleSwitch.ItemsData = {'0', '1'};
-obj.ScaleSwitch.ValueChangedFcn = @obj.SwitchFlipped;
 obj.ScaleSwitch.HandleVisibility = 'off';
 obj.ScaleSwitch.FontName = Aes.uiFontName;
 obj.ScaleSwitch.Position = [68 36 22 50];
@@ -522,7 +473,6 @@ obj.BaselineLamp.Color = Aes.appColor(1,'red');
 obj.BaselineSwitch = uiswitch(obj.SwitchPanel, 'toggle');
 obj.BaselineSwitch.Items = {'', ''};
 obj.BaselineSwitch.ItemsData = {'0', '1'};
-obj.BaselineSwitch.ValueChangedFcn = @obj.SwitchFlipped;
 obj.BaselineSwitch.HandleVisibility = 'off';
 obj.BaselineSwitch.FontName = Aes.uiFontName;
 obj.BaselineSwitch.Position = [120 36 22 50];
@@ -548,7 +498,6 @@ obj.FilterLamp.Color = Aes.appColor(1,'red');
 obj.FilterSwitch = uiswitch(obj.SwitchPanel, 'toggle');
 obj.FilterSwitch.Items = {'', ''};
 obj.FilterSwitch.ItemsData = {'0', '1'};
-obj.FilterSwitch.ValueChangedFcn = @obj.SwitchFlipped;
 obj.FilterSwitch.HandleVisibility = 'off';
 obj.FilterSwitch.FontName = Aes.uiFontName;
 obj.FilterSwitch.Position = [172 36 22 50];
@@ -574,31 +523,25 @@ obj.EpochLamp.Color = Aes.appColor(1,'green');
 obj.EpochSwitch = uiswitch(obj.SwitchPanel, 'toggle');
 obj.EpochSwitch.Items = {'', ''};
 obj.EpochSwitch.ItemsData = {'0', '1'};
-obj.EpochSwitch.ValueChangedFcn = @obj.SwitchFlipped;
 obj.EpochSwitch.HandleVisibility = 'off';
 obj.EpochSwitch.FontName = Aes.uiFontName;
 obj.EpochSwitch.Position = [224 36 22 50];
 obj.EpochSwitch.Value = '1';
 obj.EpochSwitch.Tag = 'Epoch';
 
-%{
-%remove in future
-% Create KeyboardButton
-obj.KeyboardButton = uibutton(obj.container, 'push');
-obj.KeyboardButton.ButtonPushedFcn = @obj.KeypressCapture;
-obj.KeyboardButton.Visible = 'off';
-obj.KeyboardButton.Position = [1 1 1 1];
-obj.KeyboardButton.Text = '';
-%}
+% draw
+drawnow; pause(0.05);
 
 % now that we've drawn the figure, let's reposition it by first getting the
 % stored value
+
+
 storedPosition = obj.position;
 
 if isempty(storedPosition)  
   obj.position = obj.container.Position;
 else
-  obj.position = storedPosition;
+  obj.position = [storedPosition(1:2),initW,initH];
 end
-obj.update;
+
 end

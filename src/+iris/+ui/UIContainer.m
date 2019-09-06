@@ -2,6 +2,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
   
   properties
     position
+    isBound = false
   end
   
   properties (Dependent)
@@ -9,7 +10,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     isready
   end
   
-  properties (Access = public)
+  properties (SetAccess = protected)
     container
     window
   end
@@ -67,21 +68,20 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
         'DefaultUitableFontsize', Aes.uiFontSize ...
         );
 
-      %{
-      set(obj.container, ...
-        'KeyPressFcn', ...
-          @(src,evnt)notify(obj, 'KeyPress', eventData(evnt)) ...
-        );
-      %}
+      try
+        obj.container.WindowKeyPressFcn = ...
+            @(src,evnt)notify(obj, 'KeyPress', eventData(evnt));
+      catch x
+        fprintf('Keyboard functionality is not available.\n');
+      end
+      
       
       try
         obj.createUI(varargin{:});
-        drawnow;
         pause(0.2);
       catch
         try
           obj.createUI();
-          drawnow;
           pause(0.2);
         catch x
           delete(obj.container);
@@ -177,7 +177,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       try
         obj.startupFcn(varargin{:}); %abstract
       catch x
-        delete(obj);
+        delete(obj.container);
         rethrow(x)
       end
       import iris.app.*;
@@ -196,7 +196,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     
     function rebuild(obj)
       if ~obj.isClosed, return; end
-      obj.constructContainer;
+      obj.constructContainer();
     end
     
     function show(obj)
@@ -213,7 +213,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
         obj.container.Visible = 'off';
       end
       obj.window.hide;
-      obj.window.executeJS('window.blur();');
+      %obj.window.executeJS('window.blur();');
       obj.resume();
     end
     
@@ -227,8 +227,10 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       end
     end
     
-    function update(obj)%#ok
-      drawnow();
+    function update(obj)
+      try %#ok<TRYNC>
+        obj.setContainerPrefs();
+      end
     end
     
     function executeJSFile(obj,fileName, timeOut)
@@ -250,20 +252,6 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       end
     end
     
-    function focus(obj)
-      obj.window.bringToFront;
-    end
-    
-  end
-  
-  methods (Access = private)  
-    %% base routines
-    function close(obj)
-      if ~obj.isClosed
-        obj.delete();
-      end
-    end
-
     function wait(obj)
       waitfor(obj,'isready');
     end
@@ -272,16 +260,31 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       uiresume(obj.container);
     end
     
-    function delete(obj)
-      try %#ok
-        delete(obj.window);
+    function focus(obj)
+      obj.window.bringToFront;
+    end
+    
+    
+  end
+  
+  methods (Access = private)  
+    %% base routines
+    function close(obj)
+      if ~obj.isClosed
+        try %#ok<TRYNC>
+          obj.window.close();
+        end
+        try %#ok<TRYNC>
+          delete(obj.container);
+        end
       end
-      delete(obj.container);
     end
     
     function destroy(obj)
       if obj.isClosed, return; end
-      delete(obj.container.Children);
+      try %#ok<TRYNC>
+        delete(obj.container.Children);
+      end
     end
     
   end

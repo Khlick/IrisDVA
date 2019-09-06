@@ -17,23 +17,25 @@ classdef Info < handle
     end
     
     function s = site()
-      s = 'https://github.com/Khlick/IrisDVA';
+      s = 'https://sampathlab.gitbook.io/iris-dva';
     end
 
     function v = version(sub)
       if ~nargin
         sub = 'public';
       end
-      status = {2,0,1,'a'};
+      status = {2,0,29,'a'};
       switch sub
         case 'major'
           v = sprintf('%d',status{1});
         case 'minor'
           v = sprintf('%02d',status{2});
+        case 'short'
+          v = sprintf('%d.%d%s',status{[1,2,4]});
         case 'development'
           v = sprintf('%d.%02d.%03d%s',status{:});
         otherwise
-          v = sprintf('%d.%02d%s',status{1},status{2},status{4});
+          v = sprintf('%d.%02d%03d',status{1},status{2},status{3});
       end
     end
 
@@ -107,6 +109,29 @@ classdef Info < handle
       varargout(nOut+1:end) = [];
     end
     
+    %Put file
+    function [p,varargout] = putFile(title,filter,defaultName)
+      %%GETFILE box title, filterSpec, startDefault
+      if nargin < 2
+        filter = '*.*';
+      end
+      if nargin < 3
+        defaultName = '';
+      end
+      [filename,pathname,fdx] = uiputfile(filter,title,defaultName);
+      % check for cancel
+      if isequal(filename,0) || isequal(pathname,0)
+        p = [];
+        [varargout{1:(nargout-1)}] = deal([]);
+        return;
+      end
+      
+      p = fullfile(pathname, filename);
+      nOut = nargout-1;
+      [varargout{1:3}] = deal(filename,pathname,fdx);
+      varargout(nOut+1:end) = [];
+    end
+    
     %Get folder
     function p = getFolder(Title, StartLocation)
       if nargin < 2
@@ -123,8 +148,10 @@ classdef Info < handle
     function s = checkDir(pathname)
       [s,mg,~] = mkdir(pathname);
       if ~s && ~nargout
-        iris.app.Info.showWarning(mg);
+        iris.app.Info.throwError(mg);
       end
+      % add this directory to the path
+      addpath(pathname);
     end
     
     function t = Summary()
@@ -143,12 +170,30 @@ classdef Info < handle
       
     end
     
-    function Analyses = getAvailableAnalyses()
+    function AStruct = getAvailableAnalyses()
       builtinDir = fullfile(iris.app.Info.getResourcePath,'Analyses');
       extended = iris.pref.analysis.getDefault().AnalysisDirectory;
-      Analyses = [cellstr(ls(builtinDir));cellstr(ls(extended))];
+      
+      builtins = cellstr(ls(builtinDir));
+      extendeds = cellstr(ls(extended));
+      
+      Analyses = [builtins;extendeds];
       Analyses(ismember(Analyses, {'.','..'})) = [];
       Analyses = Analyses(~cellfun(@isempty,Analyses,'UniformOutput',1));
+      Analyses = Analyses(endsWith(Analyses,'.m'));
+      Analyses = regexprep(Analyses,'\.m$','');
+      % build output struct
+      AStruct = struct();
+      AStruct.Names = Analyses;
+      % prefer user made names over builtin
+      ex = [rep({extended},length(extendeds)),extendeds];
+      bt = [rep({builtinDir},length(builtins)),builtins];
+      wRoots = [ex;bt];
+      wRoots = wRoots(endsWith(wRoots(:,2),'.m','IgnoreCase',true),:);
+      wRoots(cellfun(@isempty,wRoots(:,2),'UniformOutput',1),:) = [];
+      [~,id] = unique(wRoots(:,2), 'stable');
+      wRoots = wRoots(id,:);
+      AStruct.Full = wRoots;
     end
     
     function showWarning(msg)
@@ -156,13 +201,45 @@ classdef Info < handle
       id = upper(strrep(st(1).name,'.', ':'));
       warnCall = sprintf( ...
         'warning(''%s:%s'',''%s'');', ...
-        upper(MetaVision.app.Info.name), ...
+        upper(iris.app.Info.name), ...
         id, ...
-        msg ...
+        regexprep(msg,'''','''''') ...
         );
-      eval(warnCall);
+      evalin('caller',warnCall);
+    end
+    
+    function throwError(msg)
+      st = dbstack('-completenames',1);
+      id = upper(strrep(st(1).name,'.', ':'));
+      warnCall = sprintf( ...
+        'throw(MException(''%s:%s'',"%s"));', ...
+        upper(iris.app.Info.name), ...
+        id, ...
+        regexprep(msg,'''','''''') ...
+        );
+      evalin('base',warnCall);
+    end
+    
+    function [totalBytes,varargout] = getBytes(file)
+      if ischar(file)
+        file = {file};
+      end
+      eachBytes = zeros(length(file),1);
+      for f = 1:length(file)
+        try %#ok<TRYNC>
+          d = dir(file{f});
+          eachBytes(f) = double(d.bytes);
+        end
+      end
+      
+      totalBytes = sum(eachBytes);
+      
+      if nargout > 1
+        varargout{1} = eachBytes;
+      end
     end
     
   end
+  
 end
 

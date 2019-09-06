@@ -80,11 +80,12 @@ classdef (Abstract) Container < handle
     function close(obj)
       if isempty(obj.ui), return; end
       try
-        obj.ui.shutdown;
+        obj.ui.shutdown();
       catch
         delete(obj.ui)
       end
-      obj.services.shutdown;
+      obj.services.shutdown();
+      obj.handler.shutdown();
     end
     
     function bind(obj)

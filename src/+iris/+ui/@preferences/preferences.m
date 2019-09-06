@@ -51,9 +51,9 @@ properties (Access = public)
   ModulesDirectoryLabel           matlab.ui.control.Label
   ModulesDirectoryInput           matlab.ui.control.EditField
   ModulesLocationButton           matlab.ui.control.Button
-  ReaderDirectoryLabel           matlab.ui.control.Label
-  ReaderDirectoryInput           matlab.ui.control.EditField
-  ReaderLocationButton           matlab.ui.control.Button
+  ReadersDirectoryLabel           matlab.ui.control.Label
+  ReadersDirectoryInput           matlab.ui.control.EditField
+  ReadersLocationButton           matlab.ui.control.Button
   AnalysisDirectoryButton        matlab.ui.control.Button
   AnalysisDirectoryLabel         matlab.ui.control.Label
   AnalysisDirectoryInput         matlab.ui.control.EditField
@@ -76,6 +76,7 @@ properties (Access = public)
   StatisticsPanel                matlab.ui.container.Panel
   StatisticsLabel                matlab.ui.control.Label
   GroupByLabel                   matlab.ui.control.Label
+  SplitDevices                   matlab.ui.control.CheckBox
   GroupBySelect                  matlab.ui.control.ListBox
   AggregationStatisticLabel      matlab.ui.control.Label
   AggregationStatisticSelect     matlab.ui.control.DropDown
@@ -84,14 +85,17 @@ properties (Access = public)
   BaselineRegionLabel            matlab.ui.control.Label
   BaselineRegionSelect           matlab.ui.control.DropDown
   PTSEditFieldLabel              matlab.ui.control.Label
+  OFSTEditFieldLabel             matlab.ui.control.Label
+  PTSOFSTEditFieldLabel          matlab.ui.control.Label
   BaselinePoints                 matlab.ui.control.NumericEditField
+  OffsetPoints                   matlab.ui.control.NumericEditField
   % scale
   ScalingPanel                   matlab.ui.container.Panel
   ScalingLabel                   matlab.ui.control.Label
   ScalingmethodSelectLabel       matlab.ui.control.Label
   ScaleMethodSelect              matlab.ui.control.DropDown
   ScaleValueLabel                matlab.ui.control.Label
-  ScaleValue                     matlab.ui.control.NumericEditField
+  ScaleValue                     matlab.ui.control.Table
   % display
   DisplayPanel                   matlab.ui.container.Panel
   DisplayLabel                   matlab.ui.control.Label
@@ -125,6 +129,18 @@ methods (Access = public)
     styles = obj.options.DisplayProps;
   end
   
+  function pref = getPreference(obj,prefName)
+    prefName = validatestring(prefName,properties(obj.options));
+    pref = obj.options.(prefName);
+  end
+  
+  function setPreference(obj, prefName, S)
+    prefName = validatestring(prefName,properties(obj.options));
+    obj.options.(prefName) = S;
+    obj.save();
+    obj.getContainerPrefs;
+  end
+  
   function selfDestruct(obj)
     % required for integration with menuservices
     obj.onCloseRequest();
@@ -151,7 +167,11 @@ methods (Access = protected)
    loc = iris.app.Info.getFolder( ...
      ['Select ', event.Data, ' directory.'], ...
      fileparts(obj.([event.Data,'DirectoryInput']).Value));
-   stored = obj.options.AnalysisProps.([event.Data,'Directory']);
+   if contains(event.Data,{'Reader','Module'})
+     stored = obj.options.AnalysisProps.(['External',event.Data,'Directory']);
+   else
+    stored = obj.options.AnalysisProps.([event.Data,'Directory']);
+   end
    if isempty(loc)
      loc = stored;
    else
@@ -164,6 +184,7 @@ methods (Access = protected)
      end
    end
    obj.([event.Data,'DirectoryInput']).Value = loc;
+   obj.focus();
   end
   % validate analysis prefix
   function validatePrefix(obj,source,~)
@@ -181,26 +202,27 @@ methods (Access = protected)
       source.Value = func2str(value);
     end
     obj.AnalysisPrefixPreviewString.Text = value();
-    obj.setContainerPrefs;
+    %obj.setContainerPrefs;
+    obj.update();
   end
   % handling scaling method internally before notify
   function ScaleMethodChanged(obj,source,event)
     switch source.Value
       case 'Custom'
-        obj.ScaleValue.Editable = 'on';
+        obj.ScaleValue.ColumnEditable = [false,true];
         obj.ScaleValue.Enable = 'on';
       case 'Select'
         warning('Scale method, ''Select'' is not currently available.');
         obj.ScaleMethodSelect.Value = 'Custom';
-        obj.ScaleValue.Editable = 'on';
+        obj.ScaleValue.ColumnEditable = [false,true];
         obj.ScaleValue.Enable = 'on';
       otherwise
-      if ~strcmpi(obj.ScaleValue.Editable, 'off')
-        obj.ScaleValue.Editable = 'off';
+      if obj.ScaleValue.ColumnEditable(end)
+        obj.ScaleValue.ColumnEditable = [false,false];
         obj.ScaleValue.Enable = 'off';
       end
     end
-    obj.Notify('ScalingChanged', iris.infra.eventData('ScaleValue'));
+    obj.Notify('ScalingChanged', iris.infra.eventData({'ScaleMethod',event}));
   end
   % Display control, slider changing
   function DisplaySliderChanging(obj, ~, event)
@@ -224,11 +246,12 @@ methods (Access = protected)
     obj.([event.Data{1},'Slider']).Value = value;
     obj.setContainerPrefs;
     
-    notify(obj,'DisplayChanged', event);
+    obj.Notify('DisplayChanged', event);
   end
   
   function validateStepSize(obj,~,~)
-    obj.setContainerPrefs;
+    %obj.setContainerPrefs;
+    obj.update();
   end
   
 end

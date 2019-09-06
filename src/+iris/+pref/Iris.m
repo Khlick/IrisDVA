@@ -3,6 +3,7 @@ classdef Iris < iris.infra.StoredPrefs
   properties
     UserDirectory
     PreviousExtension
+    CurrentVersion
   end
   
   methods
@@ -21,10 +22,18 @@ classdef Iris < iris.infra.StoredPrefs
     end
     
     function set.PreviousExtension(obj,d)
-      validateattributes(d,{'char'}, {'nonempty'});
+      validateattributes(d,{'cell','char'}, {'nonempty'});
       obj.put('PreviousExtension', d);
     end
     
+    function d = get.CurrentVersion(obj)
+      d = obj.get('CurrentVersion', iris.app.Info.version);
+    end
+    
+    function set.CurrentVersion(obj,d)
+      validateattributes(d,{'char'}, {'nonempty'});
+      obj.put('CurrentVersion', d);
+    end
     
   end
   

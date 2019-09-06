@@ -22,26 +22,37 @@ classdef loadShow < iris.ui.UIContainer
         pause(0.1);
       end
       if obj.isHidden
-        obj.show;
-      end
-      if frac > 1
-        exponent = 0;
-        fStart = frac;
-        while frac > 1
-          exponent = exponent-1;
-          frac = fStart * 10^exponent;
-        end
-      end
-      obj.LoadingText.Text = sprintf('Loading... (%d%%)',fix(frac*100));
-      if frac < 1
-        obj.update;
-        return;
+        obj.show();
       else
-        obj.update;
-        pause(0.7);
-        obj.LoadingText.Text = 'Loaded!';
-        obj.update;
-        pause(1.3);
+        obj.focus();
+      end
+      
+      switch class(frac)
+        case 'double'      
+          if frac > 1
+            exponent = 0;
+            fStart = frac;
+            while frac > 1
+              exponent = exponent-1;
+              frac = fStart * 10^exponent;
+            end
+          end
+
+          obj.LoadingText.Text = sprintf('Loading... (%d%%)',fix(frac*100));
+          if frac < 1
+            obj.update;
+            return;
+          else
+            pause(1);
+            obj.LoadingText.Text = 'Loaded!';
+            obj.update();
+            pause(1.3);
+          end
+        case 'char'
+          obj.LoadingText.Text = frac;
+          obj.update();
+          obj.focus();
+          return;
       end
       obj.shutdown;
     end
@@ -73,7 +84,7 @@ classdef loadShow < iris.ui.UIContainer
         {fullfile(iris.app.Info.getResourcePath, ...
           'scripts', 'spinner.css')}, ...
         false, false, '''');
-      obj.window.executeJS('var css,spinner,panel;');
+      obj.window.executeJS('var css,spinner,panel,text;');
       iter = 0;
       while true
         try
@@ -119,11 +130,31 @@ classdef loadShow < iris.ui.UIContainer
         end
         break;
       end
-          
-      
+      % setup the ducktyped animation
+      [~,labID] = mlapptools.getWebElements(obj.LoadingText);
+      textQuery = sprintf( ...
+        'text = dojo.query("[%s = ''%s'']")[0];', ...
+        labID.ID_attr, labID.ID_val ...
+        );
+      iter = 0;
+      while true
+        try
+          obj.window.executeJS(textQuery);
+          obj.window.executeJS('text.classList.add("funtext");');
+        catch x
+          %log x?
+          iter = iter+1;
+          if iter > 20, iris.app.Info.throwError(x.message); end
+          pause(0.25);
+          continue
+        end
+        %success
+        break
+      end
     end
     % Construct view
     function createUI(obj)
+      import iris.app.Info;
       %% Initialize
       initW = 350;
       initH = 125;
@@ -137,7 +168,7 @@ classdef loadShow < iris.ui.UIContainer
       obj.position = pos; %sets container too
 
       % Setup container
-      obj.container.Name = 'Loading...';
+      obj.container.Name = sprintf('%s v%s',Info.name,Info.version('short'));
 
       % Create Spinner
       obj.Spinner = uipanel(obj.container);

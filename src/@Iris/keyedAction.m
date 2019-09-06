@@ -1,12 +1,13 @@
 function keyedAction(app,action)
-fprintf('keyedAction:"%s"\n', action);
 switch action
   case 'resetView'
     app.ui.Axes.resetView();
   case 'save'
     app.saveSession([],[]);
+  case 'quit'
+    app.shutdownApp([],[]);
   otherwise
-    disp('tbd')
+    fprintf('keyedAction:"%s"\n', action);
 end
 end
 

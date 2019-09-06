@@ -8,10 +8,6 @@ end
 % copy sel to prevent recursion
 sel = obj.selection;
 
-% update the Epoch toggle of the highlighted value
-hIncl = sel.inclusion(sel.selected == sel.highlighted);
-obj.updateInclusion(hIncl);
-
 % update the tickers
 obj.CurrentEpochTicker.Value = num2str(sel.highlighted);
 obj.OverlapTicker.Value = num2str(length(sel.selected));
@@ -30,7 +26,7 @@ if length(sel.selected) > 1
       ) ...
     ) ...
     );
-  obj.CurrentEpochSlider.Enable = 'on';
+  obj.setSlider('on');
 else
   obj.CurrentEpochSlider.Limits = [-0.5,0.5] + sel.highlighted;
   obj.CurrentEpochSlider.MajorTicks = sel.highlighted;
@@ -48,5 +44,10 @@ obj.ShowingValueString.Text = showStr;
 obj.DevicesSelection.Items = sel.devices;
 % select shown device
 obj.DevicesSelection.Value = sel.showingDevices;
+
+% update the Epoch toggle of the highlighted value
+hIncl = sel.inclusion(sel.selected == sel.highlighted);
+obj.updateInclusion(hIncl);
+
 end
 

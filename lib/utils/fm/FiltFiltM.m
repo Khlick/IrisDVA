@@ -171,11 +171,27 @@ end
 % User Interface: --------------------------------------------------------------
 % Do the work: =================================================================
 % Create initial conditions to treat offsets at beginning and end:
+%%% sparse solution added by Khris Griffis 2019
+if Order > 1
+  rows = [1:Order-1, 2:Order-1, 1:Order-2];
+  cols = [ones(1,Order-1), 2:Order-1, 2:Order-1];
+  vals = [1+a(2,1), a(3:Order,1).', ones(1,Order-2), -ones(1,Order-2)];
+  rhs  = b(2:Order,1) - b(1,1)*a(2:Order,1);
+  IC   = sparse(rows,cols,vals) \ rhs;
+else
+  IC = zeros(1,1);
+end
+
+%{
+% non-sparse solution
 K       = eye(Order - 1);
 K(:, 1) = a(2:Order);
 K(1)    = K(1) + 1;
 K(Order:Order:numel(K)) = -1.0;
 IC      = K \ (b(2:Order) - a(2:Order) * b(1));
+%}
+
+%%%%
 
 % Use a reflection to extrapolate signal at beginning and end to reduce edge
 % effects (BSXFUN would be some micro-seconds faster, but it is not available in

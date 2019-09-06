@@ -60,7 +60,7 @@ classdef dsp < iris.infra.StoredPrefs
 
     function set.isFiltered(obj,v)
       validateattributes(v,{'logical','numeric'},{'binary','scalar'});
-      obj.put('isFiltered',boolean(v));
+      obj.put('isFiltered',logical(v));
     end
 
   end

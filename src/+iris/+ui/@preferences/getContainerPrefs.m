@@ -25,7 +25,7 @@ function getContainerPrefs(obj)
   %% Workspace
   obj.OutputDirectoryInput.Value = Analysis.OutputDirectory;
   obj.ModulesDirectoryInput.Value = Analysis.ExternalModulesDirectory;
-  obj.ReaderDirectoryInput.Value = Analysis.ExternalReadersDirectory;
+  obj.ReadersDirectoryInput.Value = Analysis.ExternalReadersDirectory;
   obj.AnalysisDirectoryInput.Value = Analysis.AnalysisDirectory;
   obj.AnalysisPrefixInput.Value = func2str(Analysis.AnalysisPrefix);
   %% Filter
@@ -35,16 +35,18 @@ function getContainerPrefs(obj)
   obj.FilterTypeSelect.Value = Signal.Type;
   %% Statistics
   obj.AggregationStatisticSelect.Value = Stats.Aggregate;
+  obj.SplitDevices.Value = Stats.SplitDevices;
   obj.BaselinePoints.Value = Stats.BaselinePoints;
+  obj.OffsetPoints.Value = Stats.BaselineOffset;
   obj.BaselineRegionSelect.Value = Stats.BaselineRegion;
   obj.ZeroBaseline.Value = Stats.BaselineZeroing;
   obj.ShowAll.Value = Stats.ShowOriginal;
   %% Scaling
   obj.ScaleMethodSelect.Value = Scale.Method;
-  obj.ScaleValue.Value = Scale.Value;
+  obj.ScaleValue.Data = Scale.Value;
   if ~contains(Scale.Method,{'Max','Min','Select'})
     obj.ScaleValue.Enable = 'on';
-    obj.ScaleValue.Editable = 'on';
+    obj.ScaleValue.ColumnEditable = [false,true];
   end
   %% Last Selected Pref
   nodeText = obj.get('SelectedNode', '');

@@ -125,7 +125,6 @@ methods
       end
       obj.(p).reset();
     end
-    
   end
 end
 

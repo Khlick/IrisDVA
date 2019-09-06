@@ -32,7 +32,7 @@ classdef newAnalysis < iris.ui.UIContainer
     
     function tf = get.isValidFx(obj)
       existingAnalyses = iris.app.Info.getAvailableAnalyses();
-      tf = ~ismember([obj.analysisName.Value,'.m'], existingAnalyses);
+      tf = ~ismember([obj.analysisName.Value,'.m'], existingAnalyses.Full(:,2));
       if tf
         %prevent default input from being used
         tf = ~strcmpi(obj.analysisName.Value,'irisAnalysis');
@@ -102,7 +102,7 @@ classdef newAnalysis < iris.ui.UIContainer
     function validateFxName(obj,src,evt) 
        value = camelizer(evt.Value);
        src.Value = value;
-       drawnow;
+       %drawnow;
        % check for existing functions and throw error message
        if ~obj.isValidFx
          warndlg( ...

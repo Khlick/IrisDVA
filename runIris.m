@@ -1,6 +1,12 @@
-function app = main(varargin)
+function app = runIris(varargin)
 % add the app to the matlab path
 addAppToPath();
+pause(0.01);
+
+if isIrisOpen()
+  error('Iris is already open.');
+end
+
 
 % Show the busy presenter and app splash while the rest of the app loads
 splash = iris.ui.busyShow();
@@ -11,7 +17,7 @@ if str2double(v.Version) < 9.5
   error('Iris DVA 2019 requires matlab version 9.5 (2018b) or newer.');
 end
 
-splash.start(sprintf('Iris DVA (c) %s', iris.app.Info.year));
+splash.start(sprintf('Iris DVA %s %s', char(hex2dec('00a9')), iris.app.Info.year));
 
 tStart = tic;
 minDelay = 5; %seconds
@@ -70,7 +76,15 @@ function addAppToPath()
   paths = paths(~cellfun(@(x)strcmp(x,''),paths,'unif',1));
   paths = paths(~contains(paths,'\.'));
   paths = paths(~contains(paths,'\_'));
+  paths = paths(~contains(paths,'resources'));
   
   %add the appropriate paths for the session
   addpath(strjoin(paths,';'));
+end
+
+function tf = isIrisOpen()
+tf =  ~isempty( ...
+  findall(groot,'Name', sprintf('%s %s',iris.app.Info.name,iris.app.Info.year)) ...
+  );
+
 end

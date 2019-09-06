@@ -1,4 +1,4 @@
-function updateView(obj,h)
+function updateView(obj, newSelection, newDisplay, newData, newUnits)
 %% Update UI elemets
 % Use data to update all the data-dependent UI elements and call the plot
 % update method.
@@ -12,6 +12,7 @@ function updateView(obj,h)
 %
 % Called from Iris class
 
+%{
 %DEV
 %tt = tic();
 
@@ -77,11 +78,9 @@ for I = ix'
 end
 
 obj.CurrentInfoTable.Data = labels;
-obj.CurrentInfoTable.ColumnWidth = {'auto', max(lens)*6.5};
+obj.CurrentInfoTable.ColumnWidth = {'auto', max(lens)*6.55};
 % If we arent changing the selection, then we are likely changing layout or
-% some other aesthetic componenet. So we need to get the plotting data and
-% send it to the DOM for the custom JS D3.js to process into the canvas
-% (HTML5)
+% some other aesthetic componenet. 
 
 obj.layout.update;
 
@@ -95,6 +94,9 @@ yUnits = unknownCell2Str(unknown2CellStr(units(:,2)),',');
 obj.layout.setTitle('x',xUnits);
 obj.layout.setTitle('y',yUnits);
 
+
+
+
 %DEV
 %prepTime = toc(tt);
 %fprintf('Time to prepare data: %0.4f sec.\n',prepTime);
@@ -103,7 +105,6 @@ obj.layout.setTitle('y',yUnits);
 % comment this out if using d3.js approach
 
 % plot data will parse the array into a json ready data
-
 %dat = arrayfun(@(a)iris.data.encode.plotData(a), d,'UniformOutput',0);
 dat = arrayfun(@(v)v.getPlotArray(), d, 'UniformOutput', false);
 
@@ -138,86 +139,48 @@ dat = dat(contains({dat.name},sel.showingDevices));
 try
   obj.Axes.update(dat,obj.layout);
 catch exc
-  fprintf(2,'Error plotting data, clearing the axes...\n')
-  fprintf(2,[exc.message,'\n\n']);
+  fprintf('Error plotting data, clearing the axes...\n')
+  fprintf([exc.message,'\n\n']);
   obj.Axes.clearView();
 end
 
-%% D3.js AXES
-% Comment this out if using Matlab Axes object
-%{
-datJson = '[';
-for ii = 1:numel(d)
-  datJson = [datJson,...
-    iris.data.encode.plotData( ...
-      d(ii).subsetDevice(sel.showingDevices) ...
-    ).jsonify(false) ...
-    ]; %#ok
-  if ii ~= numel(d)
-    datJson = [datJson,',']; %#ok<AGROW>
+
+
+return
+%}
+%% Dev for moving draw methods to handler
+% new Inputs:
+% updateView(obj, newSelection, newDisplay, newData, newUnits)
+
+% update the selection (and tickers)
+if ~isequal(newSelection,obj.selection)
+  % if we are changing something, we need to update the tickers
+  % We can do this by simply relying on the onSelectionUpdate method
+  obj.selection = newSelection;
+end
+
+% update the display data
+obj.setDisplayData(newDisplay);
+
+% use the layout update to grab any aesthetic changes (i.e. from preferences)
+obj.layout.update;
+% update units
+obj.layout.setTitle('x',unknownCell2Str(newUnits.x, ' |'));
+obj.layout.setTitle('y',unknownCell2Str(newUnits.y, ' |'));
+
+% plot the data
+dPrefs = iris.pref.display.getDefault();
+try
+  obj.Axes.update(newData,obj.layout);
+  if length(newSelection.selected) > 1
+    obj.Axes.setHighlighted(newSelection.highlighted,dPrefs.LineWidth);
   end
-end
-datJson = [datJson,']'];
-
-obj.window.executeJS( ...
-  sprintf( ...
-    'ax.update(%s,%s);', ...
-    datJson, ...
-    jsonencode(obj.layout) ...
-  ) ...
-  );
-%}
-
-
-%% DEV
-%plotTime = toc(tt);
-%fprintf('Time to plot data: %0.4f sec (%0.4f total).\n',plotTime,plotTime-prepTime);
-
-%{
-testTimes = zeros(2000,1);
-for TTT = 1:2000
-  tto = tic();
-  datJson = '[';
-  for ii = 1:numel(d)
-    datJson = [datJson,...
-      iris.data.encode.plotData(d(ii)).jsonify(false) ...
-      ]; %#ok
-  end
-  datJson = [datJson,']'];
-  testTimes(TTT) = toc(tto);
+catch exc
+  fprintf('Error plotting data...\n')
+  fprintf([exc.message,'\n\n']);
+  notify(obj,'RevertView');
 end
 
-testTime2 = zeros(2000,1);
-for TTT = 1:2000
-  ttJ = tic();
-  dJ = jsonencode(dat);
-  testTime2(TTT) = toc(ttJ);
-end
-%}
-
-
-%{
-cm = iris.app.Aes.appColor(length(dat),'contrast');
-delete(obj.Axes.Children);
-for D = 1:length(dat)
-  dd = dat(D);
-  line(obj.Axes,'XData', dd.x, 'YData', dd.y, 'color', cm(D,:), 'DisplayName', dd.name);
-end
-
-%}
-%{
-dJson = jsonencode(dat);
-if length(dat) == 1
-  dJson = ['[',dJson,']'];
-end
-obj.window.executeJS( ...
-  sprintf( ...
-    'ax.update(%s,%s);', ...
-    dJson, ...
-    jsonencode(obj.layout) ...
-  ) ...
-  );
-%}
 
 %% NOTES FOR OTHER METHODS
 %{

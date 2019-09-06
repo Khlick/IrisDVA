@@ -5,7 +5,10 @@ import iris.ui.*;
 import iris.app.*;
 import iris.infra.*;
 
+% if pref map already exists, this does nothing.
+% if first run, this will initialize the map in the preferences
 obj.options.save();
+
 
 pos = obj.position;
 if isempty(pos)
@@ -272,9 +275,9 @@ obj.OutputLocationButton.Text = '';
   ModulesDirectoryLabel           matlab.ui.control.Label
   ModulesDirectoryInput           matlab.ui.control.EditField
   ModulesLocationButton           matlab.ui.control.Button
-  ReaderDirectoryLabel           matlab.ui.control.Label
-  ReaderDirectoryInput           matlab.ui.control.EditField
-  ReaderLocationButton           matlab.ui.control.Button
+  ReadersDirectoryLabel           matlab.ui.control.Label
+  ReadersDirectoryInput           matlab.ui.control.EditField
+  ReadersLocationButton           matlab.ui.control.Button
 %}
 
 % Create ModulesDirectoryLabel
@@ -303,30 +306,30 @@ obj.ModulesLocationButton.Position = getPos(3,getY(1));%[23 243 26 25];
 obj.ModulesLocationButton.Text = '';
 
 
-% Create ReaderDirectoryLabel
-obj.ReaderDirectoryLabel = uilabel(obj.WorkspacePanel);
-obj.ReaderDirectoryLabel.FontName = Aes.uiFontName;
-obj.ReaderDirectoryLabel.FontSize = 18;
-obj.ReaderDirectoryLabel.Position = getPos(1,getY(2));
-obj.ReaderDirectoryLabel.Text = 'Readers Location:';
+% Create ReadersDirectoryLabel
+obj.ReadersDirectoryLabel = uilabel(obj.WorkspacePanel);
+obj.ReadersDirectoryLabel.FontName = Aes.uiFontName;
+obj.ReadersDirectoryLabel.FontSize = 18;
+obj.ReadersDirectoryLabel.Position = getPos(1,getY(2));
+obj.ReadersDirectoryLabel.Text = 'Readers Location:';
 
-% Create ReaderDirectoryInput
-obj.ReaderDirectoryInput = uieditfield(obj.WorkspacePanel, 'text');
-obj.ReaderDirectoryInput.Editable = 'off';
-obj.ReaderDirectoryInput.FontName = Aes.uiFontName;
-obj.ReaderDirectoryInput.BackgroundColor = [0.9412 0.9412 0.9412];
-obj.ReaderDirectoryInput.Position = getPos(2,getY(2));%[58 244 335 22];
+% Create ReadersDirectoryInput
+obj.ReadersDirectoryInput = uieditfield(obj.WorkspacePanel, 'text');
+obj.ReadersDirectoryInput.Editable = 'off';
+obj.ReadersDirectoryInput.FontName = Aes.uiFontName;
+obj.ReadersDirectoryInput.BackgroundColor = [0.9412 0.9412 0.9412];
+obj.ReadersDirectoryInput.Position = getPos(2,getY(2));%[58 244 335 22];
 
-% Create ReaderLocationButton
-obj.ReaderLocationButton = uibutton(obj.WorkspacePanel, 'push');
-obj.ReaderLocationButton.ButtonPushedFcn = @(s,e)obj.updateDirectory(s,eventData('Reader'));
-obj.ReaderLocationButton.Icon = fullfile(iris.app.Info.getResourcePath, 'icn', 'icons8-folder-128.png');
-obj.ReaderLocationButton.VerticalAlignment = 'bottom';
-obj.ReaderLocationButton.BackgroundColor = [0.9412 0.9412 0.9412];
-obj.ReaderLocationButton.FontName = Aes.uiFontName;
-obj.ReaderLocationButton.FontSize = 14;
-obj.ReaderLocationButton.Position = getPos(3,getY(2));%[23 243 26 25];
-obj.ReaderLocationButton.Text = '';
+% Create ReadersLocationButton
+obj.ReadersLocationButton = uibutton(obj.WorkspacePanel, 'push');
+obj.ReadersLocationButton.ButtonPushedFcn = @(s,e)obj.updateDirectory(s,eventData('Readers'));
+obj.ReadersLocationButton.Icon = fullfile(iris.app.Info.getResourcePath, 'icn', 'icons8-folder-128.png');
+obj.ReadersLocationButton.VerticalAlignment = 'bottom';
+obj.ReadersLocationButton.BackgroundColor = [0.9412 0.9412 0.9412];
+obj.ReadersLocationButton.FontName = Aes.uiFontName;
+obj.ReadersLocationButton.FontSize = 14;
+obj.ReadersLocationButton.Position = getPos(3,getY(2));%[23 243 26 25];
+obj.ReadersLocationButton.Text = '';
 
 
 % Create AnalysisDirectoryButton
@@ -391,7 +394,7 @@ obj.AnalysisPrefixPreviewString.HorizontalAlignment = 'center';
 obj.AnalysisPrefixPreviewString.Position = [23 20 370 22];
 obj.AnalysisPrefixPreviewString.Text = 'preview';
 
-drawnow;
+%drawnow;
 
 obj.WorkspacePanel.Visible = 'off';
 
@@ -423,7 +426,8 @@ obj.FilterOrderLabel.Text = 'Butterworth Filter Order: ';
 % Create FilterOrderSelect
 obj.FilterOrderSelect = uidropdown(obj.FilterPanel);
 obj.FilterOrderSelect.Items = {'4', '5', '6', '7', '8', '9', '10', '11'};
-obj.FilterOrderSelect.ValueChangedFcn = @(s,e)obj.Notify('FilterChanged', eventData('FilterOrder'));
+obj.FilterOrderSelect.ValueChangedFcn = ...
+  @(s,e)obj.Notify('FilterChanged', eventData({'FilterOrder',e}));
 obj.FilterOrderSelect.FontName = Aes.uiFontName;
 obj.FilterOrderSelect.FontSize = 18;
 obj.FilterOrderSelect.Position = [294 235 100 24];
@@ -439,7 +443,8 @@ obj.FilterFrequencyLowLabel.Text = 'Low Pass Frequency [Hertz]: ';
 % Create FilterFrequencyLowSelect
 obj.FilterFrequencyLowSelect = uidropdown(obj.FilterPanel);
 obj.FilterFrequencyLowSelect.Items = {'50', '70', '100', '150', '200', '250', '300', '500', '1000'};
-obj.FilterFrequencyLowSelect.ValueChangedFcn = @(s,e)obj.Notify('FilterChanged', eventData('FilterFrequency'));
+obj.FilterFrequencyLowSelect.ValueChangedFcn = ...
+  @(s,e)obj.Notify('FilterChanged', eventData({'FilterFrequency',e}));
 obj.FilterFrequencyLowSelect.FontName = Aes.uiFontName;
 obj.FilterFrequencyLowSelect.FontSize = 18;
 obj.FilterFrequencyLowSelect.Position = [294 185 100 24];
@@ -455,7 +460,8 @@ obj.FilterFrequencyHighLabel.Text = 'High Pass Frequency [Hertz]:';
 % Create FilterFrequencyHighSelect
 obj.FilterFrequencyHighSelect = uidropdown(obj.FilterPanel);
 obj.FilterFrequencyHighSelect.Items = {'5', '10', '20', '50', '70', '100', '150', '200'};
-obj.FilterFrequencyHighSelect.ValueChangedFcn = @(s,e)obj.Notify('FilterChanged', eventData('FilterFrequency'));
+obj.FilterFrequencyHighSelect.ValueChangedFcn = ...
+  @(s,e)obj.Notify('FilterChanged', eventData({'FilterFrequency',e}));
 obj.FilterFrequencyHighSelect.FontName = Aes.uiFontName;
 obj.FilterFrequencyHighSelect.FontSize = 18;
 obj.FilterFrequencyHighSelect.Position = [294 135 100 24];
@@ -471,7 +477,8 @@ obj.FilterTypeLabel.Text = 'Filter Type:';
 % Create FilterTypeSelect
 obj.FilterTypeSelect = uidropdown(obj.FilterPanel);
 obj.FilterTypeSelect.Items = {'Lowpass', 'Bandpass', 'Highpass'};
-obj.FilterTypeSelect.ValueChangedFcn = @(s,e)obj.Notify('FilterChanged', eventData('FilterType'));
+obj.FilterTypeSelect.ValueChangedFcn = ...
+  @(s,e)obj.Notify('FilterChanged', eventData({'FilterType',e}));
 obj.FilterTypeSelect.FontName = Aes.uiFontName;
 obj.FilterTypeSelect.FontSize = 18;
 obj.FilterTypeSelect.Position = [269 86 125 24];
@@ -500,11 +507,23 @@ obj.GroupByLabel.FontName = Aes.uiFontName;
 obj.GroupByLabel.Position = [25 278 56 22];
 obj.GroupByLabel.Text = 'Group By:';
 
+% Create SplitDevices
+obj.SplitDevices = uicheckbox(obj.StatisticsPanel);
+obj.SplitDevices.Value = true;
+%obj.SplitDevices.ValueChangedFcn = ...
+%  @(s,e)obj.Notify('StatisticsChanged', eventData({'SplitDevices',e}));
+obj.SplitDevices.Text = 'Split Devices';
+obj.SplitDevices.FontName = Aes.uiFontName;
+obj.SplitDevices.FontAngle = 'italic';
+obj.SplitDevices.Position = [318 278 81 22];
+obj.SplitDevices.Enable = 'off';
+
 % Create GroupBySelect
 obj.GroupBySelect = uilistbox(obj.StatisticsPanel);
 obj.GroupBySelect.Items = {'None'};
 obj.GroupBySelect.Multiselect = 'on';
-obj.GroupBySelect.ValueChangedFcn = @(s,e)obj.Notify('StatisticsChanged', eventData({'GroupBy',s.Value}));
+obj.GroupBySelect.ValueChangedFcn = ...
+  @(s,e)obj.Notify('StatisticsChanged', eventData({'GroupBy',e}));
 obj.GroupBySelect.FontName = Aes.uiFontName;
 obj.GroupBySelect.Position = [25 178 374 101];
 obj.GroupBySelect.Value = {'None'};
@@ -519,7 +538,8 @@ obj.AggregationStatisticLabel.Text = 'Aggregation Statistic:';
 % Create AggregationStatisticSelect
 obj.AggregationStatisticSelect = uidropdown(obj.StatisticsPanel);
 obj.AggregationStatisticSelect.Items = {'Mean', 'Median', 'Variance', 'Sum'};
-obj.AggregationStatisticSelect.ValueChangedFcn = @(s,e)obj.Notify('StatisticsChanged', eventData({'AggregationStatistic',s.Value}));
+obj.AggregationStatisticSelect.ValueChangedFcn = ...
+  @(s,e)obj.Notify('StatisticsChanged', eventData({'AggregationStatistic',e}));
 obj.AggregationStatisticSelect.FontName = Aes.uiFontName;
 obj.AggregationStatisticSelect.FontSize = 16;
 obj.AggregationStatisticSelect.BackgroundColor = [1 1 1];
@@ -528,7 +548,8 @@ obj.AggregationStatisticSelect.Value = 'Mean';
 
 % Create ShowAll
 obj.ShowAll = uicheckbox(obj.StatisticsPanel);
-obj.ShowAll.ValueChangedFcn = @(s,e)obj.Notify('StatisticsChanged', eventData({'ShowAll',s.Value}));
+obj.ShowAll.ValueChangedFcn = ...
+  @(s,e)obj.Notify('StatisticsChanged', eventData({'ShowAll',e}));
 obj.ShowAll.Text = 'Show original traces';
 obj.ShowAll.FontName = Aes.uiFontName;
 obj.ShowAll.FontSize = 16;
@@ -536,7 +557,8 @@ obj.ShowAll.Position = [25 42 154 22];
 
 % Create ZeroBaseline
 obj.ZeroBaseline = uicheckbox(obj.StatisticsPanel);
-obj.ZeroBaseline.ValueChangedFcn = @(s,e)obj.Notify('StatisticsChanged', eventData({'ZeroBaseline',s.Value}));
+obj.ZeroBaseline.ValueChangedFcn = ...
+  @(s,e)obj.Notify('StatisticsChanged', eventData({'ZeroBaseline',e}));
 obj.ZeroBaseline.Text = 'Baseline zeroing';
 obj.ZeroBaseline.FontName = Aes.uiFontName;
 obj.ZeroBaseline.FontSize = 16;
@@ -547,33 +569,62 @@ obj.ZeroBaseline.Value = true;
 obj.BaselineRegionLabel = uilabel(obj.StatisticsPanel);
 obj.BaselineRegionLabel.FontName = Aes.uiFontName;
 obj.BaselineRegionLabel.FontSize = 16;
-obj.BaselineRegionLabel.Position = [25 92 115 22];
-obj.BaselineRegionLabel.Text = 'Baseline Region:';
-
-% Create BaselineRegionSelect
-obj.BaselineRegionSelect = uidropdown(obj.StatisticsPanel);
-obj.BaselineRegionSelect.Items = {'Beginning', 'End', 'Protocol'};
-obj.BaselineRegionSelect.ValueChangedFcn = @(s,e)obj.Notify('StatisticsChanged', eventData({'BaselineRegion', s.Value}));
-obj.BaselineRegionSelect.FontName = Aes.uiFontName;
-obj.BaselineRegionSelect.FontSize = 16;
-obj.BaselineRegionSelect.BackgroundColor = [1 1 1];
-obj.BaselineRegionSelect.Position = [252 92 129 22];
-obj.BaselineRegionSelect.Value = 'Beginning';
-
-% Create PTSEditFieldLabel
-obj.PTSEditFieldLabel = uilabel(obj.StatisticsPanel);
-obj.PTSEditFieldLabel.VerticalAlignment = 'bottom';
-obj.PTSEditFieldLabel.FontName = Aes.uiFontName;
-obj.PTSEditFieldLabel.Position = [206 92 26 22];
-obj.PTSEditFieldLabel.Text = 'PTS';
+obj.BaselineRegionLabel.Position = [25 92 60 22];
+obj.BaselineRegionLabel.Text = 'Baseline:';
 
 % Create BaselinePoints
 obj.BaselinePoints = uieditfield(obj.StatisticsPanel, 'numeric');
 obj.BaselinePoints.Limits = [1 Inf];
 obj.BaselinePoints.RoundFractionalValues = 'on';
-obj.BaselinePoints.ValueChangedFcn = @(s,e)obj.Notify('StatisticsChanged', eventData({'BaselinePoints',s.Value}));
-obj.BaselinePoints.Position = [160 92 41 22];
+obj.BaselinePoints.ValueChangedFcn = ...
+  @(s,e)obj.Notify('StatisticsChanged', eventData({'BaselinePoints',e}));
+obj.BaselinePoints.Position = [90 92 41 22];
 obj.BaselinePoints.Value = 100;
+
+% Create PTSEditFieldLabel
+obj.PTSEditFieldLabel = uilabel(obj.StatisticsPanel);
+obj.PTSEditFieldLabel.VerticalAlignment = 'bottom';
+obj.PTSEditFieldLabel.FontName = Aes.uiFontName;
+obj.PTSEditFieldLabel.FontSize = 11;
+obj.PTSEditFieldLabel.Position = [132 92 15 22];
+obj.PTSEditFieldLabel.Text = 'pts';
+
+% Create OFSTEditFieldLabel
+obj.OFSTEditFieldLabel = uilabel(obj.StatisticsPanel);
+obj.OFSTEditFieldLabel.VerticalAlignment = 'center';
+obj.OFSTEditFieldLabel.HorizontalAlignment = 'left';
+obj.OFSTEditFieldLabel.FontName = Aes.uiFontName;
+obj.OFSTEditFieldLabel.FontSize = 12;
+obj.OFSTEditFieldLabel.Position = [160 92 36 22];
+obj.OFSTEditFieldLabel.Text = 'Offset:';
+
+% Create OffsetPoints
+obj.OffsetPoints = uieditfield(obj.StatisticsPanel, 'numeric');
+obj.OffsetPoints.Limits = [0 Inf];
+obj.OffsetPoints.RoundFractionalValues = 'on';
+obj.OffsetPoints.ValueChangedFcn = ...
+  @(s,e)obj.Notify('StatisticsChanged', eventData({'BaselinePoints',e}));
+obj.OffsetPoints.Position = [198 92 41 22];
+obj.OffsetPoints.Value = 0;
+
+% Create PTSOFSTEditFieldLabel
+obj.PTSOFSTEditFieldLabel = uilabel(obj.StatisticsPanel);
+obj.PTSOFSTEditFieldLabel.VerticalAlignment = 'bottom';
+obj.PTSOFSTEditFieldLabel.FontName = iris.app.Aes.uiFontName;
+obj.PTSOFSTEditFieldLabel.FontSize = 11;
+obj.PTSOFSTEditFieldLabel.Position = [240 92 15 22];
+obj.PTSOFSTEditFieldLabel.Text = 'pts';
+
+% Create BaselineRegionSelect
+obj.BaselineRegionSelect = uidropdown(obj.StatisticsPanel);
+obj.BaselineRegionSelect.Items = {'Beginning', 'End', 'Fit (Asym)', 'Fit (Sym)'};
+obj.BaselineRegionSelect.ValueChangedFcn = ...
+  @(s,e)obj.Notify('StatisticsChanged', eventData({'BaselineRegion',e}));
+obj.BaselineRegionSelect.FontName = Aes.uiFontName;
+obj.BaselineRegionSelect.FontSize = 16;
+obj.BaselineRegionSelect.BackgroundColor = [1 1 1];
+obj.BaselineRegionSelect.Position = [262 92 119 22];
+obj.BaselineRegionSelect.Value = 'Beginning';
 
 %------------------------------------------------------------------------ SCALING --%
 
@@ -608,27 +659,39 @@ obj.ScaleMethodSelect.FontName = Aes.uiFontName;
 obj.ScaleMethodSelect.FontSize = 20;
 obj.ScaleMethodSelect.BackgroundColor = [1 1 1];
 obj.ScaleMethodSelect.Position = [230 253 156 26];
-obj.ScaleMethodSelect.Value = 'Absolute Max';
+obj.ScaleMethodSelect.Value = 'Custom';
 
 % Create ScaleValueLabel
 obj.ScaleValueLabel = uilabel(obj.ScalingPanel);
-obj.ScaleValueLabel.HorizontalAlignment = 'right';
+obj.ScaleValueLabel.HorizontalAlignment = 'left';
 obj.ScaleValueLabel.FontName = Aes.uiFontName;
-obj.ScaleValueLabel.FontSize = 20;
-obj.ScaleValueLabel.Position = [44 205 131 25];
-obj.ScaleValueLabel.Text = 'Scaling value:';
+obj.ScaleValueLabel.FontSize = 16;
+obj.ScaleValueLabel.Position = [50 200 131 25];
+obj.ScaleValueLabel.Text = 'Scaling values:';
 
 % Create ScaleValue
+obj.ScaleValue = uitable(obj.ScalingPanel);
+obj.ScaleValue.ColumnName = {'Device'; 'Scale'};
+obj.ScaleValue.ColumnWidth = {'auto','auto'};
+obj.ScaleValue.RowName = {};
+obj.ScaleValue.FontName = Aes.uiFontName;
+obj.ScaleValue.FontSize = 14;
+obj.ScaleValue.Position = [44,20,342,178];
+obj.ScaleValue.CellEditCallback = ...
+  @(s,e)obj.Notify('ScalingChanged', eventData({'ScaleValue',e}));
+
+%{
 obj.ScaleValue = uieditfield(obj.ScalingPanel, 'numeric');
 obj.ScaleValue.RoundFractionalValues = 'on';
-obj.ScaleValue.ValueChangedFcn = @(s,e)obj.Notify('ScalingChanged', eventData('ScaleValue'));
+obj.ScaleValue.ValueChangedFcn = ...
+  @(s,e)obj.Notify('ScalingChanged', eventData({'ScaleValue',e}));
 obj.ScaleValue.Editable = 'off';
 obj.ScaleValue.FontName = 'Courier New';
 obj.ScaleValue.FontSize = 16;
 obj.ScaleValue.Enable = 'off';
 obj.ScaleValue.Position = [230 208 156 22];
 obj.ScaleValue.Value = 1;
-
+%}
 % Create DisplayPanel
 obj.DisplayPanel = uipanel(obj.container);
 obj.DisplayPanel.AutoResizeChildren = 'off';
@@ -654,7 +717,8 @@ obj.LineDisplayStyleDropDownLabel.Text = 'Line Display Style:';
 % Create LineStyle
 obj.LineStyle = uidropdown(obj.DisplayPanel);
 obj.LineStyle.Items = {'Solid', 'Dashed', 'Dotted', 'Dash-Dotted', 'None'};
-obj.LineStyle.ValueChangedFcn = @(s,e)obj.Notify('DisplayChanged', eventData({'LineStyle',s.Value}));
+obj.LineStyle.ValueChangedFcn = ...
+  @(s,e)obj.Notify('DisplayChanged', eventData({'LineStyle',s.Value}));
 obj.LineStyle.FontName = Aes.uiFontName;
 obj.LineStyle.FontSize = 16;
 obj.LineStyle.Position = [259 262 125 22];
@@ -672,7 +736,8 @@ obj.MarkerStyle = uidropdown(obj.DisplayPanel);
 obj.MarkerStyle.Items = { ...
   'None', 'Circle', 'Cross', 'Square', 'Diamond', 'Star', 'Triangle', 'Y' ...
   };
-obj.MarkerStyle.ValueChangedFcn = @(s,e)obj.Notify('DisplayChanged', eventData({'MarkerStyle',s.Value}));
+obj.MarkerStyle.ValueChangedFcn = ...
+  @(s,e)obj.Notify('DisplayChanged', eventData({'MarkerStyle',s.Value}));
 obj.MarkerStyle.FontName = Aes.uiFontName;
 obj.MarkerStyle.FontSize = 16;
 obj.MarkerStyle.Position = [259 168 125 22];
@@ -689,7 +754,8 @@ obj.LineDisplayWidthLabel.Text = 'Line Display Width:';
 obj.LineWidth = uieditfield(obj.DisplayPanel, 'numeric');
 obj.LineWidth.Limits = [0.5 5];
 obj.LineWidth.ValueDisplayFormat = '%2.1f';
-obj.LineWidth.ValueChangedFcn = @(s,e)obj.DisplayValueChanged(s,eventData({'LineWidth',s.Value}));
+obj.LineWidth.ValueChangedFcn = ...
+  @(s,e)obj.DisplayValueChanged(s,eventData({'LineWidth',s.Value}));
 obj.LineWidth.FontName = 'Courier New';
 obj.LineWidth.FontSize = 16;
 obj.LineWidth.Position = [180 215 57 22];
@@ -700,8 +766,12 @@ obj.LineWidthSlider = uislider(obj.DisplayPanel);
 obj.LineWidthSlider.Limits = [0.5 5];
 obj.LineWidthSlider.MajorTicks = [0.5 2 3.5 5];
 obj.LineWidthSlider.MajorTickLabels = {'0.5', '', '', '5'};
-obj.LineWidthSlider.ValueChangedFcn = @(s,e)obj.DisplaySliderChanged(s,eventData(struct('Value',s.Value, 'Type', 'LineWidth')));
-obj.LineWidthSlider.ValueChangingFcn = @(s,e)obj.DisplaySliderChanging(s,eventData(struct('Value',e.Value, 'Type', 'LineWidth')));
+obj.LineWidthSlider.ValueChangedFcn = ...
+  @(s,e)obj.DisplaySliderChanged(s, ...
+    eventData(struct('Value',s.Value, 'Type', 'LineWidth')));
+obj.LineWidthSlider.ValueChangingFcn = ...
+  @(s,e)obj.DisplaySliderChanging(s, ...
+    eventData(struct('Value',e.Value, 'Type', 'LineWidth')));
 obj.LineWidthSlider.FontName = Aes.uiFontName;
 obj.LineWidthSlider.Position = [259 237 125 3];
 obj.LineWidthSlider.Value = 2;
@@ -710,8 +780,12 @@ obj.LineWidthSlider.Value = 2;
 obj.MarkerSizeSlider = uislider(obj.DisplayPanel);
 obj.MarkerSizeSlider.Limits = [1 30];
 obj.MarkerSizeSlider.MajorTickLabels = {'1', '', '', '', '', '', '30'};
-obj.MarkerSizeSlider.ValueChangedFcn = @(s,e)obj.DisplaySliderChanged(s,eventData(struct('Value',s.Value, 'Type', 'MarkerSize')));
-obj.MarkerSizeSlider.ValueChangingFcn = @(s,e)obj.DisplaySliderChanging(s,eventData(struct('Value',e.Value, 'Type', 'MarkerSize')));
+obj.MarkerSizeSlider.ValueChangedFcn = ...
+  @(s,e)obj.DisplaySliderChanged(s, ...
+    eventData(struct('Value',s.Value, 'Type', 'MarkerSize')));
+obj.MarkerSizeSlider.ValueChangingFcn = ...
+  @(s,e)obj.DisplaySliderChanging(s, ...
+    eventData(struct('Value',e.Value, 'Type', 'MarkerSize')));
 obj.MarkerSizeSlider.FontName = Aes.uiFontName;
 obj.MarkerSizeSlider.Position = [258 145 125 3];
 obj.MarkerSizeSlider.Value = 8;
@@ -720,7 +794,8 @@ obj.MarkerSizeSlider.Value = 8;
 obj.MarkerSize = uieditfield(obj.DisplayPanel, 'numeric');
 obj.MarkerSize.Limits = [1 30];
 obj.MarkerSize.ValueDisplayFormat = '%2.1f';
-obj.MarkerSize.ValueChangedFcn = @(s,e)obj.DisplayValueChanged(s,eventData({'MarkerSize',s.Value}));
+obj.MarkerSize.ValueChangedFcn = ...
+  @(s,e)obj.DisplayValueChanged(s,eventData({'MarkerSize',s.Value}));
 obj.MarkerSize.FontName = 'Courier New';
 obj.MarkerSize.FontSize = 16;
 obj.MarkerSize.Position = [179 121 57 22];
@@ -743,7 +818,8 @@ obj.GridDropDownLabel.Text = 'Grid:';
 % Create Grid
 obj.Grid = uidropdown(obj.DisplayPanel);
 obj.Grid.Items = {'None', 'X Axis', 'Y Axis', 'Both'};
-obj.Grid.ValueChangedFcn = @(s,e)obj.Notify('DisplayChanged', eventData({'Grid', s.Value}));
+obj.Grid.ValueChangedFcn = ...
+  @(s,e)obj.Notify('DisplayChanged', eventData({'Grid', s.Value}));
 obj.Grid.FontName = Aes.uiFontName;
 obj.Grid.FontSize = 16;
 obj.Grid.Position = [81 27 110 22];
@@ -759,7 +835,8 @@ obj.XAxisDropDownLabel.Text = 'X Axis:';
 % Create AxesScaleX
 obj.AxesScaleX = uidropdown(obj.DisplayPanel);
 obj.AxesScaleX.Items = {'Linear', 'Logarithmic'};
-obj.AxesScaleX.ValueChangedFcn = @(s,e)obj.Notify('DisplayChanged', eventData({'AxesScaleX',s.Value}));
+obj.AxesScaleX.ValueChangedFcn = ...
+  @(s,e)obj.Notify('DisplayChanged', eventData({'AxesScaleX',s.Value}));
 obj.AxesScaleX.FontName = Aes.uiFontName;
 obj.AxesScaleX.FontSize = 16;
 obj.AxesScaleX.Position = [81 74 110 22];
@@ -775,7 +852,8 @@ obj.YAxisDropDownLabel.Text = 'Y Axis';
 % Create AxesScaleY
 obj.AxesScaleY = uidropdown(obj.DisplayPanel);
 obj.AxesScaleY.Items = {'Linear', 'Logarithmic'};
-obj.AxesScaleY.ValueChangedFcn = @(s,e)obj.Notify('DisplayChanged', eventData({'AxesScaleY',s.Value}));
+obj.AxesScaleY.ValueChangedFcn = ...
+  @(s,e)obj.Notify('DisplayChanged', eventData({'AxesScaleY',s.Value}));
 obj.AxesScaleY.FontName = Aes.uiFontName;
 obj.AxesScaleY.FontSize = 16;
 obj.AxesScaleY.Position = [274 74 110 22];
@@ -789,5 +867,4 @@ obj.ResetPreferences.Position = [51 15 87 22];
 obj.ResetPreferences.Text = 'Defaults';
 obj.ResetPreferences.ButtonPushedFcn = @(s,e)obj.resetContainerPrefs;
 
-obj.update;
 end

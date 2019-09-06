@@ -2,6 +2,7 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
   
   properties
     position
+    isBound = false
   end
   
   properties (Dependent)
@@ -9,7 +10,7 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
     isready
   end
   
-  properties (Access = protected)
+  properties (SetAccess = protected)
     container
     window
   end
@@ -69,25 +70,6 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
         'DefaultUitableFontsize', Aes.uiFontSize, ...
         'HandleVisibility', 'off' ...
         );
-      % set the favicon
-      warnState = warning('query', ...
-        'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame' ...
-        );
-      warning('off', 'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
-      try
-        jframe=get(obj.container,'javaframe');
-        jIcon=javax.swing.ImageIcon( ...
-          fullfile( ...
-            iris.app.Info.getResourcePath, 'icn', 'favicon.png' ...
-          ) ...
-        );
-        jframe.setFigureIcon(jIcon);
-      catch x %#ok
-        % log x.message?
-      end
-      warning(warnState.state, ...
-        'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame' ...
-        );
       try
         obj.createUI(varargin{:});
       catch r
@@ -134,6 +116,14 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
     %% get
     function f = get.position(obj)
       f = obj.get('position', []);
+      if isempty(f), return; end
+      rootMonitors = get(groot,'MonitorPositions');
+      if f(1) > (max(rootMonitors(:,3)) - f(3))
+        f(1) = max(rootMonitors(:,3)) - f(3);
+      end
+      if f(2) > (max(rootMonitors(:,4))-f(4))
+        f(2) = max(rootMonitors(:,4)) - f(4);
+      end
     end
     
     function tf = get.isClosed(obj)
@@ -168,6 +158,25 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
         delete(obj.container);
         rethrow(x)
       end
+      % set the favicon
+      warnState = warning('query', ...
+        'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame' ...
+        );
+      warning('off', 'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
+      try
+        jframe=get(obj.container,'javaframe');
+        jIcon=javax.swing.ImageIcon( ...
+          fullfile( ...
+            iris.app.Info.getResourcePath, 'icn', 'favicon.png' ...
+          ) ...
+        );
+        jframe.setFigureIcon(jIcon);
+      catch x %#ok
+        % log x.message?
+      end
+      warning(warnState.state, ...
+        'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame' ...
+        );
     end
     
     function shutdown(obj)
@@ -179,7 +188,7 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
     
     function rebuild(obj)
       if ~obj.isClosed, return; end
-      obj.constructContainer;
+      obj.constructContainer();
     end
     
     function show(obj)
@@ -204,8 +213,12 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
       end
     end
     
-    function update(obj)%#ok
-      drawnow();
+    function update(obj)
+      %drawnow();
+      pause(0.01);
+      try %#ok<TRYNC>
+        obj.setContainerPrefs();
+      end
     end
     
     function setWindowStyle(obj, s)
@@ -214,6 +227,10 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
     
     function wait(obj)
       waitfor(obj,'isready');
+    end
+
+    function resume(obj)
+      uiresume(obj.container);
     end
 
     function focus(obj)
@@ -227,13 +244,16 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
       delete(obj.container);
     end
 
-    function resume(obj)
-      uiresume(obj.container);
-    end
-    
     function delete(obj)
       if ~obj.isClosed
         obj.close();
+      end
+    end
+    
+    function destroy(obj)
+      if obj.isClosed, return; end
+      try %#ok<TRYNC>
+        delete(obj.container.Children);
       end
     end
     

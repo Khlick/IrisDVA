@@ -65,5 +65,5 @@ switch selectedNodes.Text
       );
     
 end
-
+%drawnow();
 end

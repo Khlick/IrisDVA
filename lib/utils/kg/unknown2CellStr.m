@@ -19,6 +19,11 @@ function strNow = unknown2CellStr(cellIn)
       tmpvec = {'false','true'};
       strNow = cellfun(@(x)tmpvec(double(x)+1),cellAr, ...
         'uniformoutput', false);
+    case 'cell'
+      tmpStrings = arrayfun(@(e)unknownCell2Str(e,','),cellAr, ...
+        'UniformOutput', false ...
+        );
+      strNow = {strjoin(tmpStrings, '; ')};
   end    
 
 end

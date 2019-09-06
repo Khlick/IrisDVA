@@ -22,12 +22,7 @@ switch resp
     obj.reset();
     obj.options.reset();
     obj.getContainerPrefs();
-    obj.update();
-    notify(obj, 'AxesChanged');
-    notify(obj, 'DisplayChanged');
-    notify(obj, 'FilterChanged');
-    notify(obj, 'StatisticsChanged');
-    notify(obj, 'ScalingChanged');
+    %drawnow();
     return
   case 'Cancel'
     return 
@@ -62,5 +57,5 @@ end
 
 obj.options.reset(rProps);
 obj.getContainerPrefs();
-obj.update();
+%drawnow();
 end

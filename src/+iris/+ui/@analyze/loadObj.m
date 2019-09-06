@@ -1,17 +1,17 @@
 function loadObj(obj,fxString)
 if obj.isClosed, return; end
-%if isempty(obj.EpochNumbers), return; end
 
-%currentEpochs = ['[',num2str(obj.EpochNumbers, '%d,'),']'];
+% get the full path of the current function
+avails = iris.app.Info.getAvailableAnalyses().Full;
 
-%fxString should include .m at the end
-validateattributes(fxString, {'char'}, {'nonempty'});
-if isempty(regexp(fxString,'\.m$','ONCE'))
-  error('Invalid function filename.');
-end
+idx = ismember(avails(:,2), [fxString,'.m']);
+
+aFile = fullfile(avails{idx,:});
+
+
 %read the text from the file to determine input and output names
-fid= fopen(fxString); %either full path or on matlab path
-if fid==-1
+fid= fopen(aFile); %either full path or on matlab path
+if fid == -1
   error('Cannot open file %s.', fxString);
 end
 % get the function call string
@@ -32,7 +32,7 @@ defText = allText{1}( ...
 defText = cellfun(@(x)strsplit(x,':='),defText,'unif',0);
 fclose(fid);
 % check the function for nargs and construct data for UI tables
-[pt,fn,~]= fileparts(fxString);
+[pt,fn,~]= fileparts(aFile);
 %make sure fxn is on the path
 if ~strcmp(pt,''), addpath(pt); end
 Input = cell(nargin(fn),2);
@@ -63,13 +63,7 @@ Input(:,1) = cellfun(...
 % Analyses can contain any named arguments, but the first argument 
 % Must contain the DataObject as its value.
 Input(1,2) = {'DataObject'};%assume first arg is Data
-%{
-% epoch values
-epochIndex = strcmpi(Input(:,1),'epochs');
-if any(epochIndex)
-  Input{find(epochIndex,1),2} = currentEpochs;%assume first arg is Data
-end
-%}
+
 % set Default values
 for dd = 1:length(defText)
   param = defText{dd};
@@ -79,15 +73,15 @@ for dd = 1:length(defText)
   end
 end
 %Create Fx string
-obj.Fx = fn;
-obj.Args.Call = @(out,in)...
+obj.Args.Call = @(out,name,in)...
   sprintf('[%s] = %s(%s)', ...
-  strjoin(out, ', '), obj.Fx, strjoin(in, ', '));
+    strjoin(out, ', '), name, strjoin(in, ', ') ...
+    );
 obj.Args.Input = Input;
 obj.Args.Output = Output;
 %updateUI
-obj.labelFunction.String = obj.Args.Call(Output(:,1), Input(:,1));
+obj.labelFunction.String = obj.Args.Call(Output(:,1), fn, Input(:,1));
 obj.tableOutput.Data = Output;
 obj.tableInput.Data = Input;
-if ~strcmp(pt,''), rmpath(pt); end
+obj.buttonGo.Enable = 'on';
 end

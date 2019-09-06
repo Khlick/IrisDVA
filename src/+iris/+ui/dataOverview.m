@@ -17,7 +17,7 @@ classdef dataOverview < iris.ui.UIContainer
   properties (Hidden)
     InclusionIcon = fullfile(iris.app.Info.getResourcePath,'icn','Epoch_Iconincl.png')
     ExclusionIcon = fullfile(iris.app.Info.getResourcePath,'icn','Epoch_Iconexcl.png')
-    selectionListener
+    handlerListeners = {}
   end
     
   
@@ -31,22 +31,63 @@ classdef dataOverview < iris.ui.UIContainer
       if obj.isClosed
         obj.rebuild();
       end
-      % this method is called when building the UI
-      obj.show;
+      % determine if we are simply unhiding the window or need to reconstruct it
+      newHandler = ~isequal(handler,obj.Handler);
+      obj.show();
+      if obj.isBound && ~newHandler
+        return
+      end      
+      % if a new handler was provided we need to destroy previous handler listeners
+      % and then reassign our handler handle
       
-      obj.clearView;
-      if ~isequal(handler,obj.Handler)
+      if newHandler
+        obj.destroyListeners();
         obj.Handler = handler;
       end
+      
+      obj.clearView();
+      
       obj.FileNodes = cell(handler.nFiles,1);
       obj.PropNodes = {};
-      obj.SelectSubsetLabel.Text = 'Loading epochs...';
-      for p = 1:handler.nFiles
-        mbr = handler.membership{p};
+      obj.SelectSubsetLabel.Text = ...
+        { ...
+          'Loading...'; ...
+          'Selected epochs will show when completed.' ...
+        };
+      
+      obj.recurseNodes();
+      
+      obj.SelectSubsetLabel.Text = 'Select File Subset';
+      
+      % set selected from handler
+      obj.setSelectionFromHandler();
+      
+      if newHandler
+        % set and enable listener
+        obj.handlerListeners{end+1} = addlistener( ...
+          handler, ...
+          'onSelectionUpdated', @(s,e)obj.onHandlerUpdate(e) ...
+          );
+        obj.handlerListeners{end+1} = addlistener( ...
+          handler, ...
+          'onCompletedLoad', @(s,e)obj.onHandlerUpdate(e) ...
+          );
+      end
+      if ~event.hasListener(obj,'Close')
+        addlistener(obj, 'Close', @(s,e)obj.selfDestruct());
+      end
+      obj.isBound = true;
+    end
+    
+    function recurseNodes(obj)
+      hd = obj.Handler;
+      % Create parent Node for each file
+      for p = 1:hd.nFiles
+        mbr = hd.membership{p};
         dataInds = mbr.data;
-        inclStatus = handler.Tracker.getStatus.inclusions(dataInds);
-        d = handler(dataInds);
-        [~,fn,ex] = fileparts(handler.fileList{p});
+        inclStatus = hd.Tracker.getStatus.inclusions(dataInds);
+        d = hd(dataInds);
+        [~,fn,ex] = fileparts(hd.fileList{p});
         thisNode = uitreenode(obj.FileTree, ...
           'Text', [fn,ex] );
         thisNode.Icon = fullfile( ...
@@ -54,9 +95,11 @@ classdef dataOverview < iris.ui.UIContainer
           'icn', ...
           'File_Icon.png' ...
           );
-        obj.update;
+        
+        %obj.drawnow();
+        
         thisNode.NodeData = [];
-        % preallocate itemsData
+        % create childNode for each datum
         for i = 1:length(d)
           thisChildNode = uitreenode(thisNode, ...
             'Text', d(i).id );
@@ -67,31 +110,40 @@ classdef dataOverview < iris.ui.UIContainer
             icn = obj.ExclusionIcon;
           end
           thisChildNode.Icon = icn;
-          obj.update;
+          if i == 1
+            thisNode.expand;
+          end
+          
+          %TODO: recurse structs in d.<type>Configurations
+          
+          %drawnow('limitrate');
+          
           obj.PropNodes{end+1} = thisChildNode;
         end
-        thisNode.expand;
+        
         obj.FileNodes{p} = thisNode;
       end
-      obj.SelectSubsetLabel.Text = 'Select File Subset';
-      % set selected from handler
-      obj.onHandlerUpdate;
-      % set and enable listener
-      obj.selectionListener = addlistener( ...
-        handler, ...
-        'onSelectionUpdated', @(s,e)obj.onHandlerUpdate ...
-        );
     end
     
     function selfDestruct(obj)
       % required for integration with menuservices
-      delete(obj.selectionListener);
-      obj.shutdown;
+      % detect handler condition and the
+      %delete(obj.selectionListener);
+      if obj.Handler.isready
+        % just hide rather than kill
+        obj.update();
+        obj.hide();
+      else
+        obj.clearView();
+        obj.destroyListeners();
+        obj.shutdown();
+      end
     end
     
   end
   %% Startup Methods
   methods (Access = protected)
+    
     % Startup
     function startupFcn(obj,handler)
       obj.container.SizeChangedFcn = @obj.containerResized;
@@ -100,11 +152,21 @@ classdef dataOverview < iris.ui.UIContainer
     end    
     
     %handler selection was updated
-    function onHandlerUpdate(obj)
-      obj.FileTree.SelectedNodes = [obj.PropNodes{obj.Handler.currentSelection.selected}];
-      obj.getSelectedInfo();
-      obj.PropTable.Visible = 'on';
-      obj.SelectSubsetPanel.Visible = 'off';
+    function onHandlerUpdate(obj,event)
+      % if the window is open, we need to update the view. Otherwise we will let the
+      % buildUI() method handle the update.
+      if ~obj.isVisible, return; end
+      
+      if endsWith(event.EventName,'Updated')
+        % selection update triggered
+        obj.setSelectionFromHandler();
+      elseif endsWith(event.EventName,'Load')
+        % new files were loaded, rebuild the ui
+        obj.isBound = false;
+        obj.buildUI();
+      else
+        % future.
+      end
     end
     
     % Set Table Data
@@ -128,7 +190,8 @@ classdef dataOverview < iris.ui.UIContainer
       tableDat(:,2) = arrayfun(@unknownCell2Str,tableDat(:,2),'unif',0);
       %set
       obj.PropTable.Data = tableDat;
-      obj.PropTable.ColumnWidth = {120,'auto'};
+      lens = cellfun(@length,tableDat(:,2),'UniformOutput',true);
+      obj.PropTable.ColumnWidth = {120, max(lens)*6.55};
     end
     
      % Construct view
@@ -177,7 +240,13 @@ classdef dataOverview < iris.ui.UIContainer
       obj.SelectSubsetLabel.HorizontalAlignment = 'center';
       obj.SelectSubsetLabel.FontName = iris.app.Aes.uiFontName;
       obj.SelectSubsetLabel.FontSize = 20;
-      obj.SelectSubsetLabel.Position = [(546-174)/2 158 174 25];
+      obj.SelectSubsetLabel.Position = [ ...
+        546/2 - 546*0.8/2, ...
+        341/2 - 341*0.9/2, ...
+        546*0.8, ...
+        341*0.9 ...
+        ];
+      %(546-174)/2 158 174 25];
       obj.SelectSubsetLabel.Text = 'Select File Subset';
 
       % Create Actions
@@ -209,6 +278,13 @@ classdef dataOverview < iris.ui.UIContainer
       else
         obj.Apply.Enable = 'on';
       end
+    end
+    % set Selection based on handler.currentSelection
+    function setSelectionFromHandler(obj)
+      obj.FileTree.SelectedNodes = [obj.PropNodes{obj.Handler.currentSelection.selected}];
+      obj.getSelectedInfo();
+      obj.PropTable.Visible = 'on';
+      obj.SelectSubsetPanel.Visible = 'off';
     end
     % Apply action button pressed
     function ApplyAction(obj,~,~)
@@ -264,17 +340,13 @@ classdef dataOverview < iris.ui.UIContainer
               cellfun(@(x)x.Text,obj.FileNodes,'unif',0) ...
             ) ...
             )
-          obj.SelectSubsetPanel.Visible = 'on';
-          obj.PropTable.Visible = 'off';
+          obj.togglePropTable('off');
           return
         end
         obj.getSelectedInfo();
-        
-        obj.PropTable.Visible = 'on';
-        obj.SelectSubsetPanel.Visible = 'off';
+        obj.togglePropTable('on');
       else
-        obj.PropTable.Visible = 'off';
-        obj.SelectSubsetPanel.Visible = 'on';
+        obj.togglePropTable('off');
       end
     end
     
@@ -304,10 +376,27 @@ classdef dataOverview < iris.ui.UIContainer
           obj.Handler.currentSelection = selectedIndex;
         end
         obj.setData(cat(1,infos{:}));
-        obj.update;
+        pause(0.01);
+        %drawnow('limitrate');
       end
     end
-  
+    
+    function togglePropTable(obj,newStatus)
+      if nargin < 2
+        if strcmp(obj.PropTable.Visible, 'on')
+          newStatus = 'off';
+        else
+          newStatus = 'on';
+        end
+      end
+      obj.PropTable.Visible = newStatus;
+      if strcmp(newStatus,'on')
+        obj.SelectSubsetPanel.Visible = 'off';
+      else
+        obj.SelectSubsetPanel.Visible = 'on';
+      end
+    end
+    
     function containerResized(obj,src,~)
       
       obj.position = src.Position;%set ui
@@ -317,24 +406,35 @@ classdef dataOverview < iris.ui.UIContainer
       pH = obj.position(4) - 25;
       obj.PropTable.Position(3:4) = [pW,pH];
       obj.SelectSubsetPanel.Position(3:4) = [pW,pH];
-      obj.SelectSubsetLabel.Position(1:2) = [...
-        (pW-174)/2, ...
-        (pH-25)/2 ...
+      obj.SelectSubsetLabel.Position = [...
+        0.2*pW/2, ...
+        0.1*pH/2, ...
+        pW*0.8, ...
+        pH*0.9 ...
         ];
+      
     end
     
     function clearView(obj)
+      obj.togglePropTable('off');
+      obj.isBound = false;
       if isempty(obj.PropNodes), return; end
       cellfun(@delete,obj.PropNodes,'UniformOutput',false);
       cellfun(@delete,obj.FileNodes,'UniformOutput',false);
     end
     
+    function destroyListeners(obj)
+      for i = 1:length(obj.handlerListeners)
+        delete(obj.handlerListeners{i});
+      end
+      obj.handlerListeners = {};
+    end
     
   end
   %% Preferences
   methods (Access = protected)
 
-   function setContainerPrefs(obj)
+    function setContainerPrefs(obj)
       setContainerPrefs@iris.ui.UIContainer(obj);
     end
     

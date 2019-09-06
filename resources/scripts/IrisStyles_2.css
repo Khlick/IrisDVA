@@ -1,55 +1,58 @@
 
 @keyframes customtooltips-vert {
   to {
-    opacity: 0.9;
+    opacity: 0.95;
     transform: translate(-50%, 0);
   }
 }
 @keyframes customtooltips-horz {
   to {
-    opacity: 0.9;
+    opacity: 0.95;
     transform: translate(0, -50%);
   }
 }
-/* FX All The Things */
+/* Css for all */
 [customtooltip] {
   position: relative;
 }
 [customtooltip]::before {
-  text-transform: none;
-  font-size: 0.9em;
-  line-height: 1;
   user-select: none;
   pointer-events: none;
   position: absolute;
-  display: none;
   opacity: 0;
   content: '';
   border: 5px solid transparent;
+  text-transform: none !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  font-family: Times New Roman, serif !important;
+  font-style: normal !important;
+  text-align: left !important;
+  display: none;
   z-index: 1001;
 }
 [customtooltip]::after {
-  text-transform: none;
-  font-size: 0.9em;
-  line-height: 1;
   user-select: none;
   pointer-events: none;
   position: absolute;
-  display: none;
   opacity: 0;
   content: attr(customtooltip);
-  font-family: Times New Roman, serif;
-  font-size: 1em;
-  text-align: left;
   min-width: 10em;
-  max-width: 80em;
+  max-width: 100em;
   white-space: pre-wrap;
   overflow: hidden;
   padding: 1ch 1.5ch;
   border-radius: 0.3ch;
   box-shadow: 0 1em 2em -0.5em rgba(0, 0, 0, 0.328);
-  background: rgba(98, 98, 98, 0.95);
+  background: rgba(43, 74, 105, 0.95);
   color: #ffffff;
+  text-transform: none !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  font-family: Times New Roman, serif !important;
+  font-style: normal !important;
+  text-align: left !important;
+  display: none;
   z-index: 1000;
 }
 [customtooltip]:hover::before {
@@ -59,10 +62,11 @@
   display: block;
   box-shadow: -2px -2px 18x rgba(55, 56, 59, 0.281) inset, 4px 4px 9px rgba(143, 145, 160, 0.63) inset;
 }
+/* If no flow attribute, use up */
 [customtooltip]:not([flow])::before {
   bottom: calc(100% + 5px);
   border-bottom-width: 0;
-  border-top-color: rgba(98, 98, 98, 0.815);
+  border-top-color: rgba(43, 74, 105, 1);
   left: 50%;
   transform: translate(-50%, -0.5em);
 }
@@ -77,16 +81,18 @@
 [customtooltip]:not([flow]):hover::after {
   animation: customtooltips-vert 300ms ease-out forwards;
 }
+/* Empty case */
 [customtooltip='']::before {
   display: none !important;
 }
 [customtooltip='']::after {
   display: none !important;
 }
+/* Up */
 [customtooltip][flow^='up']::before {
   bottom: calc(100% + 5px);
   border-bottom-width: 0;
-  border-top-color: rgba(98, 98, 98, 0.815);
+  border-top-color: rgba(43, 74, 105, 1);
   left: 50%;
   transform: translate(-50%, -0.5em);
 }
@@ -101,10 +107,11 @@
 [customtooltip][flow^='up']:hover::after {
   animation: customtooltips-vert 300ms ease-out forwards;
 }
+/* Down */
 [customtooltip][flow^='down']::before {
   top: calc(100% + 5px);
   border-top-width: 0;
-  border-bottom-color: rgba(98, 98, 98, 0.815);
+  border-bottom-color: rgba(43, 74, 105, 1);
   left: 50%;
   transform: translate(-50%, 0.5em);
 }
@@ -119,10 +126,11 @@
 [customtooltip][flow^='down']:hover::after {
   animation: customtooltips-vert 300ms ease-out forwards;
 }
+/* Left */
 [customtooltip][flow^='left']::before {
   top: 50%;
   border-right-width: 0;
-  border-left-color: rgba(98, 98, 98, 0.815);
+  border-left-color: rgba(43, 74, 105, 1);
   left: calc(0em - 10px);
   transform: translate(-0.5em, -50%);
 }
@@ -137,10 +145,11 @@
 [customtooltip][flow^='left']:hover::after {
   animation: customtooltips-horz 300ms ease-out forwards;
 }
+/* Right */
 [customtooltip][flow^='right']::before {
   top: 50%;
   border-left-width: 0;
-  border-right-color: rgba(98, 98, 98, 0.815);
+  border-right-color: rgba(43, 74, 105, 1);
   right: calc(0em - 10px);
   transform: translate(0.5em, -50%);
 }

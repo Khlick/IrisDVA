@@ -29,7 +29,7 @@ function setContainerPrefs(obj)
   Analysis.OutputDirectory = obj.OutputDirectoryInput.Value;
   Analysis.AnalysisDirectory = obj.AnalysisDirectoryInput.Value;
   Analysis.ExternalModulesDirectory = obj.ModulesDirectoryInput.Value;
-  Analysis.ExternalReadersDirectory = obj.ReaderDirectoryInput.Value;
+  Analysis.ExternalReadersDirectory = obj.ReadersDirectoryInput.Value;
   % prefix handler
   pfx = obj.AnalysisPrefixInput.Value;
   if ~strcmpi(pfx(1),'@')
@@ -63,11 +63,14 @@ function setContainerPrefs(obj)
   Stats.Aggregate = obj.AggregationStatisticSelect.Value;
   Stats.BaselinePoints = obj.BaselinePoints.Value;
   Stats.BaselineRegion = obj.BaselineRegionSelect.Value;
+  Stats.BaselineOffset = obj.OffsetPoints.Value;
   Stats.BaselineZeroing = obj.ZeroBaseline.Value;
+  Stats.SplitDevices = true;%obj.SplitDevices.Value;
   Stats.ShowOriginal = obj.ShowAll.Value;
+  Stats.GroupBy = obj.GroupBySelect.Value;
   %% Scale
   Scale.Method = obj.ScaleMethodSelect.Value;
-  Scale.Value = obj.ScaleValue.Value;
+  Scale.Value = obj.ScaleValue.Data;
   %% STORE
   obj.options.ControlProps = Control ;
   obj.options.AnalysisProps = Analysis ;
@@ -76,5 +79,6 @@ function setContainerPrefs(obj)
   obj.options.StatisticsProps = Stats ;
   obj.options.ScaleProps = Scale ;
   %% SAVE
-  obj.options.save();
+  % writes prefs to memory
+  obj.save();
 end

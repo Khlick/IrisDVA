@@ -1,18 +1,18 @@
 function callMenu(app,~,event)
 s = app.services;
-switch event.Data
-  case {'About','Help','Analyze','NewAnalysis', 'Preferences'}
+switch lower(event.Data)
+  case {'about','help','newanalysis', 'preferences'}
     s.build(event.Data);
-  case 'FileInfo'
+  case 'fileinfo'
     s.build(event.Data,app.handler.Meta);
-  case 'Notes'
+  case 'notes'
     s.build(event.Data,app.handler.Notes);
-  case 'Protocols'
+  case 'protocols'
     % send datum array to protocols where 
-    d = app.handler.getCurrent;
+    d = app.handler.getCurrentData;
     s.build(event.Data,d.getPropsAsCell);
-  case 'DataOverview'
-    s.build(event.Data, app.handler);
+  case {'dataoverview','analyze'}
+    s.build(event.Data, handle(app.handler));
 end
     
 end

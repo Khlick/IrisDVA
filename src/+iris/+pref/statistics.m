@@ -2,10 +2,13 @@ classdef statistics < iris.infra.StoredPrefs
 
   properties
     GroupBy
+    GroupFields
+    SplitDevices
     Aggregate
     BaselineZeroing
     BaselinePoints
     BaselineRegion
+    BaselineOffset
     ShowOriginal
     isBaselined
   end
@@ -21,8 +24,28 @@ classdef statistics < iris.infra.StoredPrefs
       validateattributes(v,{'cell'},{'2d'}); 
       obj.put('GroupBy',v);
     end
+    
+    
+    % GroupFields
+    function v = get.GroupFields(obj)
+      v = obj.get('GroupFields',{'None'});
+    end
 
+    function set.GroupFields(obj,v)
+      validateattributes(v,{'cell'},{'2d'}); 
+      obj.put('GroupFields',v);
+    end
 
+    % BaselineZeroing
+    function v = get.SplitDevices(obj)
+      v = obj.get('SplitDevices',true);
+    end
+
+    function set.SplitDevices(obj,v)
+      validateattributes(v,{'logical'},{'scalar'});
+      obj.put('SplitDevices',v);
+    end
+    
     % Aggregate
     function v = get.Aggregate(obj)
       v = obj.get('Aggregate','Mean');
@@ -37,7 +60,7 @@ classdef statistics < iris.infra.StoredPrefs
 
     % BaselineZeroing
     function v = get.BaselineZeroing(obj)
-      v = obj.get('BaselineZeroing',true);
+      v = obj.get('BaselineZeroing',false);
     end
 
     function set.BaselineZeroing(obj,v)
@@ -63,8 +86,19 @@ classdef statistics < iris.infra.StoredPrefs
     end
 
     function set.BaselineRegion(obj,v)
-      v = validatestring(v,{'Beginning', 'End', 'Protocol'});
+      v = validatestring(v,{'Beginning', 'End', 'Fit (Asym)', 'Fit (Sym)'});
       obj.put('BaselineRegion',v);
+    end
+    
+    
+    % BaselineOffset
+    function v = get.BaselineOffset(obj)
+      v = obj.get('BaselineOffset',0);
+    end
+
+    function set.BaselineOffset(obj,v)
+      validateattributes(v,{'numeric'},{'>=',0,'scalar'})
+      obj.put('BaselineOffset',fix(v));
     end
     
     
@@ -86,7 +120,7 @@ classdef statistics < iris.infra.StoredPrefs
 
     function set.isBaselined(obj,v)
       validateattributes(v,{'logical','numeric'},{'binary','scalar'});
-      obj.put('isBaselined',boolean(v));
+      obj.put('isBaselined',logical(v));
     end
 
   end

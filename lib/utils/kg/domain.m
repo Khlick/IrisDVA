@@ -4,7 +4,9 @@ function varargout = domain(varargin)
 nIn = length(varargin);
 varargout = cell(1,min([nargout,nIn]));
 for I = 1:min([nargout,nIn])
-  varargout{I} = quantile(varargin{I},[0,1]);
+  thisRange = varargin{I};
+  thisRange(isnan(thisRange)) = nanmean(thisRange(:));
+  varargout{I} = quantile(thisRange,[0,1]);
 end
 end
 

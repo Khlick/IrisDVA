@@ -6,7 +6,6 @@ classdef menuServices < handle
     onDisplayChanged
     dataUpdated
     analyzeCurrent
-    dataRequest
     onReaderAdded
   end
   
@@ -73,17 +72,8 @@ classdef menuServices < handle
       
     end
     
-    function updateMenus(obj)
-      openMenus = obj.getOpenMenus;
-      if sum( ...
-          ismember( ...
-            openMenus, ...
-            {'Analyze','Protocols'} ...
-            ) ...
-          )
-        % there are open menus which need updating
-        fprintf('%s.updateMenus()\n',class(obj));
-      end
+    function pref = getPref(obj,prefName)
+      pref = obj.Preferences.getPreference(prefName);
     end
     
     function bind(obj,menuName)
@@ -91,12 +81,11 @@ classdef menuServices < handle
       
       if nargin < 2, error('Provide valid menu name.'); end
       menuName = validatestring(lower(menuName),properties(obj));
+      if obj.(menuName).isBound, return; end
       switch menuName
         case 'Analyze'
           az = obj.Analyze;
           obj.addListener(az, 'Close', @obj.destroyWindow);
-          obj.addListener(az, 'requestData', ...
-            @(s,e) notify(obj,'dataRequested'));
         case 'NewAnalysis'
           na = obj.NewAnalysis;
           obj.addListener(na, 'Close', @obj.destroyWindow);
@@ -108,16 +97,16 @@ classdef menuServices < handle
             @(s,e)notify(obj, 'onReaderAdded', eventData(e.Data)) ...
             );
           obj.addListener(pr, 'DisplayChanged', ...
-            @(s,e) notify(obj,'onDisplayChanged', eventData(e.Data)) ...
+            @(s,e) obj.displayChangedEvent('Display',e.Data) ...
             );
           obj.addListener(pr, 'StatisticsChanged', ...
-            @(s,e) notify(obj,'onDisplayChanged', eventData(e.Data)) ...
+            @(s,e) obj.displayChangedEvent('Statistics',e.Data) ...
             );
           obj.addListener(pr, 'FilterChanged', ...
-            @(s,e) notify(obj,'onDisplayChanged', eventData(e.Data)) ...
+            @(s,e) obj.displayChangedEvent('Filter',e.Data) ...
             );
           obj.addListener(pr, 'ScalingChanged', ...
-            @(s,e) notify(obj,'onDisplayChanged', eventData(e.Data)) ...
+            @(s,e) obj.displayChangedEvent('Scaling',e.Data) ...
             );
             
         case 'FileInfo'
@@ -136,7 +125,9 @@ classdef menuServices < handle
           ab = obj.About;
           obj.addListener(ab,'Close',@obj.destroyWindow);
         case 'Help'
+          return
       end
+      obj.(menuName).isBound = true;
     end
     
     function l = dispLis(obj)
@@ -168,10 +159,11 @@ classdef menuServices < handle
           if isempty(obj.Analyze) || ~obj.isOpen('Analyze')
             obj.Analyze = iris.ui.analyze();
           end
-          if nargin > 2
-            % varargin{1} will be an array of epoch numbers
-            obj.Analyze.EpochNumbers = varargin{1};
+          if nargin < 3
+            error('DataOverview Requires Handler object as input.');
           end
+          % varargin should contain data Handler
+          obj.Analyze.buildUI(varargin{:});
         case 'NewAnalysis'
           if isempty(obj.NewAnalysis) || ~obj.isOpen('NewAnalysis')
             obj.NewAnalysis = iris.ui.newAnalysis;
@@ -262,6 +254,7 @@ classdef menuServices < handle
           continue;
         end
         obj.(uis{p}).save();
+        obj.(uis{p}).update();
       end
     end
     
@@ -316,14 +309,10 @@ classdef menuServices < handle
     end
     
     function updateAnalysesList(obj)
-      %%% TODO
       % if obj.Analyze is open, update the dropdown list.
-      fprintf( ...
-        ['(TODO) menuServices.updateAnalysesList: ',...
-        'Update obj.Analyze if open.\n' ...
-        ] ...
-        );
-      % otherwise, do nothing
+      if obj.isOpen('Analyze')
+        obj.Analyze.refresh();
+      end
     end
     
   end
@@ -335,7 +324,7 @@ classdef menuServices < handle
     
     function destroyWindow(obj,src,~)
       srcClass = class(src);
-      
+      src.isBound = false;
       try
         src.selfDestruct();
       catch x
@@ -391,6 +380,18 @@ classdef menuServices < handle
         return;
       end
       
+    end
+    
+    % custom notify for display change
+    function displayChangedEvent(obj,src,evt)
+      import iris.infra.eventData;
+      
+      evData = struct();
+      evData.id = src;
+      evData.type = evt{1};
+      evData.event = evt{2};
+      
+      notify(obj, 'onDisplayChanged', eventData(evData)); 
     end
   end
   

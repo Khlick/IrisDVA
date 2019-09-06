@@ -29,6 +29,9 @@ classdef notes < iris.ui.UIContainer
         {'cell'}, {'ncols',2},...
         'IRIS:NOTES:setNotes', 'noteCell');
       obj.NotesTable.Data = noteCell;
+      lens = cellfun(@length,noteCell(:,2),'UniformOutput',true);
+      tWidth = obj.NotesTable.Position(3)-150;
+      obj.NotesTable.ColumnWidth = {150, max([tWidth,max(lens)*6.56])};
     end
     
     function selfDestruct(obj)
@@ -65,7 +68,7 @@ classdef notes < iris.ui.UIContainer
       % Create NotesTable
       obj.NotesTable = uitable(obj.container);
       obj.NotesTable.ColumnName = {'Timestamp'; 'Note'};
-      obj.NotesTable.ColumnWidth = {200, 'auto'};
+      obj.NotesTable.ColumnWidth = {150, 'auto'};
       obj.NotesTable.RowName = {};
       obj.NotesTable.HandleVisibility = 'off';
       obj.NotesTable.Position = [10, 6, pos(3)-20,pos(4)-50-6];

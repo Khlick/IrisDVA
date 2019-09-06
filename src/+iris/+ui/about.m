@@ -27,14 +27,15 @@ classdef about < iris.ui.UIContainer
           '<p class="lab dec">%s ',...
           '<span class="b">Version %s, developed for %s, by %s.', ...
           '</span> This software is provided as-is under the MIT License. ', ...
-          'See the github ', ...
-          '<a href="%s" target="_system">repository</a> ', ...
+          'See the ', ...
+          '<a href="%s" target="_system">documentation</a> ', ...
           'for more information.</p>' ...
         ], ...
         aboutText{:});
       iter = 0;
       pause(0.1);
       while true
+        if ~obj.window.isWindowValid, continue; end
         try
           % inject css
           obj.window.executeJS( ...
@@ -95,13 +96,11 @@ classdef about < iris.ui.UIContainer
           %log this
           iter = iter+1;
           if iter > 5, rethrow(x); end
-          pause(0.25);
+          pause(0.31);
           continue;
         end
         break;
       end
-      % add the close listener
-      addlistener(obj, 'Close', @(s,e)obj.onCloseRequest);
     end
     
     % Construct view
@@ -156,16 +155,16 @@ classdef about < iris.ui.UIContainer
       obj.ByLine.Text = Info.extendedName;
     end
     
-    function onCloseRequest(obj)
+  end
+  
+  methods
+    
+    function selfDestruct(obj)
+      % selfDestruct Integration with menuServices
       obj.shutdown;
-      obj.reset;
-      obj.save;
+      obj.reset();
+      obj.save();
     end
     
-  end
-  methods
-    function selfDestruct(obj)
-      obj.onCloseRequest;
-    end
   end
 end

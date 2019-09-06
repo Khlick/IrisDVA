@@ -2,17 +2,45 @@ function fileLoad(app,~,event)
 
 opts = app.options;
 
-% split camel case
-[prefix,type] = regexp(event.Data, '^[a-zA-z]{1}[a-z]*(?=[A-Z]?)','match','split');
+% split camel case from senders message
+[prefix,~] = regexp(event.Data, '^[a-zA-z]{1}[a-z]*(?=[A-Z]?)','match','split','once');
+[~,type] = regexp( ...
+  event.EventName, ...
+  '^[a-zA-z]{1}[a-z]*(?=[A-Z]?)', ...
+  'match', ...
+  'split', ...
+  'once' ....
+  );
+type = type{end};
 % type will be 1x2 cell array with type{end} having the split leftover
 filterText = app.validFiles.getFilterText;
+allSupport = filterText(end,:);
+filterText(end,:) = [];
+sesExt = strcat('*.',app.validFiles.getIDFromLabel('session').exts);
+
 
 % order the filterText for the previously selected file type
-fltReorder = contains(filterText(:,1), opts.PreviousExtension);
+fltReorder = cellfun( ...
+  @(ex) ...
+    all(ismember(ex, opts.PreviousExtension)), ...
+  filterText(:,1), ...
+  'UniformOutput', true ...
+  );
 filterText = [filterText(fltReorder,:);filterText(~fltReorder,:)];
 
-if strcmpi(type{end},'Session')
-  filterText = filterText(ismember(filterText(:,1), '*.isf'),:);
+%
+switch type
+  case 'Session'
+    % if loading a session, filter out non-session options
+    filterText = filterText(ismember(filterText(:,1), sesExt),:);
+  case 'Data'
+    % otherwise use previous unless previous was a session file, then reorder to
+    % first non-session file
+    while ismember(filterText(1,1),sesExt)
+      filterText = circshift(filterText,-1);
+    end
+    % append all supported back
+    filterText(end+1,:) = allSupport;
 end
 
 if iris.app.Info.checkDir(opts.UserDirectory)
@@ -31,7 +59,7 @@ end
 
 % check if files were selected
 if isempty(fltIdx)
-  app.show();
+  app.ui.focus();
   return; 
 end
 
@@ -41,18 +69,18 @@ app.options.UserDirectory = root;
 % update the previous extension
 selectedExt = filterText{fltIdx,1};
 selectedExt = strsplit(selectedExt,';');
-selectedExt = selectedExt{1};
 app.options.PreviousExtension = selectedExt;
 
 %
 app.options.save();
+app.ui.toggleSwitches('off');
 
 % get the reader function name
-label = regexprep(filterText{fltIdx,2}, '\s\(.*\)', '');
+label = filterText{fltIdx,2};
 reader = app.validFiles.getReadFxnByLabel(label);
 
 % send the files and reader to the data handler
-app.handler.(lower(char(prefix)))(files,reader);
+app.handler.(lower(prefix))(files,reader);
 
 % bring the window to the front
 app.ui.focus();

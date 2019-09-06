@@ -89,7 +89,7 @@ classdef busyShow < iris.ui.JContainer
     
     function setText(obj,txt)
       obj.iAx.setBusyText(txt);
-      drawnow();
+      %drawnow();
     end
     
     function show(obj)

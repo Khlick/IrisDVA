@@ -31,3 +31,24 @@
     transform: rotate(360deg);
   }
 }
+
+.funtext {
+  width: 0px;
+  animation:
+    fadein 5s ease 0s 1 normal forwards,
+    arrive 5s ease 0s 1 normal forwards;
+}
+
+@keyframes fadein {
+  0% {opacity:0;width:0%;}
+  10% {opacity:1;width:0%;}
+  15% {width:100%;}
+  100% {opacity:1;width:100%;}
+}
+
+@keyframes arrive {
+  0% { margin-left:-800px; }
+  5% { margin-left:-800px; }
+  20% { margin-left:0px; }
+  100% { margin-left:0px; }
+}

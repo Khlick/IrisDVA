@@ -1,5 +1,10 @@
 classdef AxesPanel < handle
   
+  events
+    DataSelected
+    PlotUpdated
+  end
+  
   properties (SetObservable = true)
     Position
     XLabel
@@ -79,9 +84,42 @@ classdef AxesPanel < handle
       obj.Axes.BackgroundColor = [1 1 1];
       obj.Axes.FontName = Aes.uiFontName;
       obj.Axes.XLimMode = 'manual';
-      obj.Axes.YLimMode = 'auto';
+      obj.Axes.YLimMode = 'manual';
       obj.Axes.Position = obj.getAxesPosition;
       
+      %%% Experimental modification of the HTMLCanvas object.
+      % Combining these hacks appears to have no effect on plotting but highly
+      % increases performance. One caveat is that with serversiderendering = 'on', we
+      % get a slight degradation of highly sampled data. Not a problem considering
+      % the huge amount of speed increase.
+      % Let's hope MW don't see this and disable it, as they are wont to do.
+      
+      %{
+      % this might break drawnow calls, not sure
+      try %#ok<TRYNC>
+        for lsn = 1:length(obj.Axes.AutoListeners__)
+          % there are 2 listeners here that call on every postset. Not sure what the
+          % callbacks do, as without them we see no change in visible or in clip. It
+          % may have something to do with specific types of plots excluding points
+          % and lines.
+          obj.Axes.AutoListeners__{lsn}.Enabled = false;
+        end
+      end
+      %}
+      try %#ok<TRYNC>
+        % Setting this to 'on' reduces the quality of the lines but increases speed
+        % of drawing them and zooming/panning. So I can't seem to find what exactly
+        % is changed, I would expect that the render is being sent rather than the
+        % data, meaning, possibly, a bmp is displayed rather than a svg.
+        obj.Axes.NodeChildren.ServerSideRendering = 'on';
+      end
+      
+      try %#ok<TRYNC>
+        % This may not have an effect. It seems a slight increase, maybe, when this
+        % warning is turned off, perhaps only because the function is called or
+        % terminates early?
+        obj.Axes.NodeChildren.RenderWarningLevel = 'off';
+      end
       
       % set other properties on the axis, or allow override of default
       fields = fieldnames(pr.Unmatched);
@@ -232,7 +270,7 @@ classdef AxesPanel < handle
     
     function bringLinesToFront(obj,lObjs)
       % get the axes children that are lines
-      axChInds = boolean(zeros(numel(obj.Axes.Children),1));
+      axChInds = false(numel(obj.Axes.Children),1);
       for ch = 1:numel(obj.Axes.Children)
         axChInds(ch) = isa(obj.Axes.Children(ch),'matlab.graphics.primitive.Line');
       end
@@ -241,7 +279,7 @@ classdef AxesPanel < handle
       % order doesnt matter, but let's keep them consistent.
       obj.currentLines = [obj.currentLines(inds),obj.currentLines(~inds)];
       obj.Axes.Children(axChInds) = cat(1,obj.currentLines{:});
-      drawnow('nocallbacks');
+      
     end
     
   end
@@ -274,7 +312,9 @@ classdef AxesPanel < handle
         case 'Y'
           obj.ylab.Text =  obj.(src.Name);
       end
-      drawnow('nocallbacks');
+      % drawnow has some bug that causes uifigures to hang forever use pause?
+      %drawnow('limitrate');
+      pause(0.01);
       if isempty(regexp(obj.(src.Name),'[^a-zA-Z0-9\[\]\s,]','once'))
         % Not math leave as non jax
         return;
@@ -303,6 +343,33 @@ classdef AxesPanel < handle
           'MathJax.Hub.Typeset();' ...
         ] ...
         );
+      
+    end
+    
+    function onDataSelected(obj,source,event)
+      import iris.infra.eventData;
+      
+      [x,y] = getNearestDataPoint( ...
+        event.IntersectionPoint(1:2), ...
+        source.XData, ...
+        source.YData ...
+        );
+      
+      eventStruct = struct();
+      eventStruct.lastDataCoordinates = [x,y];
+      eventStruct.datumIndex = source.UserData.index;
+      
+      notify(obj,'DataSelected',eventData(eventStruct));
+      % for future: selection of data finds nearest data point and broadcasts. This
+      % can be used to mimic ginput when we want to select the best scaling value.
+      % to do that we would likely have a uiwait called on the figure handle so we
+      % need to get the handle and resume it after we make the selection
+      %{
+      % locate the figure handle
+      figureHandle = ancestor(obj.Axes,'figure','toplevel');
+      % Call uiresume on figure in the event that Iris is waiting for a press
+      uiresume(figureHandle);
+      %}
       
     end
     
@@ -336,10 +403,10 @@ classdef AxesPanel < handle
   methods (Access = public)
     
     function update(obj,hD,hL)
-      obj.resetView;
+      %obj.resetView;
       % temporarily set axis modes to auto
-      obj.Axes.YLimMode = 'auto';
-      obj.Axes.XLimMode = 'auto';
+      %obj.Axes.YLimMode = 'auto';
+      %obj.Axes.XLimMode = 'auto';
       % if lines exist, 
       nExist = numel(obj.currentLines);
       for ix = 1:numel(hD)
@@ -372,6 +439,10 @@ classdef AxesPanel < handle
         lObj.DisplayName = hD(ix).name; % for exported figures
         % Add the User Data for interactive purposes
         lObj.UserData = hD(ix).UserData;
+        % Use a lines hit interactivity to select the line
+        if hD(ix).isInteractive
+          lObj.ButtonDownFcn = @obj.onDataSelected;
+        end
         % if appending, simply grow the currentLines property. Otherwise
         % the handles are the same
         if appendLine
@@ -399,6 +470,9 @@ classdef AxesPanel < handle
       % update scales
       obj.Axes.XScale = hL.xaxis.scale;
       obj.Axes.YScale = hL.yaxis.scale;
+      
+      %notify plot updated
+      notify(obj,'PlotUpdated');
     end
     
     function clearView(obj)
@@ -429,29 +503,34 @@ classdef AxesPanel < handle
       % I want the xaxis to clip directly on the data bounds.
       obj.Axes.XLimMode = 'manual';
       obj.Axes.XLim = obj.domain.x;
-      drawnow();
+      %drawnow('limitrate');
     end
     
-    function setHighlighted(obj,pos,defaultWidth)
+    function setHighlighted(obj,pos,defaultWidth,newColor)
+      if nargin < 4, newColor = []; end
       hlWidth = defaultWidth+2;
-      hlInds = boolean(zeros(1,obj.nLines));
+      hlInds = false(1,obj.nLines);
       for I = 1:obj.nLines
         lObj = obj.currentLines{I};
         if strcmpi(lObj.LineStyle, 'none'), continue; end
-        if lObj.UserData.index == pos
+        if any(lObj.UserData.index == pos)
           lObj.LineWidth = hlWidth;
           hlInds(I) = true;
         else
           lObj.LineWidth = defaultWidth;
         end
+        if ~isempty(newColor)
+          lObj.Color = newColor;
+        end
       end
       obj.bringLinesToFront(obj.currentLines(hlInds));
     end
     
-    function highlightByName(obj,names,defaultWidth)
+    function highlightByName(obj,names,defaultWidth,newColor)
+      if nargin < 4, newColor = []; end
       if ~iscell(names), names = cellstr(names); end
       hlWidth = defaultWidth+2;
-      hlInds = boolean(zeros(1,obj.nLines));
+      hlInds = false(1,obj.nLines);
       for I = 1:numel(obj.currentLines)
         lObj = obj.currentLines{I};
         if strcmpi(lObj.LineStyle, 'none'), continue; end
@@ -461,11 +540,12 @@ classdef AxesPanel < handle
         else
           lObj.LineWidth = defaultWidth;
         end
+        if ~isempty(newColor)
+          lObj.Color = newColor;
+        end
       end
       obj.bringLinesToFront(obj.currentLines(hlInds));
-    end
-    
-    
+    end    
     
   end
 

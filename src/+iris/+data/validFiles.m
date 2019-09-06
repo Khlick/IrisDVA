@@ -7,7 +7,7 @@ classdef validFiles < handle
 % Iris DVA's data handler expects reader functions to return a struct with
 % a generallized structure. See the documentation.
 %%%%%
-  properties (SetAccess = private)
+  properties (SetAccess = private, Hidden = true)
     options
   end
   
@@ -48,7 +48,7 @@ classdef validFiles < handle
       
       tf = ismember(ext, strcat('.',[list.exts]));
     end
-    
+    %%%
     function labels = getLabels(obj)
       labels = cellfun( ...
         @(s)s.label, ...
@@ -56,7 +56,7 @@ classdef validFiles < handle
         'UniformOutput', false ...
         )';
     end
-    
+    %%%
     function extensions = getExtensions(obj)
       extensions = cellfun( ...
         @(s)s.exts, ...
@@ -64,34 +64,44 @@ classdef validFiles < handle
         'UniformOutput', false ...
         )';
     end
-    
+    %%%
     function id = getIDFromLabel(obj,desc)
+      key = obj.getKeyFromLabel(desc);
+      id = obj.options.Supported(key);
+    end
+    function id = getKeyFromLabel(obj,desc)
       labs = obj.getLabels();
       keys = obj.options.Supported.keys();
-      id = keys{ismember(labs,desc)};
+      id = keys{contains(lower(labs),lower(desc))};
     end
-    
-    function  filtStr = getFilterText(obj)
+    %%%
+    function  filtStr = getFilterText(obj,includeCombined)
+      if nargin < 2, includeCombined = true; end
       exts = obj.getExtensions();
       extID = cellfun(@(e) strjoin(strcat('*.', e),';'), exts, 'unif', 0);
-      extLab = strcat( ...
-        obj.getLabels(), ...
-        ' (', ...
-        cellfun(@(e) strjoin(strcat('*.', e),','), exts, 'unif', 0), ...
-        ')' ...
-        );
+      % create a string for each type
+      extLab = obj.getLabels();
+      % Create a supported files combining all filters
+      if includeCombined
+        extID{end+1} = strjoin(extID(1:end),';');
+        extLab{end+1} = 'All Supported Files';
+      end
       filtStr = [extID,extLab];
     end
     %%% RETRIEVE READERS
     function rf = getReadFxnByLabel(obj,lab)
-      id = obj.getIDFromLabel(lab);
-      rf = obj.options.Supported(id).reader;
+      key = obj.getKeyFromLabel(lab);
+      rf = obj.options.Supported(key).reader;
     end
+    %
     function rf = getReadFxnByID(obj,readerID)
       rf = obj.options.Supported(readerID);
     end
+    %
     function rf = getReadFxnFromFile(obj,fileName)
       [~,~,ext] = fileparts(fileName);
+      % support any case
+      ext = lower(ext);
       list = cellfun(@(s)s,obj.options.Supported.values,'UniformOutput',1);
       supportedExtensions = [list.exts];
       loc = find(ismember(strcat('.',supportedExtensions),ext),1,'first');

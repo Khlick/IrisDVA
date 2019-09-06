@@ -76,7 +76,14 @@ classdef Tracker < handle
         obj.currentIndex = 0;
       end
     end
-       
+    
+    function revert(obj)
+      if isempty(obj.previousChange.selected)
+        iris.app.Info.throwError('Cannot revert the tracker!');
+      end
+      obj.currentIndex = obj.previousChange.selected;
+    end
+    
     function append(obj,numToAppend)
       obj.total = obj.total + numToAppend;
     end

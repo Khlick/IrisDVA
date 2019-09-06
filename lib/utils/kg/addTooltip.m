@@ -7,7 +7,9 @@ if nargin < 5, verbose = false; end
 if nargin < 4, attrName = 'customtooltip'; end
 % tooltip direction
 if nargin < 3, direction = 'up'; end
-direction = validatestring(direction, {'up','down','left','right'});
+
+validDir = @(d)validatestring(d, {'up','down','left','right'});
+direction = validDir(direction);
 
 if ~exist('mlapptools', 'file')
   error([...
@@ -47,7 +49,7 @@ recurse = true;
 w.executeJS('if(typeof elem !== ''undefined''){ var elem, parent; } ');
 
 switch nodeType
-  case 'Button'
+  case {'Button','DropDown'}
     %apply class to container, set parent, self, children: overflow:
     %visible
     elemNodeString = sprintf( ...
@@ -67,7 +69,7 @@ switch nodeType
       'dojo.query("[%s = ''%s'']")[0].parentNode', ...
       elemID.ID_attr,elemID.ID_val);
     
-  case {'ToggleSwitch','Switch','RockerSwitch'}
+  case {'ToggleSwitch','Switch','RockerSwitch','CheckBox'}
     % for now, add to the elem.firstChild the div: 'vc-SvgContainer'
     % (data-tag=#) and unmask it. i.e. the switch
     % elemID points to parent node of the switches, in order to preserve
@@ -79,9 +81,12 @@ switch nodeType
       elemID.ID_attr,elemID.ID_val ...
       );
     
-    parentNodeString = 'elem.parentNode';
-    
-    recurse = false;
+    if ~strcmpi(nodeType,'checkbox')
+      parentNodeString = 'elem.parentNode';
+      recurse = false;
+    else
+      parentNodeString = 'elem.parentNode.parentNode';
+    end
     
   otherwise
     % for now, let's throw a warning and then use the button method. We
@@ -98,7 +103,7 @@ end
 
 % Create JS call to add the tooltip attribute to desired node
 tooltipJS = sprintf( ...
-  ['elem = dojo.attr(%s, "%s", "%s");', ...
+  ['elem = dojo.attr(%s, "%s", `%s`);', ...
   'dojo.attr(elem, "flow", "%s");', ...
   'makeVisible(elem,recurse=false);', ...
   'parent = %s;', ...

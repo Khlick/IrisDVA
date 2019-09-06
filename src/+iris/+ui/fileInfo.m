@@ -18,12 +18,15 @@ classdef fileInfo < iris.ui.UIContainer
       if nargin < 2, return; end
       if obj.isClosed, obj.rebuild(); end
       
-      obj.clearView;
+      obj.clearView();
       
       obj.show;
       files = [varargin{:}];
       obj.PropNodes = {};
       obj.recurseInfo(files, 'File', obj.FileTree);
+      obj.FileTree.expand();
+      obj.FileTree.SelectedNodes = obj.PropNodes{1};
+      obj.setData(obj.PropNodes{1}.NodeData);
     end
     
     function tf = get.isclear(obj)
@@ -59,7 +62,12 @@ classdef fileInfo < iris.ui.UIContainer
         %find nests
         notNested = cellfun(@(v) ~isstruct(v),vals,'unif',1);
         if ~isfield(this,'File')
-          nodeName = sprintf('%s %d', name, f);
+          hasName = contains(lower(props),'name');
+          if any(hasName)
+            nodeName = sprintf('%s (%s)',vals{hasName},name);
+          else
+            nodeName = sprintf('%s %d', name, f);
+          end
         else
           nodeName = this.File;
         end
@@ -72,10 +80,26 @@ classdef fileInfo < iris.ui.UIContainer
         end
         obj.PropNodes{end+1} = thisNode;
         %gen nodes
-        if ~any(~notNested), return; end
+        if ~any(~notNested), continue; end
         isNested = find(~notNested);
         for n = 1:length(isNested)
-          obj.recurseInfo(vals{isNested(n)},props{isNested(n)},thisNode);
+          nestedVals = vals{isNested(n)};
+          % if the nested values is an empty struct, don't create a node.
+          areAllEmpty = all( ...
+            arrayfun( ...
+              @(sss)all( ...
+                cellfun( ...
+                  @isempty, ...
+                  struct2cell(sss), ...
+                  'UniformOutput', 1 ...
+                  ) ...
+                ), ...
+              nestedVals, ...
+              'UniformOutput', true ...
+              ) ...
+            );
+          if areAllEmpty, continue; end
+          obj.recurseInfo(nestedVals,props{isNested(n)},thisNode);
         end
       end
     end
@@ -84,6 +108,9 @@ classdef fileInfo < iris.ui.UIContainer
     function setData(obj,d)
       d(:,2) = arrayfun(@unknownCell2Str,d(:,2),'unif',0);
       obj.PropTable.Data = d;
+      lens = cellfun(@length,d(:,2),'UniformOutput',true);
+      tWidth = obj.PropTable.Position(3)-127;
+      obj.PropTable.ColumnWidth = {125, max([tWidth,max(lens)*6.55])};
     end
     
     

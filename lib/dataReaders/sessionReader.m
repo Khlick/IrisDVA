@@ -1,7 +1,23 @@
-function [outputArg1,outputArg2] = sessionReader(inputArg1,inputArg2)
-%SESSIONREADER Summary of this function goes here
-%   Detailed explanation goes here
-outputArg1 = inputArg1;
-outputArg2 = inputArg2;
+function session = sessionReader(fileName)
+%SESSIONREADER Read Iris Session Files
+%   
+try
+  load(fileName,'-mat','session');
+  if ~all(contains(fieldnames(session),{'Meta','Data','Notes','Files'}))
+    throw( ...
+      MException( ...
+        'SessionReader:ImportStruct', ...
+        'File does not contain correct fields' ...
+        ) ...
+      );
+  end
+catch e
+  er = MException( ...
+    'SessionReader:ImportStruct', ...
+    'Session reader failed with message: "%s".', e.message ...
+    );
+  throw(er);
+end
+
 end
 

@@ -21,7 +21,7 @@ switch dr
     newSel = cSel.selected(1) + (0:1:(nNew-1));
   case {'left', 'right'}
     if strcmpi(sz, 'within')
-      sz = 'small';
+      sz = 'Small';
       within = true;
     else
       within = false;
@@ -38,10 +38,10 @@ switch dr
       % here after updating the ui.selection
       uiSel = app.ui.selection;
       newHl = uiSel.highlighted + stepSize;
-      if newHl > uiSel.selection(end)
-        newHl = uiSel.selection(end);
-      elseif newHl < uiSel.selection(1)
-        newHl =  uiSel.selection(1);
+      if newHl > uiSel.selected(end)
+        newHl = uiSel.selected(end);
+      elseif newHl < uiSel.selected(1)
+        newHl =  uiSel.selected(1);
       end
       if isequal(newHl,uiSel.highlighted), return; end
       uiSel.highlighted = newHl;

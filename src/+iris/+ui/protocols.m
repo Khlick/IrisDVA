@@ -29,6 +29,12 @@ classdef protocols < iris.ui.UIContainer
         {'cell'}, {'ncols',2},...
         'IRIS:Protocols:setProtocols', 'protocolCell');
       obj.ProtocolsTable.Data = protocolCell;
+      lens = cellfun(@length,protocolCell(:,2),'UniformOutput',false);
+      lens(~cellfun(@isnumeric,lens,'UniformOutput',true)) = [];
+      lens = [lens{:}];
+      tabWidth = obj.ProtocolsTable.Position(3) - 220; %20 px for scrollbar?
+      obj.ProtocolsTable.ColumnWidth = {200, max([tabWidth,max(lens)*6.55])};
+      obj.ProtocolsTable.ColumnSortable = [true,true];
     end
     
     function selfDestruct(obj)
@@ -63,6 +69,7 @@ classdef protocols < iris.ui.UIContainer
       obj.ProtocolsTable = uitable(obj.container);
       obj.ProtocolsTable.ColumnName = {'Property'; 'Value'};
       obj.ProtocolsTable.ColumnWidth = {200, 'auto'};
+      obj.ProtocolsTable.ColumnSortable = [true,true];
       obj.ProtocolsTable.RowName = {};
       obj.ProtocolsTable.HandleVisibility = 'off';
       obj.ProtocolsTable.Position = [10, 6, pos(3)-20,pos(4)-50-6];
