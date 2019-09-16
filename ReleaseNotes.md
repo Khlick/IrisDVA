@@ -10,6 +10,11 @@
 *Contents:*
 - [Iris DVA](#iris-dva)
   - [Introduction](#introduction)
+    - [Some Commentary](#some-commentary)
+  - [2019-09-15](#2019-09-15)
+    - [Release 2.0.31a](#release-2031a)
+  - [2019-09-13](#2019-09-13)
+    - [Release 2.0.3a](#release-203a)
   - [2019-09-05](#2019-09-05)
     - [Release 2.0.29a](#release-2029a)
   - [2019-09-04](#2019-09-04)
@@ -34,11 +39,36 @@
 
 ## Introduction
 
-Iris DVA is a MATLAB based tool for visualizing and analyzing electrophysiology data. Iris was originally created to standardize the process for viewing and performing offline analysis of physiological data acquired via [Symphony](https://symphony-das.github.io/) in the Sampath Lab, UCLA. While Iris is still in development stages, a secondary goal was to make the software extensible and modular to allow for any data and any analysis to be easily created by the end-user. Documentation is essentially non-existent except which resides in code comments, some of which is likely to be out-dated or simply inadequate... Sorry about that!
+Iris DVA is a MATLAB based tool for visualizing and analyzing electrophysiology data. Iris was originally created to standardize the process for viewing and performing offline analysis of physiological data acquired via [Symphony](https://symphony-das.github.io/) in the Sampath Lab, UCLA. While Iris is still in development stages, a secondary goal was to make the software extensible and modular to allow for any data and any analysis to be easily created by the end-user. Documentation is essentially non-existent except which resides in code comments, UI tooltips, and this document, some of which is likely to be out-dated or simply inadequate... Sorry about that! Eventually, documentation will reside in a [gitbook](https://sampathlab.gitbook.io/iris-dva).
 
-> *Usage Note:* Iris was developed in MATLAB 9.6+ (2019a) on windows (x64) platform using both 1080p and 4K displays. That said, it has not been tested on Mac or Unix distributions of MATLAB and if screen scaling (typically handled by the OS) is other than 100%, visual issues may be present. This app utilizes MATLAB's newer `uifigure` (app designer) which has some inherent bugs. One of which occurs sometimes when `drawnow()` is called, causing MATLAB to hang during a "coalescer flush" and the app ui to stop responding. This will not allow you to close the app using the quit or close window commands. Instead, use `delete(findall(groot,'HandleVisibility','off'))` then restart MATLAB. I am working to eliminate all `drawnow()` requirements, and there are very few.
+> *Usage Note:* Iris was developed in MATLAB 9.6+ (2019a) on windows (x64) platform using both 1080p and 4K displays. That said, it has not been tested on Mac or Unix distributions of MATLAB and if screen scaling (typically handled by the OS) is other than 100%, visual issues may be present. This app utilizes MATLAB's newer `uifigure` (app designer) which has some inherent bugs. One of which occurs sometimes when `drawnow()` is called, causing MATLAB to hang during a "coalescer flush" (see: matlab.ui.internal.controller.FigureController/flushCoalescer (line 473) ) and the app ui to stop responding. The best way to resolve this is to issue a `drawnow()` command from the command window with the debugger in "pause on error" mode and pressing `cmd+c` or `Ctrl+c` when the console hangs. It should take you to the `flushCoalescer` method. Hit continue in the editor toolstrip (may have to press more than once). Iris will resume after that. I've also noticed that this happens in other appDesigner apps. Hopefully the next MATLAB release will resolve this.
+
+### Some Commentary
+
+A major issue with the web-based `uifigure` is that it is remarkably unstable, especially when compared to the traditional Java-based figures. Where MATLAB is mostly linked to Java, at least when it comes to UI components, the 'new' web-based figures are linked to JavaScript (no, they are not related). The new web-UI leverages React and Dojo toolkits to create and manage elements in the DOM, this is presented in a modern Chromium web browser, all of which means we can make edits using CSS, HTML and JavaScript directly from MATLAB (see: [this](https://undocumentedmatlab.com/blog/customizing-uifigures-part-1), [this](http://undocumentedmatlab.com/blog/customizing-uifigures-part-2), [this](https://undocumentedmatlab.com/blog/customizing-uifigures-part-3), [this](https://undocumentedmatlab.com/blog/customizing-web-gui-uipanel) and [that](https://undocumentedmatlab.com/blog/matlab-callbacks-for-uifigure-javascript-events)).
 
 ---
+
+*Release Schedule*
+
+## 2019-09-15
+
+### Release 2.0.31a
+
+- fixed issue with handler subsetting mulitple files. Notes indices are now properly re-allocated when using copySubs() method. (mostly for export to IrisData);
+
+## 2019-09-13
+
+Things are coming together. There is still a persistent hang that occurs seemingly without pattern. Sometimes, simply waiting a minute will be enough to resolve the issue. Other times you have to kill the app by deleting the hidden handles then restarting MATLAB. Unfortunately, the hang never causes an error and isn't a result of a runaway loop (on the app side). 
+
+### Release 2.0.3a
+
+- fixed minor bugs and typos
+- enabled modules and added ResponseFamilies module as a builtin module
+- fixed plotting mechanism which is aware of devices with singular responses. These are now forced into "markers" mode to make them visible.
+- added zero-lines to the axes for visual reference. These are currently always "on" until I make a preference toggle for it.
+- fixed dataOverview inclusion switching. Now icons in the datum tree correctly indicate inclusion status.
+- updated symphony reader to include more parameters from available devices. Now, you can find the "background" `'mean'` of a stimulus or the `'value'` of a passive device (i.e. not a stimulus device) in the Specifications tables/cells. These can be located in the Specs table with the [MATLAB compatible variable name](https://www.mathworks.com/help/matlab/matlab_prog/variable-names.html) using the following patterns (though depending on how you setup your Symphony Rigs, this may be different): `'stimulus_<DeviceName>_mean'` (usually for the builtin pulse generator) or `'device_<DeviceName>_value'`, which should be the same no matter how your setup is configured.
 
 ## 2019-09-05
 

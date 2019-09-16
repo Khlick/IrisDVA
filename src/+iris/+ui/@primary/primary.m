@@ -192,9 +192,18 @@ classdef primary < iris.ui.UIContainer
         return
       end
       A = obj.window.getScreenshot;
-      f = figure;
-      a = axes(f,'Visible', 'off');
+      f = figure( ...
+        'Name','Iris Screenshot', ...
+        'NumberTitle', 'on', ...
+        'Visible', 'off', ...
+        'units', 'pixels' ...
+        );
+      f.Position = [100,100,obj.position(3:4)+[0,-10]];
+      a = axes(f,'units', 'pixels');
       image(a,A);
+      a.Visible = 'off';
+      a.Position = [0,0,f.InnerPosition(3:4)];
+      f.Visible = 'on';
     end
     
     function setDisplayData(obj,propCell)
@@ -445,37 +454,42 @@ classdef primary < iris.ui.UIContainer
       s.selection = obj.selection;
     end
     
-    function toggleSwitches(obj,status)
+    function toggleSwitches(obj,status) %#ok
       if nargin < 2
-        status = 'off';
+        status = 'off'; %#ok
       end
-      import iris.app.Aes;
       
-      if strcmpi(status,'off')
-        v = '0';
-        col = Aes.appColor(1,'red');
-      else
-        v = '1';
-        col = Aes.appColor(1,'green');
-      end
       if obj.isAggregated
-        obj.StatsSwitch.Value = v;
-        obj.StatsLamp.Color = col;
+        obj.manualSwitchThrow('Stats');
+        pause(1);
       end
       if obj.isFiltered
-        obj.FilterSwitch.Value = v;
-        obj.FilterLamp.Color = col;
+        obj.manualSwitchThrow('Filter');
+        pause(1);
       end
       if obj.isBaselined
-        obj.BaselineSwitch.Value = v;
-        obj.BaselineLamp.Color = col;
+        obj.manualSwitchThrow('Baseline');
+        pause(1);
       end
       if obj.isScaled
-        obj.ScaleSwitch.Value = v;
-        obj.ScaleLamp.Color = col;
+        obj.manualSwitchThrow('Scale');
+        pause(1);
       end
-      pause(0.01);%drawnow('limitrate');
-      notify(obj,'RequestRedraw');
+      %pause(0.01);%drawnow('limitrate');
+      %notify(obj,'RequestRedraw');
+    end
+    
+    function manualSwitchThrow(obj,switchName)
+      % get the source and create event data to toggle it.
+      prps = properties(obj);
+      pName = prps(endsWith(prps,'Switch')&contains(prps,switchName,'IgnoreCase',true));
+      prop = obj.(pName{1});
+      % get current value:
+      prevVal = prop.Value;
+      newVal = num2str(~strcmp(prevVal,'1'));
+      evt = matlab.ui.eventdata.ValueChangedData(newVal,prevVal);
+      prop.Value = newVal;
+      prop.ValueChangedFcn(prop,evt);
     end
   end
 end

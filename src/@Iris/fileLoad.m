@@ -79,6 +79,15 @@ app.ui.toggleSwitches('off');
 label = filterText{fltIdx,2};
 reader = app.validFiles.getReadFxnByLabel(label);
 
+% kill dataOverview if it is open
+app.services.shutdown( ...
+  { ...
+    'Analyze', 'NewAnalysis', 'FileInfo', 'DataOverview', 'Notes', 'Protocols' ...
+  } ...
+  );
+
+pause(0.05);
+
 % send the files and reader to the data handler
 app.handler.(lower(prefix))(files,reader);
 

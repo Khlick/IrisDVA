@@ -322,10 +322,34 @@ classdef Iris < iris.app.Container
     function callModule(app,~,event)
       if ~app.handler.isready, return; end
       % collect current data from handler then send to module.
-      fprintf(2, ...
-        ['Modules aren''t supported yet.', ...
-        ' Builtin modules will be a part of a future release.\n' ...
-        ]);
+      doSave = iris.ui.questionBox( ...
+        'Prompt', 'Send data from the current view, entire session, or without any inputs?', ...
+        'Title', 'Open Module', ...
+        'Options', {'Current','Session','Empty','Cancel'}, ...
+        'Default', 'Cancel' ...
+        );
+
+      switch doSave.response
+        case 'Current'
+          iData = app.handler.exportCurrent();
+        case 'Session'
+          iData = app.handler.export();
+        case 'Empty'
+          iData = [];
+        otherwise
+          return;
+      end
+      
+      try
+        iris.modules.(event.Data)(iData);
+      catch x
+        iris.app.Info.throwError( ...
+          sprintf( ...
+          'Could not open module with reason:\n"%s"\n', ...
+          x.message ...
+          ) ...
+          );
+      end
     end
     %%%
     function saveSession(app,~,~)
@@ -371,9 +395,10 @@ classdef Iris < iris.app.Container
       app.stop;
     end
     
-    function onRedrawRequest(app,source,event)
+    function onRedrawRequest(app,~,~)
       if ~app.handler.isready, return; end
       % future: when stats switch is implemented
+      app.draw();
     end
     
     function openSessionConverter(app,~,~)
@@ -401,17 +426,37 @@ classdef Iris < iris.app.Container
     end
     
     function onFixLayoutRequest(app,~,~)
+      hasData = app.handler.isready;
+      if hasData
+        import iris.infra.eventData;
+        currentState = app.handler.currentSelection.selected;
+        tmpData = [tempname,'.isf'];
+        session = app.handler.saveobj();
+        save(tmpData,'session','-v7.3');
+        pause(0.01);
+        for tID = {'Filter', 'Scale', 'Baseline'}
+          Iris.setTogglePref(eventData(struct('source',tID{1},'value',false)));
+        end
+      end  
+      
       app.removeAllListeners();
+      
       app.ui.shutdown();
       app.ui.reset();
-      app.ui.rebuild();
-      %drawnow();
       pause(0.01);
+      
+      app.ui.rebuild();
+      pause(0.01);
+      
       app.bind();
-      app.show();
-      if app.handler.isready
-        app.draw()
+      if hasData
+        app.handler.new(tmpData);
+        app.handler.currentSelection = currentState;
+        drawnow();
+      else
+        app.ui.toggleDataDependentUI('off');
       end
+      app.show();
     end
     
   end

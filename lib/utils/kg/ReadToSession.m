@@ -30,7 +30,7 @@ end
 
 fullFiles = fullfile(files(:,2),files(:,1));
 
-% popup an iris dialog to 
+
 [totalDataSize,eachFileSize] = iris.app.Info.getBytes(fullFiles);
 accDataRead = 0;
 
@@ -41,7 +41,7 @@ pause(1);
 nf = size(files,1);
 
 if nf > 1
-  POOL = gcp(); 
+  POOL = gcp();
   cleanUpFx = @() cleanupWithPool(POOL,LS);
 else
   cleanUpFx = @() cleanupNoPool(LS);

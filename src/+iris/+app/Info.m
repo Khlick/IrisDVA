@@ -24,7 +24,7 @@ classdef Info < handle
       if ~nargin
         sub = 'public';
       end
-      status = {2,0,29,'a'};
+      status = {2,0,31,'a'};
       switch sub
         case 'major'
           v = sprintf('%d',status{1});
@@ -34,8 +34,10 @@ classdef Info < handle
           v = sprintf('%d.%d%s',status{[1,2,4]});
         case 'development'
           v = sprintf('%d.%02d.%03d%s',status{:});
+        case 'public'
+          v = sprintf('%d.%02d',status{1:2});
         otherwise
-          v = sprintf('%d.%02d%03d',status{1},status{2},status{3});
+          v = sprintf('%d.%02d.%03d',status{1},status{2},status{3});
       end
     end
 
@@ -212,10 +214,10 @@ classdef Info < handle
       st = dbstack('-completenames',1);
       id = upper(strrep(st(1).name,'.', ':'));
       warnCall = sprintf( ...
-        'throw(MException(''%s:%s'',"%s"));', ...
+        'throw(MException("%s:%s",''%s''));', ...
         upper(iris.app.Info.name), ...
         id, ...
-        regexprep(msg,'''','''''') ...
+        regexprep(regexprep(regexprep(msg,'''','"'),'\n+',' '),'\\','\\\\') ...
         );
       evalin('base',warnCall);
     end

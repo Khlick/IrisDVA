@@ -16,7 +16,8 @@ classdef loadShow < iris.ui.UIContainer
   
   %% Public Functions
   methods
-    function updatePercent(obj,frac)
+    function updatePercent(obj,frac,preText)
+      if nargin < 3, preText = 'Loading...'; end
       if obj.isClosed
         obj.rebuild;
         pause(0.1);
@@ -38,19 +39,18 @@ classdef loadShow < iris.ui.UIContainer
             end
           end
 
-          obj.LoadingText.Text = sprintf('Loading... (%d%%)',fix(frac*100));
+          obj.LoadingText.Text = sprintf('%s (%d%%)',preText,fix(frac*100));
           if frac < 1
-            obj.update;
+            drawnow('update');
             return;
           else
-            pause(1);
-            obj.LoadingText.Text = 'Loaded!';
-            obj.update();
+            obj.LoadingText.Text = 'Done!';
+            drawnow('update');
             pause(1.3);
           end
         case 'char'
           obj.LoadingText.Text = frac;
-          obj.update();
+          drawnow('update');
           obj.focus();
           return;
       end
@@ -84,7 +84,7 @@ classdef loadShow < iris.ui.UIContainer
         {fullfile(iris.app.Info.getResourcePath, ...
           'scripts', 'spinner.css')}, ...
         false, false, '''');
-      obj.window.executeJS('var css,spinner,panel,text;');
+      obj.window.executeJS('var css,spinner,panel,text;',1);
       iter = 0;
       while true
         try

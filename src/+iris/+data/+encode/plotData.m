@@ -109,7 +109,17 @@ classdef plotData
           obj(ix).xOriginal = d.x{ix};
         end
         obj(ix).yOriginal = d.y{ix};
-        obj(ix).mode = modeStr;
+        % if a datum has length 1, turn markers on for that datum
+        if numel(d.y{ix}) == 1
+          obj(ix).mode = [modeStr,'+markers'];
+          if strcmpi(obj(ix).marker.type,'None')
+            obj(ix).marker.type = 'circle';
+          end
+        else
+          obj(ix).mode = modeStr;
+        end
+        
+        
         obj(ix).sampleRate = d.sampleRate{ix};
         obj(ix).filterPrefs = fp;
         obj(ix).scalePrefs = sp;

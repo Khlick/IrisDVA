@@ -17,6 +17,9 @@ loadSplash = iris.ui.loadShow();
 loadSplash.show();
 loadSplash.updatePercent('Executing...');
 
+% function name
+Fx = obj.selectAnalysis.String{obj.selectAnalysis.Value};
+
 if ~obj.checkboxAppend.Value
   % reset outputValues so they don't get appended
   obj.OutputValues = struct();  
@@ -38,7 +41,7 @@ if any(check)
   loadSplash.shutdown();
   delete(loadSplash);
   iris.app.Info.throwError( ...
-    sprintf('Cannot provide empty arguments for function ''%s(...)''.',obj.Fx) ...
+    sprintf('Cannot provide empty arguments for function ''%s(...)''.',Fx) ...
     );
 end
 %Parse Args
@@ -59,7 +62,7 @@ S.Call.ArgsIn = ArgIn;
 S.Call.ArgsOut = ArgOut;
 ArgOut = strcat('S.', ArgOut);
 
-Fx = obj.selectAnalysis.String{obj.selectAnalysis.Value};
+
 callString = obj.Args.Call(ArgOut, Fx, ArgIn);
 S.Call.String = callString;
 

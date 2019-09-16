@@ -24,23 +24,28 @@ classdef dataOverview < iris.ui.UIContainer
   %% Public methods
   methods
     
-    function buildUI(obj,handler)
+    function buildUI(obj,handler,force)
+      if nargin < 3, force = false; end
       if nargin < 2
         handler = obj.Handler;
       end
+      
       if obj.isClosed
         obj.rebuild();
+        pause(0.05);
       end
       % determine if we are simply unhiding the window or need to reconstruct it
       newHandler = ~isequal(handler,obj.Handler);
+      
       obj.show();
-      if obj.isBound && ~newHandler
+      
+      if obj.isBound && ~newHandler && ~force
         return
       end      
       % if a new handler was provided we need to destroy previous handler listeners
       % and then reassign our handler handle
       
-      if newHandler
+      if newHandler || force
         obj.destroyListeners();
         obj.Handler = handler;
       end
@@ -54,6 +59,8 @@ classdef dataOverview < iris.ui.UIContainer
           'Loading...'; ...
           'Selected epochs will show when completed.' ...
         };
+      drawnow('limitrate');
+      pause(0.01);
       
       obj.recurseNodes();
       
@@ -62,7 +69,7 @@ classdef dataOverview < iris.ui.UIContainer
       % set selected from handler
       obj.setSelectionFromHandler();
       
-      if newHandler
+      if newHandler || force
         % set and enable listener
         obj.handlerListeners{end+1} = addlistener( ...
           handler, ...
@@ -116,7 +123,9 @@ classdef dataOverview < iris.ui.UIContainer
           
           %TODO: recurse structs in d.<type>Configurations
           
-          %drawnow('limitrate');
+          if ~mod(i,10)
+            drawnow('limitrate');
+          end
           
           obj.PropNodes{end+1} = thisChildNode;
         end
@@ -134,12 +143,16 @@ classdef dataOverview < iris.ui.UIContainer
         obj.update();
         obj.hide();
       else
-        obj.clearView();
-        obj.destroyListeners();
         obj.shutdown();
       end
     end
     
+    function shutdown(obj)
+      obj.clearView();
+      obj.destroyListeners();
+      obj.Handler = [];
+      shutdown@iris.ui.UIContainer(obj);
+    end
   end
   %% Startup Methods
   methods (Access = protected)
@@ -148,6 +161,7 @@ classdef dataOverview < iris.ui.UIContainer
     function startupFcn(obj,handler)
       obj.container.SizeChangedFcn = @obj.containerResized;
       if nargin < 2, return; end
+      pause(0.05);
       obj.buildUI(handler);
     end    
     
@@ -198,12 +212,11 @@ classdef dataOverview < iris.ui.UIContainer
     function createUI(obj)
       import iris.app.*;
       
-      pos = obj.position;
-      if isempty(pos)
-        initW = 816;
-        initH = 366;
-        pos = centerFigPos(initW,initH);
-      end
+      finalPos = obj.position;
+      
+      initW = 816;
+      initH = 366;
+      pos = centerFigPos(initW,initH);
       obj.position = pos; %sets container too
       
       % Create container
@@ -247,7 +260,7 @@ classdef dataOverview < iris.ui.UIContainer
         341*0.9 ...
         ];
       %(546-174)/2 158 174 25];
-      obj.SelectSubsetLabel.Text = 'Select File Subset';
+      obj.SelectSubsetLabel.Text = 'Building...';
 
       % Create Actions
       obj.Actions = uidropdown(obj.container);
@@ -265,6 +278,12 @@ classdef dataOverview < iris.ui.UIContainer
       obj.Apply.Text = 'Apply';
       obj.Apply.Enable = 'off';
       obj.Apply.ButtonPushedFcn = @obj.ApplyAction;
+      
+      
+      % update position
+      obj.position = finalPos;
+      drawnow('nocallbacks');
+      pause(0.01);
     end
     
   end
@@ -281,11 +300,44 @@ classdef dataOverview < iris.ui.UIContainer
     end
     % set Selection based on handler.currentSelection
     function setSelectionFromHandler(obj)
-      obj.FileTree.SelectedNodes = [obj.PropNodes{obj.Handler.currentSelection.selected}];
+      if ~isequal( ...
+          obj.FileTree.SelectedNodes, ...
+          [obj.PropNodes{obj.Handler.currentSelection.selected}] ...
+          )
+        % changing the selection
+        obj.FileTree.SelectedNodes = [obj.PropNodes{obj.Handler.currentSelection.selected}];
+        obj.FileTree.scroll(obj.PropNodes{obj.Handler.currentSelection.selected(end)});
+      end
+      
       obj.getSelectedInfo();
-      obj.PropTable.Visible = 'on';
-      obj.SelectSubsetPanel.Visible = 'off';
+      
+      if strcmp(obj.PropTable.Visible,'off')
+        obj.PropTable.Visible = 'on';
+        obj.SelectSubsetPanel.Visible = 'off';
+      end
+      
+      % update inclusion
+      obj.updateEpochIcons()
+      
     end
+    
+    function updateEpochIcons(obj)
+      % handler and ui selections should be the same at this point
+      incs = obj.Handler.currentSelection.inclusion;
+      
+      for i = 1:numel(incs)
+        if incs(i)
+          thisIcon = obj.InclusionIcon;
+        else
+          thisIcon = obj.ExclusionIcon;
+        end
+        % set the icon
+        obj.FileTree.SelectedNodes(i).Icon = thisIcon;
+        pause(0.001);
+      end
+      % draw?
+    end
+    
     % Apply action button pressed
     function ApplyAction(obj,~,~)
       try
@@ -297,18 +349,8 @@ classdef dataOverview < iris.ui.UIContainer
       end
       switch obj.Actions.Value
         case 'Exclude Selected'
-          arrayfun( ...
-            @(n)set(n,'Icon',obj.ExclusionIcon), ...
-            obj.FileTree.SelectedNodes, ...
-            'unif', 0 ...
-            );
           obj.Handler.setInclusion(inds,false);
         case 'Include Selected'
-          arrayfun( ...
-            @(n)set(n,'Icon',obj.InclusionIcon), ...
-            obj.FileTree.SelectedNodes, ...
-            'unif', 0 ...
-            );
           obj.Handler.setInclusion(inds,true);
         case {'Delete Selected','Delete Unselected'}
           deleteType = subsref( ...
@@ -316,16 +358,16 @@ classdef dataOverview < iris.ui.UIContainer
             struct('type', '{}', 'subs', {{2}}) ...
             );
           if strcmp(deleteType,'Selected')
-            keepInds = ~ismember(1:length(obj.PropNodes),inds);
+            keepInds = ~ismember(1:numel(obj.PropNodes),inds);
           else
-            keepInds = ismember(1:length(obj.PropNodes),inds);
+            keepInds = ismember(1:numel(obj.PropNodes),inds);
           end
-          obj.Handler.subset(find(keepInds));%#ok
-          obj.buildUI;
-          obj.FileTree.SelectedNodes = obj.PropNodes{1};
-          obj.getSelectedInfo();
+          obj.Handler.subset(keepInds);
+          
+          obj.buildUI(obj.Handler, true);
+          
         case 'Export Selected'
-          warndlg('Functionality coming soon.', 'Future feature');
+          obj.exportSelectedData
         otherwise
           return
       end

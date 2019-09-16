@@ -227,12 +227,17 @@ classdef menuServices < handle
     end
     
     function shutdown(obj,menuName)
-      if nargin < 2, menuName = ''; end
+      if nargin < 2, menuName = 'all'; end
       uis = properties(obj);
-      if ~isempty(menuName)
-        menuName = validatestring(menuName,uis);
-        uis = uis(ismember(uis,menuName));
+      if strcmpi(menuName,'all'), menuName = uis; end
+      
+      if ischar(menuName), menuName = cellstr(menuName); end
+      for m = 1:numel(menuName)
+        menuName{m} = validatestring(menuName{m},uis);
       end
+      uis = uis(ismember(uis,menuName));
+      uis(contains(uis,'Help')) = [];
+      
       for p = 1:length(uis)
         if ~obj.isOpen(uis{p})
           continue;

@@ -15,6 +15,7 @@ classdef AxesPanel < handle
     container
     Parent
     Axes
+    I_Axes % the underlying Axes to the UIAxes
     margins
     xlab
     ylab
@@ -29,6 +30,7 @@ classdef AxesPanel < handle
     nLines
   end
   
+%%  Constructor
   methods
     
     function obj = AxesPanel(parent,varargin)
@@ -75,17 +77,21 @@ classdef AxesPanel < handle
           'Position', obj.Position, ...
           'Visible', 'off', ...
           'BorderType', 'none', ...
-          'AutoResizeChildren', 'off', ...
-          'BackgroundColor', [1,1,1], ...
           'FontName', Aes.uiFontName ...
           );
       
       obj.Axes = uiaxes(obj.container);
-      obj.Axes.BackgroundColor = [1 1 1];
-      obj.Axes.FontName = Aes.uiFontName;
-      obj.Axes.XLimMode = 'manual';
-      obj.Axes.YLimMode = 'manual';
+      obj.Axes.BackgroundColor = [1 1 1,0];
       obj.Axes.Position = obj.getAxesPosition;
+      
+      sooState = warning('query','MATLAB:structOnObject');
+      warning('off','MATLAB:structOnObject');
+      pause(0.001);
+      
+      obj.I_Axes = struct(obj.Axes).Axes;
+      
+      % reset the warnign state to user pref
+      warning(sooState);
       
       %%% Experimental modification of the HTMLCanvas object.
       % Combining these hacks appears to have no effect on plotting but highly
@@ -111,14 +117,15 @@ classdef AxesPanel < handle
         % of drawing them and zooming/panning. So I can't seem to find what exactly
         % is changed, I would expect that the render is being sent rather than the
         % data, meaning, possibly, a bmp is displayed rather than a svg.
-        obj.Axes.NodeChildren.ServerSideRendering = 'on';
+        % NodeChildren(1) == Axes.Canvas but 'Canvas' is not public
+        obj.Axes.NodeChildren(1).ServerSideRendering = 'on';
       end
       
       try %#ok<TRYNC>
         % This may not have an effect. It seems a slight increase, maybe, when this
         % warning is turned off, perhaps only because the function is called or
         % terminates early?
-        obj.Axes.NodeChildren.RenderWarningLevel = 'off';
+        obj.Axes.NodeChildren(1).RenderWarningLevel = 'off';
       end
       
       % set other properties on the axis, or allow override of default
@@ -135,6 +142,8 @@ classdef AxesPanel < handle
       ip = obj.Axes.InnerPosition;
       ofstX_x = ip(3)*0.08;
       ofstX_y = ip(4)*0.02;
+      
+      
       
       % xlabel
       obj.xlab = uilabel(obj.container,'Text', pr.Results.XLabel);
@@ -189,7 +198,8 @@ classdef AxesPanel < handle
     end
     
   end
-    
+
+%% Local Methods
   methods (Access = private)
     
     function f = getFigure(obj)
@@ -222,7 +232,8 @@ classdef AxesPanel < handle
       
       obj.window.executeJS( [ ...
         'require(["https://cdnjs.cloudflare.com/ajax/libs/',...
-        'mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"]);' ...
+        'mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"], ', ...
+        '(mj) => { window.MathJax = mj; return mj; });' ...
         ]);
       
       mlapptools.addClasses(obj.ylab, 'YLABEL' );
@@ -284,7 +295,7 @@ classdef AxesPanel < handle
     
   end
   
-%% callbacks
+%% Callbacks
   methods (Access = protected)
     
     function positionChanged(obj,~,~)
@@ -320,10 +331,8 @@ classdef AxesPanel < handle
         return;
       end
       
-      if obj.mlVer > 9.5
-        % 2019a lost ability to require external js libs :(
-        return;
-      end
+      tf = obj.window.executeJS('typeof MathJax === ''undefined''');
+      if strcmpi(tf,'true'), return; end
       
       % assume jax equation is present, convert to math
       pause(0.1)
@@ -471,6 +480,25 @@ classdef AxesPanel < handle
       obj.Axes.XScale = hL.xaxis.scale;
       obj.Axes.YScale = hL.yaxis.scale;
       
+      % update baselines (zero lines)
+      % x
+      if hL.xaxis.zeroline
+        obj.I_Axes.XBaseline.Color = hL.xaxis.zerolinecolor;
+        obj.I_Axes.XBaseline.LineWidth = 2.5;
+        obj.I_Axes.XBaseline.Visible = 'on';
+      else
+        obj.I_Axes.XBaseline.Visible = 'off';
+      end
+      % y
+      if hL.yaxis.zeroline
+        obj.I_Axes.YBaseline.Color = hL.yaxis.zerolinecolor;
+        obj.I_Axes.YBaseline.LineWidth = 2.5;
+        obj.I_Axes.YBaseline.Visible = 'on';
+      else
+        obj.I_Axes.YBaseline.Visible = 'off';
+      end
+      
+      
       %notify plot updated
       notify(obj,'PlotUpdated');
     end
@@ -496,13 +524,19 @@ classdef AxesPanel < handle
       % need to manually set ylim in case zero line is on and zero is far
       % away.
       % Let's create a 10% padding (5% on each top/bottom)
-      obj.Axes.YLimMode = 'manual';
+      
       yRange = obj.domain.y;
-      obj.Axes.YLim = yRange + [-0.05,0.05].*diff(yRange);
+      if diff(yRange) ~= 0
+        obj.Axes.YLimMode = 'manual';
+        obj.Axes.YLim = yRange + [-0.05,0.05].*diff(yRange);
+      end
       
       % I want the xaxis to clip directly on the data bounds.
-      obj.Axes.XLimMode = 'manual';
-      obj.Axes.XLim = obj.domain.x;
+      xRange = obj.domain.x;
+      if diff(xRange) ~= 0
+        obj.Axes.XLimMode = 'manual';
+        obj.Axes.XLim = obj.domain.x;
+      end
       %drawnow('limitrate');
     end
     

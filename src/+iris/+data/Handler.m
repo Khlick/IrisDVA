@@ -65,26 +65,38 @@ classdef Handler < matlab.mixin.Copyable
       drop = obj.Tracker.cleanup();
       delete(obj.Data(drop));% clean from memory first
       obj.Data(drop) = [];
+      
       filesToDrop = cellfun( ...
         @(m) all(ismember(m.data,drop)), ...
         obj.membership, ...
         'UniformOutput', 1 ...
         );
+      
       % reevaluate indices
       for d = 1:length(obj.Data)
         obj.Data(d).index = d;
       end
-      % reevaluate data indices
+      % reevaluate membership
       ofst=0;
+      nOfst = 0;
       for m = 1:obj.nFiles
         nKept = sum(~ismember(obj.membership{m}.data,drop));
         obj.membership{m}.data = ofst + (1:nKept);
         ofst = nKept;
+        % if keeping any datums, reassign notes based on offset
+        % otherwise, the next step will remove notes from the data
+        if nKept > 0
+          nNotes = numel(obj.membership{m}.notes);
+          obj.membership{m}.notes = nOfst + (1:nNotes);
+          nOfst = nOfst + nNotes;
+        end
       end
       % reevaluate Meta, Notes and Files
       if any(filesToDrop)
         obj.Meta(filesToDrop) = [];
-        noteInds = [obj.membership{filesToDrop}.notes];
+        % notes
+        noteInds = [obj.membership{filesToDrop}];
+        noteInds = [noteInds.notes];
         obj.Notes(noteInds,:) = [];
         obj.membership(filesToDrop) = [];
         obj.fileList(filesToDrop) = [];
@@ -392,6 +404,7 @@ classdef Handler < matlab.mixin.Copyable
         struct('selected', inds, 'inclusion',~status.inclusions(inds)) ...
         );
       obj.Data(inds).setInclusion(~status.inclusions(inds));
+      notify(obj,'onSelectionUpdated');
     end
     
     function setInclusion(obj, inds, vals)
@@ -399,6 +412,7 @@ classdef Handler < matlab.mixin.Copyable
         struct('selected', inds, 'inclusion', logical(vals)) ...
         );
       obj.Data(inds).setInclusion(logical(vals));
+      notify(obj,'onSelectionUpdated');
     end
     
     function revertToLastView(obj)

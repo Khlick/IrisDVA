@@ -53,12 +53,13 @@ switch char(aType)
         app.handler.toggleInclusion(app.ui.selection.highlighted);
         app.draw(app.ui.selection.highlighted);
       otherwise
+        % is toggling a switch
+        app.ui.manualSwitchThrow(action);
     end
   case 'navigate'
     app.navigate(action);
   otherwise
-    disp('otherwise:');
-    disp(char(aType));
+    
 end
 
   

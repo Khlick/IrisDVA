@@ -6,6 +6,8 @@ switch action
     app.saveSession([],[]);
   case 'quit'
     app.shutdownApp([],[]);
+  case 'screenshot'
+    app.ui.getScreenshot();
   otherwise
     fprintf('keyedAction:"%s"\n', action);
 end
