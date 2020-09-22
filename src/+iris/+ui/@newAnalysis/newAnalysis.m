@@ -51,6 +51,7 @@ classdef newAnalysis < iris.ui.UIContainer
     startupFcn(obj,varargin)
     %createUI
     createUI(obj)
+    
     %callbacks
     %validate input args
     function validateInput(obj,src,evt)
@@ -60,11 +61,14 @@ classdef newAnalysis < iris.ui.UIContainer
           % The name of the input argument was edited: let's validate it
           % We can set the name of arguments to any valid string
           % First check if we should delete the row.
-          if isempty(inputString)
-            %delete only if it isn't the DataObject argument, that is a requirement
+          if isempty(inputString) || (inputString == "")
+            % cannot delete the first row
             if idx(1) == 1
               src.Data{idx(1),idx(2)} = evt.PreviousData;
             else
+              % set the selected cell to the one above the current
+              src.Selection = [max([idx(1)-1,1]),1];
+              % remove the indicated row.
               src.Data(idx(1),:) = [];
             end
             return;
@@ -83,14 +87,20 @@ classdef newAnalysis < iris.ui.UIContainer
       valueString = regexprep(valueString,'''', '''''');
       src.Data{evt.Indices(1),evt.Indices(2)} = valueString;
     end
+    
     %validate output vargs
     function validateArgName(~,src,evt)
-      if isempty(evt.NewData)
+      if isempty(evt.NewData) || (evt.NewData == "")
         src.Data(evt.Indices(1),:) = [];
         return;
       end
+      % get the data in the rows not being edited
       oldData = src.Data(~ismember(1:size(src.Data,1),evt.Indices(1)),1);
-      argName = camelizer(evt.NewData);
+      if istable(oldData)
+        oldData = oldData{:,1};
+      end
+      argName = utilities.camelizer(evt.NewData);
+      % test if the new argument name exists in the previous data
       if ismember(argName,oldData)
         argName = evt.PreviousData;
         warning('IRIS:NEWANALYSIS:VALIDATEOUPUT','Argument already exists.');
@@ -100,7 +110,7 @@ classdef newAnalysis < iris.ui.UIContainer
     
     %validate function name
     function validateFxName(obj,src,evt) 
-       value = camelizer(evt.Value);
+       value = utilities.camelizer(evt.Value);
        src.Value = value;
        %drawnow;
        % check for existing functions and throw error message
@@ -116,24 +126,16 @@ classdef newAnalysis < iris.ui.UIContainer
         src.Value = evt.PreviousValue;
        end
     end
+    
     % add an input or output arg
     function addArg(obj,src,~)
-      switch src.Tag
-        case 'in'
-          hTable = obj.inputArgs;
-          dAppend = { ...
-            sprintf('%sput%d',src.Tag,size(hTable.Data,1)), ...
-            '' ...
-            };
-        case 'out'
-          hTable = obj.outputArgs;
-          dAppend = {sprintf('%sput%d',src.Tag,1+size(hTable.Data,1))};
-      end
-      hTable.Data = [ ...
-        hTable.Data; ...
-        dAppend ...
-        ];
+      ofst = strcmpi(src.Tag,'out');
+      hTable = obj.(sprintf('%sputArgs',src.Tag));
+      [hTable.Data{end+1,:}] = deal( ...
+        sprintf("%sput%d",src.Tag,ofst+size(hTable.Data,1)) ...
+        );
     end
+    
     % Toggle app to show optional args
     function toggleArgs(obj,~,~)
       value = obj.showArgs.Value;
@@ -158,6 +160,7 @@ classdef newAnalysis < iris.ui.UIContainer
         obj.argPanel.Visible = 'off';
       end
     end
+    
     %create function
     function createNewFunction(obj,~,~)
       % validate forms
@@ -170,6 +173,7 @@ classdef newAnalysis < iris.ui.UIContainer
           'Existing Analysis', ...
           'modal' ...
           );
+        return
       end
       % package contents
       package = struct( ...

@@ -24,20 +24,20 @@ classdef Info < handle
       if ~nargin
         sub = 'public';
       end
-      status = {2,0,31,'a'};
+      status = {2,0,104};
       switch sub
         case 'major'
           v = sprintf('%d',status{1});
         case 'minor'
           v = sprintf('%02d',status{2});
         case 'short'
-          v = sprintf('%d.%d%s',status{[1,2,4]});
+          v = sprintf('%d.%d',status{[1,2]});
         case 'development'
-          v = sprintf('%d.%02d.%03d%s',status{:});
+          v = sprintf('%d.%02d.%03d',status{:});
         case 'public'
           v = sprintf('%d.%02d',status{1:2});
         otherwise
-          v = sprintf('%d.%02d.%03d',status{1},status{2},status{3});
+          v = sprintf('%d.%02d',status{1:3});
       end
     end
 
@@ -50,7 +50,7 @@ classdef Info < handle
     end
     
     function y = year()
-      y = '2016-2019';
+      y = '2016-2020';
     end
     
     function loc = getResourcePath()
@@ -188,8 +188,8 @@ classdef Info < handle
       AStruct = struct();
       AStruct.Names = Analyses;
       % prefer user made names over builtin
-      ex = [rep({extended},length(extendeds)),extendeds];
-      bt = [rep({builtinDir},length(builtins)),builtins];
+      ex = [utilities.rep({extended},length(extendeds)),extendeds];
+      bt = [utilities.rep({builtinDir},length(builtins)),builtins];
       wRoots = [ex;bt];
       wRoots = wRoots(endsWith(wRoots(:,2),'.m','IgnoreCase',true),:);
       wRoots(cellfun(@isempty,wRoots(:,2),'UniformOutput',1),:) = [];
@@ -219,13 +219,11 @@ classdef Info < handle
         id, ...
         regexprep(regexprep(regexprep(msg,'''','"'),'\n+',' '),'\\','\\\\') ...
         );
-      evalin('base',warnCall);
+      evalin('caller',warnCall);
     end
     
     function [totalBytes,varargout] = getBytes(file)
-      if ischar(file)
-        file = {file};
-      end
+      file = string(file);
       eachBytes = zeros(length(file),1);
       for f = 1:length(file)
         try %#ok<TRYNC>

@@ -1,28 +1,6 @@
 function draw(app,varargin)
 if ~app.handler.isready, return; end
 
-%{
-% send plotting information to the main view
-app.ui.updateView(app.handler);
-% If varargin{1} is supplied, set the number to the selected value after
-% drawing the current data.
-if nargin > 1
-  sel = app.ui.selection;
-  sel.highlighted = varargin{1};
-  app.ui.selection = sel;
-end
-
-% prevent dev code below from running
-return
-
-%}
-% TODO::
-% Rather than sending the handler, let's send only the plot data
-% along with relevant things needed for the UI to update the view.
-% Send the selection, display information and plot data. This allows us to
-% perform stats if we need to.
-
-
 % Determine if our current selection from the handler and the UI are the same
 sel = app.handler.currentSelection;
 
@@ -66,7 +44,7 @@ else
       );
   end
   
-  % find the closest epoch to the previously highlighted index
+  % find the closest datum to the previously highlighted index
   [~,minLoc] = min(abs(sel.selected - uSel.highlighted));
   sel.highlighted = sel.selected(minLoc);
 end
@@ -88,7 +66,7 @@ unitLabels = currentData.getDatumUnits(true);
 % perform aggregation if switched on in the ui
 if uiStatus.switches.aggregate
   statsPref = app.services.getPref('statistics');
-  % do baseline subtraction for each epoch in stats
+  % do baseline subtraction for each datum in stats
   aggZero = statsPref.BaselineZeroing;
   if aggZero
     switch statsPref.BaselineRegion
@@ -99,7 +77,7 @@ if uiStatus.switches.aggregate
       case 'Fit (Asym)'
         baselineType = 'asym';
     end
-    aggData = subtractBaseline( ...
+    aggData = utilities.subtractBaseline( ...
       currentData, ...
       baselineType, ...
       statsPref.BaselinePoints, ...
@@ -143,7 +121,7 @@ if uiStatus.switches.aggregate
   colorMap = iris.app.Aes.appColor(nGroups,'contrast');
   
   if statsPref.ShowOriginal
-    % colorize the original epochs
+    % colorize the original Datums
     nShades = max(ogGrps.Table.Counts);
     ogColors = iris.app.Aes.shadifyColors(colorMap,nShades);
     for g = 1:height(ogGrps.Table)
@@ -179,11 +157,9 @@ else
   end
 end
 
-
 % get the plot data objects for the axes
 plotData = cat(1,currentData.plotData);
 
 % send to the ui
 app.ui.updateView(sel, displayProps, plotData, unitLabels);
-
 end

@@ -150,6 +150,7 @@ function jWindow = getJFrame(hFig)
     jWindow = [];
     maxTries = 10;
     oldWarn = warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
+    oldWarn2 = warning('off','MATLAB:ui:javaframe:PropertyToBeRemoved');
     while maxTries > 0
         try
             % Get the figure's underlying Java frame
@@ -178,6 +179,7 @@ function jWindow = getJFrame(hFig)
         end
     end
     warning(oldWarn);
+    warning(oldWarn2);
     if isempty(jWindow)
         error('Cannot retrieve the figure''s underlying Java Frame');
     end

@@ -3,8 +3,8 @@ function updateView(obj, newSelection, newDisplay, newData, newUnits)
 % Use data to update all the data-dependent UI elements and call the plot
 % update method.
 % Update to:
-%   ShowingValueString: # of Total.
-%   CurrentEpochTicker: lowest selected #
+%   ShowingValueLabel: # of Total.
+%   CurrentDataTicker: lowest selected #
 %   OverlapTicker: # of selected 
 %   DevicesSelection: select all which current # has: this needs tracking
 %   CurrentInfoTable: Non-data parts
@@ -19,7 +19,7 @@ function updateView(obj, newSelection, newDisplay, newData, newUnits)
 %%% First we will collect the data
 sel = h.currentSelection;
 d = h(sel.selected);
-% then copy the epoch metainfo 
+% then copy the datum metainfo 
 sel.highlighted = sel.selected(1);
 % we need to post some information about the selected devices
 sel.devices = unique(cat(2,d.devices));
@@ -72,7 +72,7 @@ labels = [labels,cell(length(ix),1)];
 % a ";".
 lens = zeros(length(ix),1);
 for I = ix'
-  tmpCell = unknown2CellStr(infoCells(ux == ix(I),2));
+  tmpCell = utilities.unknown2CellStr(infoCells(ux == ix(I),2));
   labels{I,2} = strjoin(tmpCell,'; ');
   lens(I) = length(labels{I,2});
 end
@@ -84,13 +84,13 @@ obj.CurrentInfoTable.ColumnWidth = {'auto', max(lens)*6.55};
 
 obj.layout.update;
 
-% if multiple devices are selected for each epoch, we need to 
+% if multiple devices are selected for each datum, we need to 
 % Get units for setting the X,Y obj.layout.setTitle('x', 'units')
 units = arrayfun(@(a)cellfun(@(b){b.x,b.y},a.units','unif',0),d,'unif',0);
 units = cat(1,units{:});
 units = cat(1,units{:});
-xUnits = unknownCell2Str(unknown2CellStr(units(:,1)),',');
-yUnits = unknownCell2Str(unknown2CellStr(units(:,2)),',');
+xUnits = utilities.unknownCell2Str(utilities.unknown2CellStr(units(:,1)),',');
+yUnits = utilities.unknownCell2Str(utilities.unknown2CellStr(units(:,2)),',');
 obj.layout.setTitle('x',xUnits);
 obj.layout.setTitle('y',yUnits);
 
@@ -111,9 +111,9 @@ dat = arrayfun(@(v)v.getPlotArray(), d, 'UniformOutput', false);
 % set colors 
 % For now, let's just make the traces different colors.
 % TODO: move colorization to its own method and determine a way to colorize
-% epoch toggles without redrawing the lines. Perhaps colorization needs to
+% datum toggles without redrawing the lines. Perhaps colorization needs to
 % occur at the axespanel object, but somehow we need to identify lines that
-% correspond to a single epoch but are from multiple devices.
+% correspond to a single datum but are from multiple devices.
 if length(dat) > 1
   cmap = flipud(iris.app.Aes.appColor(length(dat),'contrast'));
   for I = 1:length(dat)
@@ -165,8 +165,8 @@ obj.setDisplayData(newDisplay);
 % use the layout update to grab any aesthetic changes (i.e. from preferences)
 obj.layout.update;
 % update units
-obj.layout.setTitle('x',unknownCell2Str(newUnits.x, ' |'));
-obj.layout.setTitle('y',unknownCell2Str(newUnits.y, ' |'));
+obj.layout.setTitle('x',utilities.unknownCell2Str(newUnits.x, ' |'));
+obj.layout.setTitle('y',utilities.unknownCell2Str(newUnits.y, ' |'));
 
 % plot the data
 dPrefs = iris.pref.display.getDefault();
@@ -186,16 +186,16 @@ end
 %{
 primary properties
 
-currentEpochTicker: updates here should be parsed 
+currentDatumTicker: updates here should be parsed 
 - parsing should check against ui.selection.total
-- parsing should only create epoch index array
+- parsing should only create datum index array
 - parsed array should be sent to Iris where:
   - app.currentSelection = [array] to update handler inclusion
   - new selection will be sent to app.ui.updateView where relavent strings
   will be updated via postSet listener on ui.selection update.
 
-CurrentEpochSlider: active only when selected is longer than 1
-- updates here require replotting and redrawing CurrentEpochTicker value
+SelectionNavigatorSlider: active only when selected is longer than 1
+- updates here require replotting and redrawing CurrentDataTicker value
 
 OverlapTicker
 

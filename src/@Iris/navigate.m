@@ -46,7 +46,8 @@ switch dr
       if isequal(newHl,uiSel.highlighted), return; end
       uiSel.highlighted = newHl;
       app.ui.selection = uiSel;
-      return;
+      
+      return
     else
       % left and right will shift the current selection by the step
       newSel = cSel.selected + stepSize;

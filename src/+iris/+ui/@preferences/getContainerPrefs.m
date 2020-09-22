@@ -8,8 +8,8 @@ function getContainerPrefs(obj)
   Stats = obj.options.StatisticsProps;
   Scale = obj.options.ScaleProps;
   %% Controls
-  obj.EpochStepSmallInput.Value = Control.StepSmall;
-  obj.EpochStepBigInput.Value = Control.StepBig;
+  obj.DataStepSmallInput.Value = Control.StepSmall;
+  obj.DataStepBigInput.Value = Control.StepBig;
   obj.OverlaySmallInput.Value = Control.OverlaySmall;
   obj.OverlayBigInput.Value = Control.OverlayBig;
   %% Display

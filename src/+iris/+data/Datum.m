@@ -261,7 +261,7 @@ classdef Datum < matlab.mixin.Copyable
         propCell{o} = thisProps;
       end
       if collapse
-        propCell = collapseUnique(cat(1,propCell{:}),1,true);
+        propCell = utilities.collapseUnique(cat(1,propCell{:}),1,true,true);
       end
       if sorted
         [~,sIdx] = sort(lower(propCell(:,1)));
@@ -270,23 +270,32 @@ classdef Datum < matlab.mixin.Copyable
     end
     
     function propCell = getProps(obj)
-      propCell = cell(length(obj),1);
+      propCell = cell(numel(obj),1);
       for o = 1:length(obj)
-        thisProps = [ ...
-          { ...
-            'id', obj(o).id; ...
-            'index', obj(o).index; ...
-            'nDevices', obj(o).nDevices; ...
-            'devices', sprintf('(%s)',strjoin(obj(o).devices,'|')); ...
-            'inclusion', obj(o).inclusion ...
-          }; ...
-          obj(o).protocols; ...
-          obj(o).displayProperties ...
-          ];
+        d = obj(o);
+         % select names expected in data objects from Iris
+        overviewNames = { ...
+          'id';
+          'devices';
+          'units';
+          'sampleRate';
+          'inclusion';
+          'index';
+          'nDevices' ...
+          };
+        % collapse into a Nx2 cell.
+        thisProps = cat(1, ...
+          [ ...
+            overviewNames, ...
+            cellfun(@(n)d.(n),overviewNames,'unif',0), ...
+          ], ...
+          d.protocols, ...
+          d.displayProperties ...
+          );
         % determine stimulus settings
-        nStimDev = numel(obj(o).stimulusConfiguration);
+        nStimDev = numel(d.stimulusConfiguration);
         for si = 1:nStimDev
-          thisStimulus = obj(o).stimulusConfiguration(si);
+          thisStimulus = d.stimulusConfiguration(si);
           fNames = fieldnames(thisStimulus);
           sDname = thisStimulus.(fNames{contains(fNames,'Name')});
           configs = thisStimulus.(fNames{find(~contains(fNames,'Name'),1)});
@@ -296,7 +305,7 @@ classdef Datum < matlab.mixin.Copyable
           % loop and gather configs
           % we assume that if there are configs, they will be structs with fields:
           % name, and value. otherwise this will fail.
-          cfgFlat = IrisData.flattenStructs(configs);
+          cfgFlat = utilities.flattenStructs(configs);
           % give the names a stimulus:stimName:name pattern:
           cfgFlat.name = matlab.lang.makeValidName( ...
             strcat( ...
@@ -311,9 +320,12 @@ classdef Datum < matlab.mixin.Copyable
         end
         
         % determine device configuration settings
-        nDevConfigs = numel(obj(o).deviceConfiguration);
+        nDevConfigs = numel(d.deviceConfiguration);
         for si = 1:nDevConfigs
-          thisConfig = obj(o).deviceConfiguration(si);
+          thisConfig = d.deviceConfiguration(si);
+          if iscell(thisConfig)
+            thisConfig = [thisConfig{:}];
+          end
           fNames = fieldnames(thisConfig);
           sDname = thisConfig.(fNames{contains(fNames,'Name')});
           configs = thisConfig.(fNames{find(~contains(fNames,'Name'),1)});
@@ -323,7 +335,7 @@ classdef Datum < matlab.mixin.Copyable
           % loop and gather configs
           % we assume that if there are configs, they will be structs with fields:
           % name, and value. otherwise this will fail.
-          cfgFlat = IrisData.flattenStructs(configs);
+          cfgFlat = utilities.flattenStructs(configs);
           % give the names a stimulus:stimName:name pattern:
           cfgFlat.name = matlab.lang.makeValidName( ...
             strcat( ...
@@ -334,14 +346,16 @@ classdef Datum < matlab.mixin.Copyable
           thisProps = [ ...
             thisProps; ...
             [cfgFlat.name(:),cfgFlat.value(:)] ...
-            ]; %#ok<AGROW>
+            ];  %#ok<AGROW>
         end
         
+        
+        thisProps(:,2) = arrayfun(@utilities.uniqueContents,thisProps(:,2),'unif',false);
         % Get unique fields giving priority to listed then protocols
-        [~,uqInds] = unique(thisProps(:,1),'stable');
+        %[~,uqInds] = unique(thisProps(:,1),'stable');
         
         % store the cell with actual values
-        thisProps = thisProps(uqInds,:);
+        %thisProps = thisProps(uqInds,:);
         propCell{o} = thisProps;
       end
       
@@ -351,7 +365,7 @@ classdef Datum < matlab.mixin.Copyable
       propC = obj.getProps();
       propC = cat(1,propC{:});
       %uniqueify
-      pCell = collapseUnique(propC,1,true);
+      pCell = utilities.collapseUnique(propC,1,true,true);
     end
     
     function tab = getPropTable(obj)
@@ -365,17 +379,17 @@ classdef Datum < matlab.mixin.Copyable
       % This should be moved to iris.data.handler class in future
       
       props = obj.getPropsAsCell(); % all possible props
-      epochProps = obj.getProps(); % each epoch's props
+      datumProps = obj.getProps(); % each datum's props
       propCells = cell(length(obj),size(props,1));
-      for I = 1:length(epochProps)
+      for I = 1:length(datumProps)
         % find the intersection between the current datum's properties and
         % all properties in the data.
-        currentProps = epochProps{I};
+        currentProps = datumProps{I};
         [~,iP,iE] = intersect(props(:,1),currentProps(:,1),'stable');
         % Convert everything to char arrays to prevent differences in the
         % rows from raising errors.
         propCells(I,iP) = arrayfun( ...
-          @unknownCell2Str, ...
+          @utilities.unknownCell2Str, ...
           currentProps(iE,2), ...
           'UniformOutput', false ...
           )';
@@ -505,7 +519,7 @@ classdef Datum < matlab.mixin.Copyable
       end
       u = [u{:}];
       if collapse
-        u = flattenStructs(u);
+        u = utilities.flattenStructs(u);
         u.x = unique(u.x,'stable');
         u.y = unique(u.y,'stable');
       end
@@ -579,7 +593,7 @@ classdef Datum < matlab.mixin.Copyable
       
       p = inputParser();
       p.addParameter('groupBy', 'none', ...
-        @(s) ValidStrings(s,'none',propTable.Properties.VariableNames) ...
+        @(s) utilities.ValidStrings(s,'none',propTable.Properties.VariableNames) ...
         );
       p.addParameter('customGrouping',[], ...
         @(v) isempty(v) || (isvector(v) && numel(v) == numel(obj) && isnumeric(v)) ...
@@ -601,10 +615,13 @@ classdef Datum < matlab.mixin.Copyable
       
       % validate strings
       if isempty(p.Results.customGrouping)
-        [~,groupBy] = ValidStrings( ...
+        [~,groupBy] = utilities.ValidStrings( ...
           p.Results.groupBy, ...
-          'none', propTable.Properties.VariableNames{:} ...
+          'none', ...
+          propTable.Properties.VariableNames{:}, ...
+          '-any' ...
           );
+        groupBy = string(groupBy);
         if any(strcmpi(groupBy,"none"))
           propTable.none = num2str(ones(height(propTable),1));
         end
@@ -617,7 +634,7 @@ classdef Datum < matlab.mixin.Copyable
       
       % determine groups
       grpTable = propTable(:,groupBy);
-      groups = determineGroups(grpTable,inclusions);
+      groups = utilities.determineGroups(grpTable,inclusions);
       nGroups = height(groups.Table);
       
       
@@ -745,7 +762,7 @@ classdef Datum < matlab.mixin.Copyable
           datStructs(gi).responses.y = cell(1,nDevOut);
         end
         
-        thisGroupedInfo = flattenStructs(datStructs(thisGroupLog));
+        thisGroupedInfo = utilities.flattenStructs(datStructs(thisGroupLog));
         
         % reduce certain fields to unique values
         if iscell(thisGroupedInfo.id)
@@ -753,7 +770,7 @@ classdef Datum < matlab.mixin.Copyable
         end
         thisGroupedInfo.id = ['(',thisGroupedInfo.id,')'];
         
-        thisGroupedInfo.responses = uniqueContents( ...
+        thisGroupedInfo.responses = utilities.uniqueContents( ...
           thisGroupedInfo.responses ...
           );
         
@@ -771,26 +788,28 @@ classdef Datum < matlab.mixin.Copyable
         
         % merge protocols
         mergedProts = ...
-          collapseUnique( ...
+          utilities.collapseUnique( ...
             cat(1,thisGroupedInfo.protocols{:}), ...
             1, ...
-            false ...
+            false, ...
+            true ...
           );
         mergedProts(:,2) = cellfun( ...
-          @uniqueContents, ...
+          @utilities.uniqueContents, ...
           mergedProts(:,2), ...
           'UniformOutput', false ...
           );
         thisGroupedInfo.protocols = mergedProts;
         % Merge displayProperties
         mergedDP = ...
-          collapseUnique( ...
+          utilities.collapseUnique( ...
             cat(1,thisGroupedInfo.displayProperties{:}), ...
             1, ...
-            false ...
+            false, ...
+            true ...
           );
         mergedDP(:,2) = cellfun( ...
-          @uniqueContents, ...
+          @utilities.uniqueContents, ...
           mergedDP(:,2), ...
           'UniformOutput', false ...
           );
@@ -800,7 +819,7 @@ classdef Datum < matlab.mixin.Copyable
       % create a new datum vector for output
       [aggs.interactive] = deal(p.Results.interactive);
       aggregates = iris.data.Datum(aggs,0);
-      varargout{1}= determineGroups(propTable(:,groupBy));
+      varargout{1}= utilities.determineGroups(propTable(:,groupBy));
       varargout{2} = groups; % subs groups
     end
     

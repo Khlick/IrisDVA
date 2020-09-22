@@ -15,11 +15,11 @@ classdef dataOverview < iris.ui.UIContainer
   end
   
   properties (Hidden)
-    InclusionIcon = fullfile(iris.app.Info.getResourcePath,'icn','Epoch_Iconincl.png')
-    ExclusionIcon = fullfile(iris.app.Info.getResourcePath,'icn','Epoch_Iconexcl.png')
+    InclusionIcon = fullfile(iris.app.Info.getResourcePath,'icn','Data_Iconincl.png')
+    ExclusionIcon = fullfile(iris.app.Info.getResourcePath,'icn','Data_Iconexcl.png')
     handlerListeners = {}
   end
-    
+  
   
   %% Public methods
   methods
@@ -41,7 +41,7 @@ classdef dataOverview < iris.ui.UIContainer
       
       if obj.isBound && ~newHandler && ~force
         return
-      end      
+      end
       % if a new handler was provided we need to destroy previous handler listeners
       % and then reassign our handler handle
       
@@ -56,8 +56,8 @@ classdef dataOverview < iris.ui.UIContainer
       obj.PropNodes = {};
       obj.SelectSubsetLabel.Text = ...
         { ...
-          'Loading...'; ...
-          'Selected epochs will show when completed.' ...
+        'Loading...'; ...
+        'Selected Datums will show when completed.' ...
         };
       drawnow('limitrate');
       pause(0.01);
@@ -136,8 +136,8 @@ classdef dataOverview < iris.ui.UIContainer
     
     function selfDestruct(obj)
       % required for integration with menuservices
-      % detect handler condition and the
-      %delete(obj.selectionListener);
+      % detect handler condition and then hide or shutdown
+      
       if obj.Handler.isready
         % just hide rather than kill
         obj.update();
@@ -163,7 +163,7 @@ classdef dataOverview < iris.ui.UIContainer
       if nargin < 2, return; end
       pause(0.05);
       obj.buildUI(handler);
-    end    
+    end
     
     %handler selection was updated
     function onHandlerUpdate(obj,event)
@@ -186,6 +186,7 @@ classdef dataOverview < iris.ui.UIContainer
     % Set Table Data
     function setData(obj,d)
       % flatten table to unique first column
+      firstColWidth = max([120,obj.PropTable.ColumnWidth{1}]);
       keyNames = unique(d(:,1),'stable');
       keyData = cellfun( ...
         @(x)d(ismember(d(:,1),x),2), ...
@@ -201,14 +202,15 @@ classdef dataOverview < iris.ui.UIContainer
           ];
       end
       % set all values column to strings
-      tableDat(:,2) = arrayfun(@unknownCell2Str,tableDat(:,2),'unif',0);
+      tableDat(:,2) = arrayfun(@utilities.unknownCell2Str,tableDat(:,2),'unif',0);
       %set
       obj.PropTable.Data = tableDat;
       lens = cellfun(@length,tableDat(:,2),'UniformOutput',true);
-      obj.PropTable.ColumnWidth = {120, max(lens)*6.55};
+      remainderWidth = obj.PropTable.Position(3) - firstColWidth-20;
+      obj.PropTable.ColumnWidth = {firstColWidth, max([lens*6.55;remainderWidth])};
     end
     
-     % Construct view
+    % Construct view
     function createUI(obj)
       import iris.app.*;
       
@@ -216,14 +218,14 @@ classdef dataOverview < iris.ui.UIContainer
       
       initW = 816;
       initH = 366;
-      pos = centerFigPos(initW,initH);
+      pos = utilities.centerFigPos(initW,initH);
       obj.position = pos; %sets container too
       
       % Create container
       obj.container.Name = 'Data Overview';
       obj.container.Resize = 'on';
       
-
+      
       % Create FileTree
       obj.FileTree = uitree(obj.container);
       obj.FileTree.FontName = 'Times New Roman';
@@ -231,7 +233,7 @@ classdef dataOverview < iris.ui.UIContainer
       obj.FileTree.Position = [15 52 230 304];
       obj.FileTree.Multiselect = 'on';
       obj.FileTree.SelectionChangedFcn = @obj.nodeChanged;
-
+      
       % Create PropTable
       obj.PropTable = uitable(obj.container);
       obj.PropTable.ColumnName = {'Property '; 'Value'};
@@ -240,6 +242,7 @@ classdef dataOverview < iris.ui.UIContainer
       obj.PropTable.FontName = 'Times New Roman';
       obj.PropTable.Position = [255 15 546 341];
       obj.PropTable.Visible = 'off';
+      obj.PropTable.CellSelectionCallback = @obj.doCopyUITableCell;
       
       % Create SelectSubsetPanel
       obj.SelectSubsetPanel = uipanel(obj.container);
@@ -247,7 +250,7 @@ classdef dataOverview < iris.ui.UIContainer
       obj.SelectSubsetPanel.BackgroundColor = [1 1 1];
       obj.SelectSubsetPanel.FontName = iris.app.Aes.uiFontName;
       obj.SelectSubsetPanel.Position = [255 15 546 341];
-
+      
       % Create SelectSubsetLabel
       obj.SelectSubsetLabel = uilabel(obj.SelectSubsetPanel);
       obj.SelectSubsetLabel.HorizontalAlignment = 'center';
@@ -261,16 +264,23 @@ classdef dataOverview < iris.ui.UIContainer
         ];
       %(546-174)/2 158 174 25];
       obj.SelectSubsetLabel.Text = 'Building...';
-
+      
       % Create Actions
       obj.Actions = uidropdown(obj.container);
-      obj.Actions.Items = {'Actions', 'Exclude Selected', 'Include Selected', 'Delete Selected', 'Delete Unselected', 'Export Selected'};
+      obj.Actions.Items = { ...
+        'Actions', ...
+        'Exclude Selected', ...
+        'Include Selected', ...
+        'Delete Selected', ...
+        'Delete Unselected', ...
+        'Export Selected' ...
+        };
       obj.Actions.FontName = 'Times New Roman';
       obj.Actions.FontSize = 14;
       obj.Actions.Position = [15 15 156 22];
       obj.Actions.Value = 'Actions';
       obj.Actions.ValueChangedFcn = @obj.SelectActions;
-
+      
       % Create Apply
       obj.Apply = uibutton(obj.container, 'push');
       obj.Apply.FontName = 'Times New Roman';
@@ -317,11 +327,11 @@ classdef dataOverview < iris.ui.UIContainer
       end
       
       % update inclusion
-      obj.updateEpochIcons()
+      obj.updateDatumIcons()
       
     end
     
-    function updateEpochIcons(obj)
+    function updateDatumIcons(obj)
       % handler and ui selections should be the same at this point
       incs = obj.Handler.currentSelection.inclusion;
       
@@ -333,7 +343,6 @@ classdef dataOverview < iris.ui.UIContainer
         end
         % set the icon
         obj.FileTree.SelectedNodes(i).Icon = thisIcon;
-        pause(0.001);
       end
       % draw?
     end
@@ -378,8 +387,8 @@ classdef dataOverview < iris.ui.UIContainer
         selectedNames = {evt.SelectedNodes.Text};
         if any( ...
             ismember( ...
-              selectedNames, ...
-              cellfun(@(x)x.Text,obj.FileNodes,'unif',0) ...
+            selectedNames, ...
+            cellfun(@(x)x.Text,obj.FileNodes,'unif',0) ...
             ) ...
             )
           obj.togglePropTable('off');
@@ -418,8 +427,7 @@ classdef dataOverview < iris.ui.UIContainer
           obj.Handler.currentSelection = selectedIndex;
         end
         obj.setData(cat(1,infos{:}));
-        pause(0.01);
-        %drawnow('limitrate');
+        pause(0.05);
       end
     end
     
@@ -454,7 +462,16 @@ classdef dataOverview < iris.ui.UIContainer
         pW*0.8, ...
         pH*0.9 ...
         ];
-      
+      % set the table width
+      firstColWidth = max([120,obj.PropTable.ColumnWidth{1}]);
+      tableDat = obj.PropTable.Data;
+      if size(tableDat,2) < 2
+        % no data in table, simply return
+        return
+      end
+      lens = cellfun(@length,tableDat(:,2),'UniformOutput',true);
+      remainderWidth = obj.PropTable.Position(3) - firstColWidth-20;
+      obj.PropTable.ColumnWidth = {firstColWidth, max([lens*6.55;remainderWidth])};
     end
     
     function clearView(obj)
@@ -472,10 +489,25 @@ classdef dataOverview < iris.ui.UIContainer
       obj.handlerListeners = {};
     end
     
+    function doCopyUITableCell(obj,source,event) %#ok<INUSL>
+      try
+        ids = event.Indices;
+        nSelections = size(ids,1);
+        merged = cell(nSelections,1);
+        for sel = 1:nSelections
+          merged{sel} = source.Data{ids(sel,1),ids(sel,2)};
+        end
+        stringified = utilities.unknownCell2Str(merged,';',false);
+        clipboard('copy',stringified);
+      catch x
+        fprintf('Copy failed for reason:\n "%s"\n',x.message);
+      end
+    end
+    
   end
   %% Preferences
   methods (Access = protected)
-
+    
     function setContainerPrefs(obj)
       setContainerPrefs@iris.ui.UIContainer(obj);
     end

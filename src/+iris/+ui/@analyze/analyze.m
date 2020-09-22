@@ -19,8 +19,10 @@ classdef analyze < iris.ui.JContainer
     checkboxSendToCmd
     checkboxAppend
     selectAnalysis
-    epochInput
+    datumInput
     refreshAnalysesButton
+    editAnalysisButton
+    setDefaultsButton
   end
   
   properties (SetAccess = private)
@@ -45,9 +47,6 @@ classdef analyze < iris.ui.JContainer
   %% Public Methods
   
   methods 
-    
-    % Load ??
-    loadObj(obj,fxString)
     
     function buildUI(obj,handler)
       if nargin < 2
@@ -102,7 +101,7 @@ classdef analyze < iris.ui.JContainer
       allInds = 1:obj.Handler.currentSelection.total;
       inds = intersect( ...
         allInds, ...
-        str2num(obj.epochInput.String) ...
+        str2num(obj.datumInput.String) ...
         );%#ok
     end
     
@@ -138,6 +137,10 @@ classdef analyze < iris.ui.JContainer
     
     createUI(obj)
     
+    loadObj(obj,fxString)
+    
+    onSetNewDefaults(obj,src,evt)
+    
     function startupFcn(obj,handler)
       if nargin < 2, return; end
       obj.buildUI(handler);
@@ -157,28 +160,41 @@ classdef analyze < iris.ui.JContainer
         ismember(obj.availableAnalyses,'Select') ...
         );
       obj.buttonGo.Enable = 'off';
+      obj.editAnalysisButton.Enable = 'off';
+      obj.setDefaultsButton.Enable = 'off';
     end
     
     function setFxn(obj,fx)
       if strcmpi(fx.Data,'select')
         obj.clearUI();
-        return; 
+        return
       end
       obj.loadObj(fx.Data);
     end
     
-    function setEpochs(obj,source,~)
+    function setDatums(obj,source,~)
       nums = str2num(source.String);%#ok
       %Here we are converting the input to a double vector, we then sort
       %the values and make sure there are no repeats. 
-      source.String = obj.formatEpochString(nums);
+      source.String = obj.formatDatumString(nums);
     end
     
     function onRefreshAnalyses(obj,~,~)
+      import iris.infra.eventData;
+      
       obj.selectAnalysis.String = obj.availableAnalyses;
+      drawnow;
+      
+      obj.setFxn(eventData(obj.selectAnalysis.String{obj.selectAnalysis.Value}));
     end
     
-    function validateFilename(obj,src,~) %#ok
+    function onEditAnalysis(obj,~,~)
+      selAna = obj.selectAnalysis.String{obj.selectAnalysis.Value};
+      if strcmp(selAna,'Select'), return; end
+      edit([selAna,'.m']);
+    end
+    
+    function validateFilename(obj,src,~)  %#ok<INUSL>
       theStr = matlab.lang.makeValidName(src.String);
       src.String = theStr;
     end
@@ -247,27 +263,28 @@ classdef analyze < iris.ui.JContainer
     function onHandlerUpdate(obj,event)
       % if the window is open, we need to update the view. Otherwise we will let the
       % buildUI() method handle the update.
-      if ~obj.isVisible, return; end
+      if obj.isClosed, return; end
       
       if endsWith(event.EventName,'Updated')
         % selection update triggered
         obj.setSelectionFromHandler();
       else
         % otherwise
+        disp(event.EventName)
       end
     end
     
     function setSelectionFromHandler(obj)
       cur = obj.Handler.currentSelection.selected;
       % set the string.
-      obj.epochInput.String = obj.formatEpochString(cur);
+      obj.datumInput.String = obj.formatDatumString(cur);
     end
     
     function setFile(obj,~,~)
       [~,f,root] = iris.app.Info.putFile( ...
         'Analysis Output File', ...
         '*.mat', ...
-        fullfile(obj.Opts.OutputDirectory,[obj.Opts.AnalysisPrefix(),'.mat']) ...
+        fullfile(obj.labelFileRoot.String,[obj.editFileOutput.String,'.mat']) ...
         );
       if isempty(root), return; end
       obj.labelFileRoot.String = root;
@@ -275,7 +292,7 @@ classdef analyze < iris.ui.JContainer
       obj.editFileOutput.String = f;
     end
     
-    function expressions = formatEpochString(obj,inds)
+    function expressions = formatDatumString(obj,inds)
       % validate range
       allInds = 1:obj.Handler.currentSelection.total;
       cur = intersect(allInds,inds); %sorted
@@ -314,9 +331,5 @@ classdef analyze < iris.ui.JContainer
     
   end
   
-  %% Static
-  methods (Static)
-    
-  end
 end
 

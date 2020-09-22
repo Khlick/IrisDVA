@@ -19,7 +19,7 @@ classdef questionBox < iris.ui.JContainer
       
       addlistener(obj,'Close', @obj.onCloseRequest);
       
-      obj.show;
+      obj.show();
       
       defaultMember = ismember( ...
         cellfun(@(x)x.String, ...
@@ -28,7 +28,9 @@ classdef questionBox < iris.ui.JContainer
         ), ...
         obj.default ...
         );
+      pause(0.01);
       uicontrol(obj.buttons{defaultMember});
+      
       obj.wait();
     end
     
@@ -124,7 +126,7 @@ classdef questionBox < iris.ui.JContainer
       
       % always init with the same size
       
-      pos = centerFigPos(w,h);
+      pos = utilities.centerFigPos(w,h);
       obj.position = pos;
       
       set(obj.container, ...

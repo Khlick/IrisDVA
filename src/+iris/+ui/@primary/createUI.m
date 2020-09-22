@@ -5,20 +5,6 @@ import iris.ui.*;
 import iris.app.*;
 import iris.infra.*;
 
-initW = 1610;
-initH = 931;
-
-pos = centerFigPos(initW,initH);
-
-set(obj.container, ...
-  'Name', [Info.name,' ',Info.year], ...
-  'Alphamap', linspace(0,1,2^8), ...
-  'Position', pos ...
-  );
-
-%drawnow();
-pause(0.05);
-
 obj.layout = iris.data.encode.layout('X','Y');
 
 %% Menus
@@ -82,7 +68,7 @@ obj.NotesMenuD.Text = 'Notes...';
 % Create ProtocolsMenuD
 obj.ProtocolsMenuD = uimenu(obj.ViewMenu);
 obj.ProtocolsMenuD.Enable = 'off';
-obj.ProtocolsMenuD.Text = 'Protocols...';
+obj.ProtocolsMenuD.Text = 'Datum Properties...';
 
 % Create OverviewMenuD
 obj.OverviewMenuD = uimenu(obj.ViewMenu);
@@ -122,12 +108,16 @@ obj.SendtoCmdMenuD = uimenu(obj.AnalysisMenu);
 obj.SendtoCmdMenuD.Enable = 'off';
 obj.SendtoCmdMenuD.Text = 'Send to Cmd';
 
-% Create ModulesMenuD
-obj.ModulesMenuD = uimenu(obj.container);
-obj.ModulesMenuD.Text = 'Modules';
+% Create ModulesMenu
+obj.ModulesMenu = uimenu(obj.container);
+obj.ModulesMenu.Text = 'Modules';
 
-% Create ModulesRefreshD
-obj.ModulesRefresh = uimenu(obj.ModulesMenuD);
+% Create SessionConverterMenu
+obj.SessionConverterMenu = uimenu(obj.ModulesMenu);
+obj.SessionConverterMenu.Text = 'Session Converter';
+
+% Create ModulesRefresh
+obj.ModulesRefresh = uimenu(obj.ModulesMenu);
 obj.ModulesRefresh.Text = 'Refresh';
 obj.ModulesRefresh.Separator = 'on';
 obj.ModulesRefresh.Enable = 'on';
@@ -144,48 +134,377 @@ obj.AboutMenu.Text = 'About Iris';
 obj.DocumentationMenu = uimenu(obj.HelpMenu);
 obj.DocumentationMenu.Text = 'Documentation';
 
+% Create Install Helpers
+obj.InstallHelpersMenu = uimenu(obj.HelpMenu);
+obj.InstallHelpersMenu.Text = 'Install Helpers';
+
 % Create FixLayoutMenu
 obj.FixLayoutMenu = uimenu(obj.HelpMenu);
 obj.FixLayoutMenu.Text = 'Fix Layout!';
 
-% Create SessionConverterMenu
-obj.SessionConverterMenu = uimenu(obj.HelpMenu);
-obj.SessionConverterMenu.Separator = 'on';
-obj.SessionConverterMenu.Text = 'Session Converter';
-
 
 %% MAIN UI
 
-% Create Start Panel
-obj.StartPanel = uipanel(obj.container);
-obj.StartPanel.AutoResizeChildren = 'off';
-obj.StartPanel.BackgroundColor = [1 1 1];
-obj.StartPanel.Position = [16 16 1240 726];
-obj.StartPanel.BorderType = 'none';
-obj.StartPanel.FontName = Aes.uiFontName;
+% set the position
+initW = 1610;
+initH = 931;
 
-% Create StartLabel
-obj.StartLabel = uilabel(obj.StartPanel);
-obj.StartLabel.FontName = Aes.uiFontName;
-obj.StartLabel.FontSize = 28;
-obj.StartLabel.HorizontalAlignment = 'center';
-obj.StartLabel.Position = [1240/2-200, 726/2-25 400 50];
-obj.StartLabel.Text = 'Load Data or Session to get started.';
+pos = utilities.centerFigPos(initW,initH);
+
+set(obj.container, ...
+  'Name', [Info.name,' ',Info.year], ...
+  'Alphamap', linspace(0,1,2^8), ...
+  'Position', pos, ...
+  'Tag', iris.app.Info.name ...
+  );
+
+% Create containerGrid
+obj.containerGrid = uigridlayout(obj.container);
+obj.containerGrid.ColumnWidth = {'1x', 350};
+obj.containerGrid.RowHeight = {190, '1x'};
+obj.containerGrid.ColumnSpacing = 5;
+obj.containerGrid.RowSpacing = 5;
+
+% Create PlotControlTools
+obj.PlotControlTools = uipanel(obj.containerGrid);
+obj.PlotControlTools.BackgroundColor = [1 1 1];
+obj.PlotControlTools.FontWeight = 'bold';
+obj.PlotControlTools.FontName = Aes.uiFontName;
+obj.PlotControlTools.Layout.Row = 1;
+obj.PlotControlTools.Layout.Column = 1;
+
+
+% Create PlotControlGrid
+obj.PlotControlGrid = uigridlayout(obj.PlotControlTools);
+obj.PlotControlGrid.ColumnWidth = {'1.3x', '1.5x', '0.8x', '1x'};
+obj.PlotControlGrid.RowHeight = {'2x', 60, '1x'};
+obj.PlotControlGrid.Padding = [5 5 5 10];
+obj.PlotControlGrid.ColumnSpacing = 25;
+obj.PlotControlGrid.RowSpacing = 5;
+
+%%% Create the switch panel
+
+% Create SwitchPanel
+obj.SwitchPanel = uipanel(obj.PlotControlGrid);
+obj.SwitchPanel.BorderType = 'none';
+obj.SwitchPanel.BackgroundColor = [0.502 0.502 0.502];
+obj.SwitchPanel.FontName = Aes.uiFontName;
+obj.SwitchPanel.Layout.Row = [1 3];
+obj.SwitchPanel.Layout.Column = 1;
+
+
+% Create SwitchGrid
+obj.SwitchGrid = uigridlayout(obj.SwitchPanel);
+obj.SwitchGrid.ColumnWidth = {'1x', '1x', '1x', '1x', '1x'};
+obj.SwitchGrid.RowHeight = {16, '1x', 22};
+obj.SwitchGrid.Padding = [2 8 2 8];
+obj.SwitchGrid.ColumnSpacing = 5;
+obj.SwitchGrid.RowSpacing = 2;
+
+% Create StatsLabel
+obj.StatsLabel = uilabel(obj.SwitchGrid);
+obj.StatsLabel.HorizontalAlignment = 'center';
+obj.StatsLabel.FontColor = [0.9412 0.9412 0.9412];
+obj.StatsLabel.FontName = Aes.uiFontName;
+obj.StatsLabel.FontSize = Aes.uiFontSize('custom',2);
+obj.StatsLabel.Text = 'Stats';
+obj.StatsLabel.Layout.Row = 3;
+obj.StatsLabel.Layout.Column = 1;
+
+% Create StatsLamp
+obj.StatsLamp = uilamp(obj.SwitchGrid);
+obj.StatsLamp.Layout.Row = 1;
+obj.StatsLamp.Layout.Column = 1;
+obj.StatsLamp.Color = Aes.appColor(1,'red');
+
+% Create StatsSwitch
+obj.StatsSwitch = uiswitch(obj.SwitchGrid, 'toggle');
+obj.StatsSwitch.Items = {'', ''};
+obj.StatsSwitch.ItemsData = {'0', '1'};
+obj.StatsSwitch.FontName = Aes.uiFontName;
+obj.StatsSwitch.Interruptible = 'off';
+obj.StatsSwitch.Value = '0';
+obj.StatsSwitch.Tag = 'Stats';
+obj.StatsSwitch.Layout.Row = 2;
+obj.StatsSwitch.Layout.Column = 1;
+
+% Create ScaleLabel
+obj.ScaleLabel = uilabel(obj.SwitchGrid);
+obj.ScaleLabel.HorizontalAlignment = 'center';
+obj.ScaleLabel.FontColor = [0.9412 0.9412 0.9412];
+obj.ScaleLabel.Text = 'Scale';
+obj.ScaleLabel.FontName = Aes.uiFontName;
+obj.ScaleLabel.FontSize = Aes.uiFontSize('custom',2);
+obj.ScaleLabel.Layout.Row = 3;
+obj.ScaleLabel.Layout.Column = 2;
+
+% Create ScaleLamp
+obj.ScaleLamp = uilamp(obj.SwitchGrid);
+obj.ScaleLamp.Layout.Row = 1;
+obj.ScaleLamp.Layout.Column = 2;
+obj.ScaleLamp.Color = Aes.appColor(1,'red');
+
+% Create ScaleSwitch
+obj.ScaleSwitch = uiswitch(obj.SwitchGrid, 'toggle');
+obj.ScaleSwitch.Items = {'', ''};
+obj.ScaleSwitch.ItemsData = {'0', '1'};
+obj.ScaleSwitch.FontName = Aes.uiFontName;
+obj.ScaleSwitch.Interruptible = 'off';
+obj.ScaleSwitch.Value = '0';
+obj.ScaleSwitch.Tag = 'Scale';
+obj.ScaleSwitch.Layout.Row = 2;
+obj.ScaleSwitch.Layout.Column = 2;
+
+% Create BaselineLabel
+obj.BaselineLabel = uilabel(obj.SwitchGrid);
+obj.BaselineLabel.HorizontalAlignment = 'center';
+obj.BaselineLabel.FontColor = [0.9412 0.9412 0.9412];
+obj.BaselineLabel.FontName = Aes.uiFontName;
+obj.BaselineLabel.FontSize = Aes.uiFontSize('custom',2);
+obj.BaselineLabel.Text = 'Baseline';
+obj.BaselineLabel.Layout.Row = 3;
+obj.BaselineLabel.Layout.Column = 3;
+
+% Create BaselineLamp
+obj.BaselineLamp = uilamp(obj.SwitchGrid);
+obj.BaselineLamp.Layout.Row = 1;
+obj.BaselineLamp.Layout.Column = 3;
+obj.BaselineLamp.Color = Aes.appColor(1,'red');
+
+% Create BaselineSwitch
+obj.BaselineSwitch = uiswitch(obj.SwitchGrid, 'toggle');
+obj.BaselineSwitch.Items = {'', ''};
+obj.BaselineSwitch.ItemsData = {'0', '1'};
+obj.BaselineSwitch.FontName = Aes.uiFontName;
+obj.BaselineSwitch.Value = '0';
+obj.BaselineSwitch.Interruptible = 'off';
+obj.BaselineSwitch.Tag = 'Baseline';
+obj.BaselineSwitch.Layout.Row = 2;
+obj.BaselineSwitch.Layout.Column = 3;
+
+
+% Create FilterLabel
+obj.FilterLabel = uilabel(obj.SwitchGrid);
+obj.FilterLabel.HorizontalAlignment = 'center';
+obj.FilterLabel.FontColor = [0.9412 0.9412 0.9412];
+obj.FilterLabel.FontName = Aes.uiFontName;
+obj.FilterLabel.FontSize = Aes.uiFontSize('custom',2);
+obj.FilterLabel.Text = 'Filter';
+obj.FilterLabel.Layout.Row = 3;
+obj.FilterLabel.Layout.Column = 4;
+
+% Create FilterLamp
+obj.FilterLamp = uilamp(obj.SwitchGrid);
+obj.FilterLamp.Layout.Row = 1;
+obj.FilterLamp.Layout.Column = 4;
+obj.FilterLamp.Color = Aes.appColor(1,'red');
+
+% Create FilterSwitch
+obj.FilterSwitch = uiswitch(obj.SwitchGrid, 'toggle');
+obj.FilterSwitch.Interruptible = 'off';
+obj.FilterSwitch.Items = {'', ''};
+obj.FilterSwitch.ItemsData = {'0', '1'};
+obj.FilterSwitch.FontName = Aes.uiFontName;
+obj.FilterSwitch.Value = '0';
+obj.FilterSwitch.Tag = 'Filter';
+obj.FilterSwitch.Layout.Row = 2;
+obj.FilterSwitch.Layout.Column = 4;
+
+% Create DatumLabel
+obj.DataLabel = uilabel(obj.SwitchGrid);
+obj.DataLabel.HorizontalAlignment = 'center';
+obj.DataLabel.FontColor = [0.9412 0.9412 0.9412];
+obj.DataLabel.FontName = Aes.uiFontName;
+obj.DataLabel.FontSize = Aes.uiFontSize('custom',2);
+obj.DataLabel.Text = 'Data';
+obj.DataLabel.Layout.Row = 3;
+obj.DataLabel.Layout.Column = 5;
+
+% Create DataLamp
+obj.DataLamp = uilamp(obj.SwitchGrid);
+obj.DataLamp.Layout.Row = 1;
+obj.DataLamp.Layout.Column = 5;
+obj.DataLamp.Color = Aes.appColor(1,'green');
+
+% Create DatumSwitch
+obj.DatumSwitch = uiswitch(obj.SwitchGrid, 'toggle');
+obj.DatumSwitch.Items = {'', ''};
+obj.DatumSwitch.ItemsData = {'0', '1'};
+obj.DatumSwitch.FontName = Aes.uiFontName;
+obj.DatumSwitch.Interruptible = 'off';
+obj.DatumSwitch.Value = '1';
+obj.DatumSwitch.Tag = 'Data';
+obj.DatumSwitch.Layout.Row = 2;
+obj.DatumSwitch.Layout.Column = 5;
+
+%%% Create the data ticker / navigator region
+
+% Create CurrentDataLabel
+obj.CurrentDataLabel = uilabel(obj.PlotControlGrid);
+obj.CurrentDataLabel.HorizontalAlignment = 'center';
+obj.CurrentDataLabel.VerticalAlignment = 'bottom';
+obj.CurrentDataLabel.FontName = Aes.uiFontName;
+obj.CurrentDataLabel.FontSize = Aes.uiFontSize('custom',8);
+obj.CurrentDataLabel.FontWeight = 'bold';
+obj.CurrentDataLabel.Text = ':::::  Current Data  :::::';
+obj.CurrentDataLabel.Layout.Row = 1;
+obj.CurrentDataLabel.Layout.Column = 2;
+
+% Create the navigator and ticker grid
+% Create NavigatorGrid
+obj.NavigatorGrid = uigridlayout(obj.PlotControlGrid);
+obj.NavigatorGrid.ColumnWidth = {'1.2x', '1x', '4x', '1x', '1.2x'};
+obj.NavigatorGrid.RowHeight = {'1x'};
+obj.NavigatorGrid.ColumnSpacing = 5;
+obj.NavigatorGrid.Padding = [0 5 0 5];
+obj.NavigatorGrid.Layout.Row = 2;
+obj.NavigatorGrid.Layout.Column = 2;
+
+% big steps
+% Create CurrentDatumIncBig
+obj.CurrentDatumIncBig = uibutton(obj.NavigatorGrid, 'push');
+obj.CurrentDatumIncBig.FontName = 'Courier New';
+obj.CurrentDatumIncBig.FontSize = Aes.uiFontSize('custom');
+obj.CurrentDatumIncBig.FontWeight = 'bold';
+obj.CurrentDatumIncBig.Text = '>>';
+obj.CurrentDatumIncBig.Layout.Row = 1;
+obj.CurrentDatumIncBig.Layout.Column = 5;
+
+% Create CurrentDatumDecBig
+obj.CurrentDatumDecBig = uibutton(obj.NavigatorGrid, 'push');
+obj.CurrentDatumDecBig.FontName = 'Courier New';
+obj.CurrentDatumDecBig.FontSize = Aes.uiFontSize('custom');
+obj.CurrentDatumDecBig.FontWeight = 'bold';
+obj.CurrentDatumDecBig.Text = '<<';
+obj.CurrentDatumDecBig.Layout.Row = 1;
+obj.CurrentDatumDecBig.Layout.Column = 1;
+
+% small steps
+% Create CurrentDatumIncSmall
+obj.CurrentDatumIncSmall = uibutton(obj.NavigatorGrid, 'push');
+obj.CurrentDatumIncSmall.FontName = 'Courier New';
+obj.CurrentDatumIncSmall.FontSize = Aes.uiFontSize('custom',24);
+obj.CurrentDatumIncSmall.FontWeight = 'bold';
+obj.CurrentDatumIncSmall.Text = '>';
+obj.CurrentDatumIncSmall.Layout.Row = 1;
+obj.CurrentDatumIncSmall.Layout.Column = 4;
+
+% Create CurrentDatumDecSmall
+obj.CurrentDatumDecSmall = uibutton(obj.NavigatorGrid, 'push');
+obj.CurrentDatumDecSmall.FontName = 'Courier New';
+obj.CurrentDatumDecSmall.FontSize = Aes.uiFontSize('custom',24);
+obj.CurrentDatumDecSmall.FontWeight = 'bold';
+obj.CurrentDatumDecSmall.Text = '<';
+obj.CurrentDatumDecSmall.Layout.Row = 1;
+obj.CurrentDatumDecSmall.Layout.Column = 2;
+
+% ticker
+% Create CurrentDataTicker
+obj.CurrentDataTicker = uieditfield(obj.NavigatorGrid, 'text');
+obj.CurrentDataTicker.HorizontalAlignment = 'center';
+obj.CurrentDataTicker.FontName = 'Courier New';
+obj.CurrentDataTicker.FontSize = Aes.uiFontSize('custom',22);
+obj.CurrentDataTicker.FontWeight = 'bold';
+obj.CurrentDataTicker.Value = '1';
+obj.CurrentDataTicker.Tag = 'CurrentDatum';
+obj.CurrentDataTicker.Layout.Row = 1;
+obj.CurrentDataTicker.Layout.Column = 3;
+
+
+
+%%% Create the Overlap ticker /navigator
+
+% Create OverlapGrid
+obj.OverlapGrid = uigridlayout(obj.PlotControlGrid);
+obj.OverlapGrid.ColumnWidth = {'1x', '3x', '1x'};
+obj.OverlapGrid.RowHeight = {'1x'};
+obj.OverlapGrid.ColumnSpacing = 3;
+obj.OverlapGrid.RowSpacing = 3;
+obj.OverlapGrid.Padding = [0 8 0 8];
+obj.OverlapGrid.Layout.Row = 2;
+obj.OverlapGrid.Layout.Column = 3;
+
+% Create OverlapLabel
+obj.OverlapLabel = uilabel(obj.PlotControlGrid);
+obj.OverlapLabel.HorizontalAlignment = 'center';
+obj.OverlapLabel.VerticalAlignment = 'bottom';
+obj.OverlapLabel.FontName = Aes.uiFontName;
+obj.OverlapLabel.FontSize = Aes.uiFontSize('custom',2);
+obj.OverlapLabel.FontWeight = 'bold';
+obj.OverlapLabel.Layout.Row = 1;
+obj.OverlapLabel.Layout.Column = 3;
+obj.OverlapLabel.Text = 'Number of Overlayed';
+
+% Create OverlapDec
+obj.OverlapDec = uibutton(obj.OverlapGrid, 'push');
+obj.OverlapDec.IconAlignment = 'center';
+obj.OverlapDec.Icon = fullfile(Info.getResourcePath, 'icn', 'DecrementIcon.png');
+obj.OverlapDec.Text = '';
+obj.OverlapDec.Layout.Row = 1;
+obj.OverlapDec.Layout.Column = 1;
+
+% Create OverlapInc
+obj.OverlapInc = uibutton(obj.OverlapGrid, 'push');
+obj.OverlapInc.IconAlignment = 'center';
+obj.OverlapInc.Icon = fullfile(Info.getResourcePath, 'icn', 'IncrementIcon.png');
+obj.OverlapInc.Layout.Row = 1;
+obj.OverlapInc.Layout.Column = 3;
+obj.OverlapInc.Text = '';
+
+% Create OverlapTicker
+obj.OverlapTicker = uieditfield(obj.OverlapGrid, 'text');
+obj.OverlapTicker.HorizontalAlignment = 'center';
+obj.OverlapTicker.FontName = 'Courier New';
+obj.OverlapTicker.FontSize = Aes.uiFontSize('custom');
+obj.OverlapTicker.FontWeight = 'bold';
+obj.OverlapTicker.Layout.Row = 1;
+obj.OverlapTicker.Layout.Column = 2;
+obj.OverlapTicker.Value = '1';
+obj.OverlapTicker.Tag = 'Overlap';
+
+
+%%% Create the Selection Navigator
+
+% Create SelectionNavigatorLabel
+obj.SelectionNavigatorLabel = uilabel(obj.PlotControlGrid);
+obj.SelectionNavigatorLabel.HorizontalAlignment = 'center';
+obj.SelectionNavigatorLabel.VerticalAlignment = 'bottom';
+obj.SelectionNavigatorLabel.FontName = Aes.uiFontName;
+obj.SelectionNavigatorLabel.FontSize = Aes.uiFontSize('custom',2);
+obj.SelectionNavigatorLabel.FontWeight = 'bold';
+obj.SelectionNavigatorLabel.Text = 'Selection Navigator';
+obj.SelectionNavigatorLabel.Layout.Row = 1;
+obj.SelectionNavigatorLabel.Layout.Column = 4;
+
+% Create SelectionNavigatorSlider
+obj.SelectionNavigatorSlider = uislider(obj.PlotControlGrid);
+obj.SelectionNavigatorSlider.Value = 1;
+obj.SelectionNavigatorSlider.MinorTicksMode = 'manual';
+obj.SelectionNavigatorSlider.MinorTicks = [];
+obj.SelectionNavigatorSlider.MajorTicks = 1;
+obj.SelectionNavigatorSlider.MajorTicksMode = 'manual';
+obj.SelectionNavigatorSlider.Limits = [0.5, 1.49];
+obj.SelectionNavigatorSlider.FontName = Aes.uiFontName;
+obj.SelectionNavigatorSlider.Layout.Row = 2;
+obj.SelectionNavigatorSlider.Layout.Column = 4;
+obj.SelectionNavigatorSlider.Tag = 'Slider';
+
+%%% Create the Axes object
 
 % Create AxesPanel
-obj.AxesPanel = uipanel(obj.container);
-obj.AxesPanel.AutoResizeChildren = 'off';
+obj.AxesPanel = uipanel(obj.containerGrid);
 obj.AxesPanel.BackgroundColor = [1 1 1];
-obj.AxesPanel.Position = [16 16 1240 726];
+obj.AxesPanel.Layout.Row = 2;
+obj.AxesPanel.Layout.Column = 1;
 obj.AxesPanel.BorderType = 'none';
 obj.AxesPanel.FontName = Aes.uiFontName;
 
+drawnow();
+pause(1);
 
-%COMMENT obj.Axes creation TO USE D3.js
 % Create Axes
 obj.Axes = iris.ui.elements.AxesPanel( ...
   obj.AxesPanel, ...
-  'Position', [5,5,obj.layout.width,obj.layout.height], ...
   'margins', ...
     [ ...
       obj.layout.margin.l, ...
@@ -196,352 +515,106 @@ obj.Axes = iris.ui.elements.AxesPanel( ...
   'FontWeight', 'bold', ...
   'FontName', Aes.uiFontName ...
   );
-pause(0.3);
 
+%%% Create Extended Info panel
 
-% Create CurrentInfo
-obj.CurrentInfo = uipanel(obj.container);
-obj.CurrentInfo.AutoResizeChildren = 'off';
-obj.CurrentInfo.Title = '    Current Info';
-obj.CurrentInfo.FontWeight = 'bold';
-obj.CurrentInfo.BackgroundColor = [1 1 1];
-obj.CurrentInfo.FontName = Aes.uiFontName;
-obj.CurrentInfo.Position = [1263 16 332 891];
+% Create ExtendedInfoPanel
+obj.ExtendedInfoPanel = uipanel(obj.containerGrid);
+obj.ExtendedInfoPanel.AutoResizeChildren = 'off';
+obj.ExtendedInfoPanel.BackgroundColor = [0.9412 0.9412 0.9412];
+obj.ExtendedInfoPanel.Layout.Row = [1 2];
+obj.ExtendedInfoPanel.Layout.Column = 2;
+
+% Create ExtendedInfoGrid
+obj.ExtendedInfoGrid = uigridlayout(obj.ExtendedInfoPanel);
+obj.ExtendedInfoGrid.ColumnWidth = {80, '1x'};
+obj.ExtendedInfoGrid.RowHeight = {'8x', 22, 22, '1x'};
+obj.ExtendedInfoGrid.ColumnSpacing = 5;
+obj.ExtendedInfoGrid.RowSpacing = 5;
+obj.ExtendedInfoGrid.Padding = [3 5 3 0];
+
+% Create CurrentInfoPanel
+obj.CurrentInfoPanel = uipanel(obj.ExtendedInfoGrid);
+obj.CurrentInfoPanel.TitlePosition = 'centertop';
+obj.CurrentInfoPanel.Title = 'Current Selection Info';
+obj.CurrentInfoPanel.FontWeight = 'bold';
+obj.CurrentInfoPanel.BackgroundColor = [1 1 1];
+obj.CurrentInfoPanel.FontName = Aes.uiFontName;
+obj.CurrentInfoPanel.Layout.Row = 1;
+obj.CurrentInfoPanel.Layout.Column = [1 2];
+
+% Create CurrentInfoGrid
+obj.CurrentInfoGrid = uigridlayout(obj.CurrentInfoPanel);
+obj.CurrentInfoGrid.ColumnWidth = {'1x'};
+obj.CurrentInfoGrid.RowHeight = {'1x'};
+obj.CurrentInfoGrid.Padding = [2 0 2 0];
 
 % Create CurrentInfoTable
-obj.CurrentInfoTable = uitable(obj.CurrentInfo);
+obj.CurrentInfoTable = uitable(obj.CurrentInfoGrid);
 obj.CurrentInfoTable.ColumnName = {'Property'; 'Value'};
+obj.CurrentInfoTable.ColumnSortable = [true false];
 obj.CurrentInfoTable.RowName = {};
 obj.CurrentInfoTable.FontName = Aes.uiFontName;
-obj.CurrentInfoTable.FontSize = 14;
-obj.CurrentInfoTable.Position = ...
-  [ ...
-    6, 150, ...
-    obj.CurrentInfo.Position(3) - 11, ...
-    obj.CurrentInfo.Position(4) - (155+20) ...
-  ];
-
-
-% Create ExtendedInfo
-obj.ExtendedInfo = uipanel(obj.CurrentInfo);
-obj.ExtendedInfo.AutoResizeChildren = 'off';
-obj.ExtendedInfo.BackgroundColor = [0.9412 0.9412 0.9412];
-obj.ExtendedInfo.Position = [1 1 331 145];
+obj.CurrentInfoTable.FontSize = Aes.uiFontSize('custom',2);
+obj.CurrentInfoTable.Layout.Row = 1;
+obj.CurrentInfoTable.Layout.Column = 1;
+obj.CurrentInfoTable.CellSelectionCallback = @obj.doCopyUITableCell;
 
 % Create ShowingLabel
-obj.ShowingLabel = uilabel(obj.ExtendedInfo);
+obj.ShowingLabel = uilabel(obj.ExtendedInfoGrid);
 obj.ShowingLabel.FontName = Aes.uiFontName;
 obj.ShowingLabel.FontSize = 12;
 obj.ShowingLabel.HorizontalAlignment = 'right';
 obj.ShowingLabel.FontWeight = 'bold';
-obj.ShowingLabel.Position = [5 145-22 55 22];
+obj.ShowingLabel.Layout.Row = 2;
+obj.ShowingLabel.Layout.Column = 1;
 obj.ShowingLabel.Text = 'Showing:';
 
-% Create ShowingValueString
-obj.ShowingValueString = uilabel(obj.ExtendedInfo);
-obj.ShowingValueString.FontName = 'Courier New';
-obj.ShowingValueString.FontSize = 12;
-obj.ShowingValueString.FontWeight = 'bold';
-obj.ShowingValueString.HorizontalAlignment = 'center';
-obj.ShowingValueString.Position = [60 145-25 331-60-5 22];
-obj.ShowingValueString.Text = '0 of 0';
+
+% Create ShowingValueLabel
+obj.ShowingValueLabel = uilabel(obj.ExtendedInfoGrid);
+obj.ShowingValueLabel.FontName = 'Courier New';
+obj.ShowingValueLabel.FontSize = 12;
+obj.ShowingValueLabel.FontWeight = 'bold';
+obj.ShowingValueLabel.HorizontalAlignment = 'center';
+obj.ShowingValueLabel.Layout.Row = 2;
+obj.ShowingValueLabel.Layout.Column = 2;
+obj.ShowingValueLabel.Text = '0 of 0';
 
 % Create DevicesLabel
-obj.DevicesLabel = uilabel(obj.ExtendedInfo);
+obj.DevicesLabel = uilabel(obj.ExtendedInfoGrid);
 obj.DevicesLabel.FontName = Aes.uiFontName;
 obj.DevicesLabel.FontSize = 12;
 obj.DevicesLabel.HorizontalAlignment = 'right';
-obj.DevicesLabel.Position = [5 145-45 48 22];
+obj.DevicesLabel.Layout.Row = 3;
+obj.DevicesLabel.Layout.Column = 1;
 obj.DevicesLabel.Text = 'Devices:';
 
 % Create DevicesSelection
-obj.DevicesSelection = uilistbox(obj.ExtendedInfo);
-obj.DevicesSelection.Items = {'Device 1', 'Device 2'};
+obj.DevicesSelection = uilistbox(obj.ExtendedInfoGrid);
+obj.DevicesSelection.Items = {'Device 1', 'Device 2', 'Device 3'};
 obj.DevicesSelection.Multiselect = 'on';
 obj.DevicesSelection.FontName = Aes.uiFontName;
-obj.DevicesSelection.Position = [20 52 331-40 145-(75+22)];
+obj.DevicesSelection.FontSize = Aes.uiFontSize('shrink');
+obj.DevicesSelection.Layout.Row = 4;
+obj.DevicesSelection.Layout.Column = [1 2];
 obj.DevicesSelection.Value = {'Device 1', 'Device 2'};
 
-% Create ViewNotesButton
-obj.ViewNotesButton = uibutton(obj.ExtendedInfo, 'push');
-obj.ViewNotesButton.FontName = Aes.uiFontName;
-obj.ViewNotesButton.Text = 'Notes';
-obj.ViewNotesButton.Position = [45 7 100 38];
-
-% Create ExtendedInfoButton
-obj.ExtendedInfoButton = uibutton(obj.ExtendedInfo, 'push');
-obj.ExtendedInfoButton.FontName = Aes.uiFontName;
-obj.ExtendedInfoButton.Text = 'Overview';
-obj.ExtendedInfoButton.Position = [190 7 100 38];
-
-% Create PlotControlTools
-obj.PlotControlTools = uipanel(obj.container);
-obj.PlotControlTools.AutoResizeChildren = 'off';
-obj.PlotControlTools.Title = '    Plot Control';
-obj.PlotControlTools.FontWeight = 'bold';
-obj.PlotControlTools.BackgroundColor = [1 1 1];
-obj.PlotControlTools.FontName = Aes.uiFontName;
-obj.PlotControlTools.Position = [16 749 1240 157];
-
-% Create OverlapLabel
-obj.OverlapLabel = uilabel(obj.PlotControlTools);
-obj.OverlapLabel.HorizontalAlignment = 'center';
-obj.OverlapLabel.FontName = Aes.uiFontName;
-obj.OverlapLabel.FontSize = 14;
-obj.OverlapLabel.FontWeight = 'bold';
-obj.OverlapLabel.Position = [767 90 136 22];
-obj.OverlapLabel.Text = 'Number of Overlayed';
-
-% Create OverlapTicker
-obj.OverlapTicker = uieditfield(obj.PlotControlTools, 'text');
-obj.OverlapTicker.HorizontalAlignment = 'center';
-obj.OverlapTicker.FontName = 'Courier New';
-obj.OverlapTicker.FontSize = 28;
-obj.OverlapTicker.FontWeight = 'bold';
-obj.OverlapTicker.Position = [786 34 98 41];
-obj.OverlapTicker.Value = '1';
-obj.OverlapTicker.Tag = 'Overlap';
-
-% Create CurrentEpochLabel
-obj.CurrentEpochLabel = uilabel(obj.PlotControlTools);
-obj.CurrentEpochLabel.HorizontalAlignment = 'center';
-obj.CurrentEpochLabel.VerticalAlignment = 'bottom';
-obj.CurrentEpochLabel.FontName = Aes.uiFontName;
-obj.CurrentEpochLabel.FontSize = 20;
-obj.CurrentEpochLabel.FontWeight = 'bold';
-obj.CurrentEpochLabel.Position = [398 94 209 25];
-obj.CurrentEpochLabel.Text = ':::::  Current Data  :::::';
-
-% Create CurrentEpochTicker
-obj.CurrentEpochTicker = uieditfield(obj.PlotControlTools, 'text');
-obj.CurrentEpochTicker.HorizontalAlignment = 'center';
-obj.CurrentEpochTicker.FontName = 'Courier New';
-obj.CurrentEpochTicker.FontSize = 36;
-obj.CurrentEpochTicker.FontWeight = 'bold';
-obj.CurrentEpochTicker.Position = [429 28 145 51];
-obj.CurrentEpochTicker.Value = '1';
-obj.CurrentEpochTicker.Tag = 'CurrentEpoch';
-
-% Create SelectionNavigatorLabel
-obj.SelectionNavigatorLabel = uilabel(obj.PlotControlTools);
-obj.SelectionNavigatorLabel.HorizontalAlignment = 'center';
-obj.SelectionNavigatorLabel.FontName = Aes.uiFontName;
-obj.SelectionNavigatorLabel.FontSize = 14;
-obj.SelectionNavigatorLabel.FontWeight = 'bold';
-obj.SelectionNavigatorLabel.Position = [1040 90 123 22];
-obj.SelectionNavigatorLabel.Text = 'Selection Navigator';
-obj.SelectionNavigatorLabel.Enable = 'off';
-
-% Create CurrentEpochSlider
-obj.CurrentEpochSlider = uislider(obj.PlotControlTools);
-obj.CurrentEpochSlider.Value = 1;
-obj.CurrentEpochSlider.MinorTicksMode = 'manual';
-obj.CurrentEpochSlider.MinorTicks = [];
-obj.CurrentEpochSlider.MajorTicks = 1;
-obj.CurrentEpochSlider.MajorTicksMode = 'manual';
-obj.CurrentEpochSlider.Limits = [0.5, 1.49];
-obj.CurrentEpochSlider.FontName = Aes.uiFontName;
-obj.CurrentEpochSlider.Position = [992 64 218 3];
-obj.CurrentEpochSlider.Tag = 'Slider';
-obj.CurrentEpochSlider.Enable = 'off';
-
-% Create CurrentEpochDecSmall
-obj.CurrentEpochDecSmall = uibutton(obj.PlotControlTools, 'push');
-obj.CurrentEpochDecSmall.FontName = 'Courier New';
-obj.CurrentEpochDecSmall.FontSize = 36;
-obj.CurrentEpochDecSmall.FontWeight = 'bold';
-obj.CurrentEpochDecSmall.Position = [379 27 40 53];
-obj.CurrentEpochDecSmall.Text = '<';
-
-% Create CurrentEpochIncSmall
-obj.CurrentEpochIncSmall = uibutton(obj.PlotControlTools, 'push');
-obj.CurrentEpochIncSmall.FontName = 'Courier New';
-obj.CurrentEpochIncSmall.FontSize = 36;
-obj.CurrentEpochIncSmall.FontWeight = 'bold';
-obj.CurrentEpochIncSmall.Position = [584 27 40 53];
-obj.CurrentEpochIncSmall.Text = '>';
-
-% Create OverlapInc
-obj.OverlapInc = uibutton(obj.PlotControlTools, 'push');
-
-obj.OverlapInc.VerticalAlignment = 'top';
-obj.OverlapInc.FontName = 'Courier New';
-obj.OverlapInc.FontSize = 28;
-obj.OverlapInc.FontWeight = 'bold';
-obj.OverlapInc.Position = [894 34 37 42];
-obj.OverlapInc.Text = '}';
-
-% Create OverlapDec
-obj.OverlapDec = uibutton(obj.PlotControlTools, 'push');
-obj.OverlapDec.VerticalAlignment = 'top';
-obj.OverlapDec.FontName = 'Courier New';
-obj.OverlapDec.FontSize = 28;
-obj.OverlapDec.FontWeight = 'bold';
-obj.OverlapDec.Position = [739 34 37 42];
-obj.OverlapDec.Text = '{';
-
-% Create CurrentEpochIncBig
-obj.CurrentEpochIncBig = uibutton(obj.PlotControlTools, 'push');
-obj.CurrentEpochIncBig.FontName = 'Courier New';
-obj.CurrentEpochIncBig.FontSize = 28;
-obj.CurrentEpochIncBig.FontWeight = 'bold';
-obj.CurrentEpochIncBig.Position = [634 29 50 50];
-obj.CurrentEpochIncBig.Text = '>>';
-
-% Create CurrentEpochDecBig
-obj.CurrentEpochDecBig = uibutton(obj.PlotControlTools, 'push');
-obj.CurrentEpochDecBig.FontName = 'Courier New';
-obj.CurrentEpochDecBig.FontSize = 28;
-obj.CurrentEpochDecBig.FontWeight = 'bold';
-obj.CurrentEpochDecBig.Position = [319 29 50 50];
-obj.CurrentEpochDecBig.Text = '<<';
-
-% Create SwitchPanel
-obj.SwitchPanel = uipanel(obj.PlotControlTools);
-obj.SwitchPanel.AutoResizeChildren = 'off';
-obj.SwitchPanel.BorderType = 'none';
-obj.SwitchPanel.BackgroundColor = [0.502 0.502 0.502];
-obj.SwitchPanel.FontName = Aes.uiFontName;
-obj.SwitchPanel.Position = [12 8 264 123];
-
-% Create StatsLabel
-obj.StatsLabel = uilabel(obj.SwitchPanel);
-obj.StatsLabel.HandleVisibility = 'off';
-obj.StatsLabel.HorizontalAlignment = 'center';
-obj.StatsLabel.FontName = Aes.uiFontName;
-obj.StatsLabel.FontSize = 14;
-obj.StatsLabel.FontColor = [1 1 1];
-obj.StatsLabel.Position = [9 11 33 22];
-obj.StatsLabel.Text = 'Stats';
-
-% Create StatsLamp
-obj.StatsLamp = uilamp(obj.SwitchPanel);
-obj.StatsLamp.Position = [20 100 14 14];
-obj.StatsLamp.Color = Aes.appColor(1,'red');
-
-% Create StatsSwitch
-obj.StatsSwitch = uiswitch(obj.SwitchPanel, 'toggle');
-obj.StatsSwitch.Items = {'', ''};
-obj.StatsSwitch.ItemsData = {'0', '1'};
-obj.StatsSwitch.HandleVisibility = 'off';
-obj.StatsSwitch.FontName = Aes.uiFontName;
-obj.StatsSwitch.Position = [15 36 22 50];
-obj.StatsSwitch.Value = '0';
-obj.StatsSwitch.Tag = 'Stats';
-
-% Create ScaleLabel
-obj.ScaleLabel = uilabel(obj.SwitchPanel);
-obj.ScaleLabel.HandleVisibility = 'off';
-obj.ScaleLabel.HorizontalAlignment = 'center';
-obj.ScaleLabel.FontName = Aes.uiFontName;
-obj.ScaleLabel.FontSize = 14;
-obj.ScaleLabel.FontColor = [1 1 1];
-obj.ScaleLabel.Position = [60 11 36 22];
-obj.ScaleLabel.Text = 'Scale';
-
-% Create ScaleLamp
-obj.ScaleLamp = uilamp(obj.SwitchPanel);
-obj.ScaleLamp.Position = [73 100 14 14];
-obj.ScaleLamp.Color = Aes.appColor(1,'red');
-
-% Create ScaleSwitch
-obj.ScaleSwitch = uiswitch(obj.SwitchPanel, 'toggle');
-obj.ScaleSwitch.Items = {'', ''};
-obj.ScaleSwitch.ItemsData = {'0', '1'};
-obj.ScaleSwitch.HandleVisibility = 'off';
-obj.ScaleSwitch.FontName = Aes.uiFontName;
-obj.ScaleSwitch.Position = [68 36 22 50];
-obj.ScaleSwitch.Value = '0';
-obj.ScaleSwitch.Tag = 'Scale';
-
-% Create BaselineLabel
-obj.BaselineLabel = uilabel(obj.SwitchPanel);
-obj.BaselineLabel.HandleVisibility = 'off';
-obj.BaselineLabel.HorizontalAlignment = 'center';
-obj.BaselineLabel.FontName = Aes.uiFontName;
-obj.BaselineLabel.FontSize = 14;
-obj.BaselineLabel.FontColor = [1 1 1];
-obj.BaselineLabel.Position = [103 11 54 22];
-obj.BaselineLabel.Text = 'Baseline';
-
-% Create BaselineLamp
-obj.BaselineLamp = uilamp(obj.SwitchPanel);
-obj.BaselineLamp.Position = [125 100 14 14];
-obj.BaselineLamp.Color = Aes.appColor(1,'red');
-
-% Create BaselineSwitch
-obj.BaselineSwitch = uiswitch(obj.SwitchPanel, 'toggle');
-obj.BaselineSwitch.Items = {'', ''};
-obj.BaselineSwitch.ItemsData = {'0', '1'};
-obj.BaselineSwitch.HandleVisibility = 'off';
-obj.BaselineSwitch.FontName = Aes.uiFontName;
-obj.BaselineSwitch.Position = [120 36 22 50];
-obj.BaselineSwitch.Value = '0';
-obj.BaselineSwitch.Tag = 'Baseline';
-
-% Create FilterLabel
-obj.FilterLabel = uilabel(obj.SwitchPanel);
-obj.FilterLabel.HandleVisibility = 'off';
-obj.FilterLabel.HorizontalAlignment = 'center';
-obj.FilterLabel.FontName = Aes.uiFontName;
-obj.FilterLabel.FontSize = 14;
-obj.FilterLabel.FontColor = [1 1 1];
-obj.FilterLabel.Position = [165 11 36 22];
-obj.FilterLabel.Text = 'Filter';
-
-% Create FilterLamp
-obj.FilterLamp = uilamp(obj.SwitchPanel);
-obj.FilterLamp.Position = [177 100 14 14];
-obj.FilterLamp.Color = Aes.appColor(1,'red');
-
-% Create FilterSwitch
-obj.FilterSwitch = uiswitch(obj.SwitchPanel, 'toggle');
-obj.FilterSwitch.Items = {'', ''};
-obj.FilterSwitch.ItemsData = {'0', '1'};
-obj.FilterSwitch.HandleVisibility = 'off';
-obj.FilterSwitch.FontName = Aes.uiFontName;
-obj.FilterSwitch.Position = [172 36 22 50];
-obj.FilterSwitch.Value = '0';
-obj.FilterSwitch.Tag = 'Filter';
-
-% Create EpochLabel
-obj.EpochLabel = uilabel(obj.SwitchPanel);
-obj.EpochLabel.HandleVisibility = 'off';
-obj.EpochLabel.HorizontalAlignment = 'center';
-obj.EpochLabel.FontName = Aes.uiFontName;
-obj.EpochLabel.FontSize = 14;
-obj.EpochLabel.FontColor = [1 1 1];
-obj.EpochLabel.Position = [215 11 41 22];
-obj.EpochLabel.Text = 'Epoch';
-
-% Create EpochLamp
-obj.EpochLamp = uilamp(obj.SwitchPanel);
-obj.EpochLamp.Position = [229 100 14 14];
-obj.EpochLamp.Color = Aes.appColor(1,'green');
-
-% Create EpochSwitch
-obj.EpochSwitch = uiswitch(obj.SwitchPanel, 'toggle');
-obj.EpochSwitch.Items = {'', ''};
-obj.EpochSwitch.ItemsData = {'0', '1'};
-obj.EpochSwitch.HandleVisibility = 'off';
-obj.EpochSwitch.FontName = Aes.uiFontName;
-obj.EpochSwitch.Position = [224 36 22 50];
-obj.EpochSwitch.Value = '1';
-obj.EpochSwitch.Tag = 'Epoch';
 
 % draw
-drawnow; pause(0.05);
+drawnow();
+pause(0.05);
 
 % now that we've drawn the figure, let's reposition it by first getting the
 % stored value
-
+obj.container.Resize = 'on';
 
 storedPosition = obj.position;
 
 if isempty(storedPosition)  
   obj.position = obj.container.Position;
 else
-  obj.position = [storedPosition(1:2),initW,initH];
+  obj.position = storedPosition;
 end
 
 end

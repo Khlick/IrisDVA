@@ -2,38 +2,43 @@ function keyedInput(app,~,evt)
 
 if isempty(evt.Data.Character), return; end
 
-event.Data = struct(...
-  'SOURCE', class(evt.Data.Source), ...
+modifiers = struct( ...
   'CTRL', ismember('control', evt.Data.Modifier), ...
   'SHIFT', ismember('shift', evt.Data.Modifier), ...
-  'ALT', ismember('alt', evt.Data.Modifier), ...
-  'KEY', evt.Data.Key, ...
-  'CHAR', evt.Data.Character, ...
-  'CODE', unicode2native(evt.Data.Character) ...
+  'ALT', ismember('alt', evt.Data.Modifier) ...
   );
+key = lower(evt.Data.Key);
+% return if the key is not an action key
+if ~ismember(key,properties(app.keyMap)), return; end
 if ~app.handler.isready
   % check if the call was to open/load, quit, help, about
-  if ~ismember(event.Data.KEY, {'n','o','q','h'}), return; end    
+  isOK = modifiers.CTRL && ismember(key, {'n','o','q','h'});
+  isPrintScreen = modifiers.CTRL && modifiers.ALT && strcmpi(key,'p');
+  isAllowed = isOK || isPrintScreen;
+  if ~isAllowed, return; end    
 end
 
-% n, o, q, h
-modifiers = fastrmField(event.Data,{'SOURCE','KEY','CHAR','CODE'});
-key = event.Data.KEY;
+% locate the action stored for the key combination recieved. If no action is
+% found, die.
 try
-  stored = app.keyMap.(lower(key));
+  stored = app.keyMap.(key);
   action = '';
   for I = 1:numel(stored)
     % find the first match
-    if isequal(modifiers,fastrmField(stored(I),{'ACTION'}))
+    if isequal(modifiers,utilities.fastrmField(stored(I),{'ACTION'}))
       action = stored(I).ACTION;
       break;
     end
   end
 catch
+  iris.app.Info.showWarning('No stored keypress action.');
   return;
 end
 
 if isempty(action), return; end
+% actions should be camelCase, grab task as its own camelCase,
+% so that actionTaskName -> {'action', 'taskName'}
+% and that menuMenuName -> {'menu', 'menuName'}
 
 [aType,~,remI] = regexp(action,'^[a-z]*(?=[A-Z]{1})','match'); 
 action = [lower(action(remI+1)),action(remI+2:end)];
@@ -49,7 +54,7 @@ switch char(aType)
     app.keyedAction(action);
   case 'toggle'
     switch action
-      case 'epoch'
+      case 'datum'
         app.handler.toggleInclusion(app.ui.selection.highlighted);
         app.draw(app.ui.selection.highlighted);
       otherwise

@@ -11,8 +11,8 @@ function setContainerPrefs(obj)
   Stats = obj.options.StatisticsProps;
   Scale = obj.options.ScaleProps;
   %% Controls
-  Control.StepSmall = obj.EpochStepSmallInput.Value;
-  Control.StepBig = obj.EpochStepBigInput.Value;
+  Control.StepSmall = obj.DataStepSmallInput.Value;
+  Control.StepBig = obj.DataStepBigInput.Value;
   Control.OverlaySmall= obj.OverlaySmallInput.Value;
   Control.OverlayBig = obj.OverlayBigInput.Value;
   %% Display

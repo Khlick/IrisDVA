@@ -6,7 +6,9 @@ classdef AxesPanel < handle
   end
   
   properties (SetObservable = true)
-    Position
+    Location
+    Position % used to keep track of the container size
+    DisplayLabel
     XLabel
     YLabel
   end
@@ -14,15 +16,18 @@ classdef AxesPanel < handle
   properties (Access = private)
     container
     Parent
+    Grid
     Axes
-    I_Axes % the underlying Axes to the UIAxes
     margins
     xlab
     ylab
+    dlab
     domMap
     window
     currentLines
     mlVer
+    isDomSet = false;
+    isShowingAxes
   end
   
   properties (Dependent = true,Access = private)
@@ -35,6 +40,7 @@ classdef AxesPanel < handle
     
     function obj = AxesPanel(parent,varargin)
       import iris.app.Aes;
+      import iris.infra.eventData;
       
       if isempty(which('mlapptools'))
         error('AxesPanel requires mlapptools.');
@@ -44,55 +50,106 @@ classdef AxesPanel < handle
       v = ver('matlab');
       obj.mlVer = str2double(v.Version);
       
+      % if version is too early, switch create ui method
+      %TODO
+      
       pr = inputParser();
       
       pr.addRequired('Parent',@ishandle);
+      % location within the parent grid, default [0,0] will use the next
+      % available grid
+      pr.addParameter('location', [0,0], ...
+        @(x)validateattributes(x,{'numeric'},{'numel', 2}) ...
+        );
       % margins in pixels: left, top, right, bottom
       pr.addParameter('margins', [20,10,10,15], ...
-        @(x)validateattributes(x,{'numeric'},{'numel', 4}) ...
-        );
-      % position is used to determine the container position
-      pr.addParameter('Position', [0,0,200,100], ...
         @(x)validateattributes(x,{'numeric'},{'numel', 4}) ...
         );
       pr.addParameter('XLabel', 'X', @ischar);
       pr.addParameter('YLabel', 'Y', @ischar);
       
+      pr.addParameter('displayLabel', "Load data to get started.", ...
+        @(v)validateattributes(v,{'char','string'},{'scalartext'}) ...
+        );
+      
+      pr.addParameter('displayMode','text', ...
+        @(v) ismember(lower(v),{'text','axes'}) ...
+        );
+      
       pr.KeepUnmatched = true;
       pr.parse(parent,varargin{:});
       
       % create UI
-      parentTypes = {'matlab.ui.Figure', 'matlab.ui.container.Panel'};
-      if ~ismember(class(pr.Results.Parent), parentTypes)
-        error('Axes Parent must be a panel or a figure object.');
+      parentTypes = {'matlab.ui.Figure', 'matlab.ui.container.Panel','matlab.ui.container.GridLayout'};
+      parentTypeIndex = ismember(parentTypes,class(pr.Results.Parent));
+      if ~any(parentTypeIndex)
+        iris.app.Info.throwError( ...
+          'Axes Parent must be a uiFigure, uiPanel or GridLayout object.' ...
+          );
       end
       
-      obj.Parent = pr.Results.Parent;
-      obj.Position = pr.Results.Position;
+      % Allow a gridlayout, panel of figure
+      % if we've received a handle to a figure or panel, let's create a 1x1 grid
+      % without padding or spacing. If not
+      switch parentTypes{parentTypeIndex}
+        case {'matlab.ui.Figure','matlab.ui.container.Panel'}
+          obj.Parent = pr.Results.Parent;
+          
+          obj.Grid = uigridlayout(obj.Parent);
+          obj.Grid.ColumnWidth = {'1x'};
+          obj.Grid.RowHeight = {'1x'};
+          obj.Grid.ColumnSpacing = 0;
+          obj.Grid.RowSpacing = 0;
+          obj.Grid.Padding = [0 0 0 0];
+          
+        case 'matlab.ui.container.GridLayout'
+          obj.Grid = pr.Results.Parent;
+          obj.Parent = obj.Grid.Parent;
+          
+      end
+      
+      
       obj.margins = pr.Results.margins;
-      obj.window = mlapptools.getWebWindow(obj.Parent);
+      obj.window = mlapptools.getWebWindow(ancestor(obj.Parent, 'figure'));
       
       % Create the container
-      obj.container = uipanel(obj.Parent, ...
-          'Position', obj.Position, ...
-          'Visible', 'off', ...
-          'BorderType', 'none', ...
-          'FontName', Aes.uiFontName ...
-          );
+      obj.container = uipanel(obj.Grid, ...
+        'Visible', 'off', ...
+        'BorderType', 'none', ...
+        'FontName', Aes.uiFontName, ...
+        'AutoResizeChildren', 'off' ...
+        );
+      obj.container.BackgroundColor = [1,1,1];
+      obj.container.Units = 'pixels';
       
-      obj.Axes = uiaxes(obj.container);
-      obj.Axes.BackgroundColor = [1 1 1,0];
-      obj.Axes.Position = obj.getAxesPosition;
+      if all(~pr.Results.location)
+        obj.Location = [obj.container.Layout.Row,obj.container.Layout.Column];
+      else
+        obj.Location = pr.Results.location;
+        obj.container.Layout.Row = obj.Location(1);
+        obj.container.Layout.Column = obj.Location(2);
+      end
+      drawnow();
+      pause(1);
       
+      obj.Position = obj.container.Position;
+      
+      obj.Axes = axes(obj.container);
+      obj.Axes.Units = 'pixels';
+      obj.Axes.Color = [1 1 1,0];
+      obj.Axes.Position = obj.getAxesPosition();
+      obj.Axes.FontWeight = 'normal';
+      
+      %{
       sooState = warning('query','MATLAB:structOnObject');
       warning('off','MATLAB:structOnObject');
       pause(0.001);
       
-      obj.I_Axes = struct(obj.Axes).Axes;
+      obj.Axes = struct(obj.Axes).Axes;
       
       % reset the warnign state to user pref
       warning(sooState);
-      
+      %}
       %%% Experimental modification of the HTMLCanvas object.
       % Combining these hacks appears to have no effect on plotting but highly
       % increases performance. One caveat is that with serversiderendering = 'on', we
@@ -100,39 +157,35 @@ classdef AxesPanel < handle
       % the huge amount of speed increase.
       % Let's hope MW don't see this and disable it, as they are wont to do.
       
-      %{
+      
       % this might break drawnow calls, not sure
-      try %#ok<TRYNC>
-        for lsn = 1:length(obj.Axes.AutoListeners__)
-          % there are 2 listeners here that call on every postset. Not sure what the
-          % callbacks do, as without them we see no change in visible or in clip. It
-          % may have something to do with specific types of plots excluding points
-          % and lines.
-          obj.Axes.AutoListeners__{lsn}.Enabled = false;
-        end
-      end
-      %}
       try %#ok<TRYNC>
         % Setting this to 'on' reduces the quality of the lines but increases speed
         % of drawing them and zooming/panning. So I can't seem to find what exactly
         % is changed, I would expect that the render is being sent rather than the
         % data, meaning, possibly, a bmp is displayed rather than a svg.
         % NodeChildren(1) == Axes.Canvas but 'Canvas' is not public
-        obj.Axes.NodeChildren(1).ServerSideRendering = 'on';
+        % for uiaxes()
+        %obj.Axes.NodeChildren(1).ServerSideRendering = 'on';
+        % 2020a axes() not uiaxes() we find the Canvas at
+        obj.Axes.NodeParent(1).findCanvas().ServerSideRendering = 'on';
       end
       
       try %#ok<TRYNC>
         % This may not have an effect. It seems a slight increase, maybe, when this
         % warning is turned off, perhaps only because the function is called or
         % terminates early?
-        obj.Axes.NodeChildren(1).RenderWarningLevel = 'off';
+        % for uiaxes()
+        %obj.Axes.NodeChildren(1).RenderWarningLevel = 'off';
+        % for 2020a on axes() and not uiaxes()
+        obj.Axes.NodeParent(1).findCanvas().RenderWarningLevel = 'off';
       end
-      
+      %}
       % set other properties on the axis, or allow override of default
       fields = fieldnames(pr.Unmatched);
-      for f = fields(:)'
+      for f = string(fields(:))'
         try
-          obj.Axes.(f) = pr.Unmatched.(f);
+          set(obj.Axes, f, pr.Unmatched.(f));
         catch
           continue;
         end
@@ -140,20 +193,21 @@ classdef AxesPanel < handle
       
       % determine best location for labels
       ip = obj.Axes.InnerPosition;
-      ofstX_x = ip(3)*0.08;
-      ofstX_y = ip(4)*0.02;
+      ofstX_x = 85; %px %ip(3)*0.08;
+      ofstX_y = 10; %px %ip(4)*0.02
+      Y_height = 42; %px
+      X_height = 42; %px
       
-      
-      
+      X_position = ip + [ofstX_x,ofstX_y,-ofstX_x*2,X_height-ip(4)];
       % xlabel
       obj.xlab = uilabel(obj.container,'Text', pr.Results.XLabel);
       obj.xlab.FontName = Aes.uiFontName;
-      obj.xlab.FontSize = 20;
-      obj.xlab.FontColor = [1,1,1].*0.85;
+      obj.xlab.FontSize = 32;
+      obj.xlab.FontColor = [1,1,1].*0.65;
       obj.xlab.BackgroundColor = 'none';
       obj.xlab.HorizontalAlignment = 'left';
       obj.xlab.VerticalAlignment = 'bottom';
-      obj.xlab.Position = ip + [ofstX_x,ofstX_y,-ofstX_x*1.1,-(ip(4)-25)];
+      obj.xlab.Position = X_position;
       
       % ylabel
       % for y, we need the vertical center of our label position to be set
@@ -161,31 +215,48 @@ classdef AxesPanel < handle
       % position for the label.
       % To account for the rotation, we need to set the width of the label
       % to height of the innerposition less the desired offsets.
-      Y_width = fix(ip(4)*0.95);
-      Y_height = 25;
+      %Y_width = fix(ip(4)*0.90);
+      Y_width = abs(ip(4) - sum(X_position([2,4]))-2);
       
-      Y_x = ip(3)*0.035+Y_height-Y_width/2;
-      Y_y = Y_width/2+ip(4)*0.05+Y_height;
+      %Y_x = ip(3) * 0.035 + Y_height - Y_width/2;
+      Y_x = Y_height - Y_width/2 + ofstX_y + ip(2);
+      Y_y = Y_width/2 + sum(X_position([2,4])); %+ip(4)*0.05;
       
       obj.ylab = uilabel(obj.container,'Text', pr.Results.YLabel);
       obj.ylab.FontName = Aes.uiFontName;
-      obj.ylab.FontSize = 20;
-      obj.ylab.FontColor = [1,1,1].*0.85;
+      obj.ylab.FontSize = 32;
+      obj.ylab.FontColor = [1,1,1].*0.65;
       obj.ylab.BackgroundColor = 'none';
       obj.ylab.HorizontalAlignment = 'left';
       obj.ylab.VerticalAlignment = 'bottom';
       obj.ylab.Position = [Y_x,Y_y,Y_width,Y_height];
       
-      % load in the katex for parsing latex into the labels
       try
         obj.setupDOM;
       catch err
         obj.delete;
-        rethrow(err);
+        iris.app.Info.throwError(err.message);
       end
       
+      % label
+      obj.DisplayLabel = pr.Results.displayLabel;
+      obj.dlab = uilabel(obj.container, 'Text', obj.DisplayLabel);
+      obj.dlab.FontName = Aes.uiFontName;
+      obj.dlab.FontSize = 32;
+      obj.dlab.FontColor = [1,1,1].*0.25;
+      obj.dlab.BackgroundColor = 'none';
+      obj.dlab.HorizontalAlignment = 'center';
+      obj.dlab.VerticalAlignment = 'center';
+      nchars = length(obj.DisplayLabel{1});
+      dDims = [nchars*12.85,50];
+      obj.dlab.Position = [(obj.Position(3:4)-dDims)./2,dDims];
+      
+      obj.toggleAxes(strcmp(pr.Results.displayMode,'axes'));
+      
       obj.container.Visible = 'on';
-      import iris.infra.eventData;
+      obj.container.SizeChangedFcn = @obj.onContainerResized;
+      
+      addlistener(obj,'DisplayLabel', 'PostSet', @obj.displayLabelChanged);
       addlistener(obj,'Position','PostSet',@obj.positionChanged);
       addlistener(obj,'XLabel','PostSet', ...
         @(s,e)obj.labelChanged(s,eventData('X')) ...
@@ -277,6 +348,7 @@ classdef AxesPanel < handle
         {'X','Y'}, ...
         {'Xnode', 'Ynode'} ...
         );
+      obj.isDomSet = true;
     end
     
     function bringLinesToFront(obj,lObjs)
@@ -298,22 +370,33 @@ classdef AxesPanel < handle
 %% Callbacks
   methods (Access = protected)
     
+    function onContainerResized(obj,source,~)
+      obj.Position  = source.Position;
+    end
+    
     function positionChanged(obj,~,~)
       % new position available in PostSet event
-      obj.container = obj.Position;
       obj.Axes.Position = obj.getAxesPosition;
       
       ip = obj.Axes.InnerPosition;
-      %xlab
-      ofstX_x = ip(3)*0.1;
-      ofstX_y = ip(4)*0.02;
-      obj.xlab.Position = ip + [ofstX_x,ofstX_y,-ofstX_x*1.1,-(ip(4)-20)];
-      %ylab
-      Y_width = fix(ip(4)*0.95);
-      Y_height = 20;
-      Y_x = ip(3)*0.05+2*Y_height-Y_width/2;
-      Y_y = Y_width/2+ip(4)*0.08+2*Y_height;
+      ofstX_x = 85; %px %ip(3)*0.08;
+      ofstX_y = 10; %px %ip(4)*0.02
+      Y_height = 42; %px
+      X_height = 42; %px
+      
+      X_position = ip + [ofstX_x,ofstX_y,-ofstX_x*2,X_height-ip(4)];
+      obj.xlab.Position = X_position;
+      
+      Y_width = abs(ip(4) - sum(X_position([2,4]))-2);
+      
+      Y_x = Y_height - Y_width/2 + ofstX_y + ip(2);
+      Y_y = Y_width/2 + sum(X_position([2,4])); %+ip(4)*0.05;
       obj.ylab.Position = [Y_x,Y_y,Y_width,Y_height];
+      
+      %dlab
+      nchars = length(obj.DisplayLabel{1});
+      dDims = [nchars*12.85,50];
+      obj.dlab.Position = [(obj.Position(3:4)-dDims)./2,dDims];
     end
     
     function labelChanged(obj,src,event)
@@ -358,7 +441,7 @@ classdef AxesPanel < handle
     function onDataSelected(obj,source,event)
       import iris.infra.eventData;
       
-      [x,y] = getNearestDataPoint( ...
+      [x,y] = utilities.getNearestDataPoint( ...
         event.IntersectionPoint(1:2), ...
         source.XData, ...
         source.YData ...
@@ -382,6 +465,10 @@ classdef AxesPanel < handle
       
     end
     
+    function displayLabelChanged(obj,~,~)
+      obj.dlab.Text = obj.DisplayLabel;
+    end
+    
   end
 
 %% GET SET
@@ -394,11 +481,11 @@ classdef AxesPanel < handle
         return; 
       end
       doms = arrayfun( ...
-        @(ln)[domain(ln.XData);domain(ln.YData)], ...
+        @(ln)[utilities.domain(ln.XData);utilities.domain(ln.YData)], ...
         lineArray, ...
         'UniformOutput', false ...
-        ); %#ok
-      doms = domain(cat(2,doms{:})')';%#ok
+        );
+      doms = utilities.domain(cat(2,doms{:})')';
       d = struct('x',doms(1,:), 'y', doms(2,:));
     end
     
@@ -417,6 +504,7 @@ classdef AxesPanel < handle
       %obj.Axes.YLimMode = 'auto';
       %obj.Axes.XLimMode = 'auto';
       % if lines exist, 
+      
       nExist = numel(obj.currentLines);
       for ix = 1:numel(hD)
         % plot the lines and markers
@@ -483,21 +571,22 @@ classdef AxesPanel < handle
       % update baselines (zero lines)
       % x
       if hL.xaxis.zeroline
-        obj.I_Axes.XBaseline.Color = hL.xaxis.zerolinecolor;
-        obj.I_Axes.XBaseline.LineWidth = 2.5;
-        obj.I_Axes.XBaseline.Visible = 'on';
+        obj.Axes.XBaseline.Color = hL.xaxis.zerolinecolor;
+        obj.Axes.XBaseline.LineWidth = 2.5;
+        obj.Axes.XBaseline.Visible = 'on';
       else
-        obj.I_Axes.XBaseline.Visible = 'off';
+        obj.Axes.XBaseline.Visible = 'off';
       end
       % y
       if hL.yaxis.zeroline
-        obj.I_Axes.YBaseline.Color = hL.yaxis.zerolinecolor;
-        obj.I_Axes.YBaseline.LineWidth = 2.5;
-        obj.I_Axes.YBaseline.Visible = 'on';
+        obj.Axes.YBaseline.Color = hL.yaxis.zerolinecolor;
+        obj.Axes.YBaseline.LineWidth = 2.5;
+        obj.Axes.YBaseline.Visible = 'on';
       else
-        obj.I_Axes.YBaseline.Visible = 'off';
+        obj.Axes.YBaseline.Visible = 'off';
       end
       
+      obj.toggleAxes(true);
       
       %notify plot updated
       notify(obj,'PlotUpdated');
@@ -580,6 +669,40 @@ classdef AxesPanel < handle
       end
       obj.bringLinesToFront(obj.currentLines(hlInds));
     end    
+    
+    function showLabel(obj,txt)
+      if nargin < 2
+        txt = "";
+      else
+        txt = string(txt);
+      end
+      
+      if txt ~= ""
+        obj.DisplayLabel = txt;
+      end
+      obj.clearView();
+      obj.toggleAxes(false);
+    end    
+    
+    function toggleAxes(obj,bool)
+      if nargin < 2
+        bool = ~obj.isShowingAxes;
+      end
+      obj.isShowingAxes = bool;
+      if bool
+        % turn axes on
+        ax = 'on';
+        dl = 'off';
+      else
+        ax = 'off';
+        dl = 'on';
+      end
+      
+      obj.Axes.Visible = ax;
+      obj.xlab.Visible = ax;
+      obj.ylab.Visible = ax;
+      obj.dlab.Visible = dl;
+    end
     
   end
 

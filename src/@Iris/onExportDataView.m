@@ -11,7 +11,7 @@ switch doSave.response
   case 'Current'
     iData = app.handler.exportCurrent();
   case 'Session'
-    iData = app.handler.saveobj();
+    iData = app.handler.export();
   otherwise
     fprintf('Data not exported!\n');
     return;
@@ -19,9 +19,10 @@ end
 
 % create a generic save name with filter
 fn = fullfile( ...
-  app.options.UserDirectory, ...
+  app.options.LastSavedDirectory, ...
   [datestr(app.sessionInfo.sessionStart,'YYYY-mmm-DD'),'.idata'] ...
   );
+
 % prompt user for final save location
 userFile = iris.app.Info.putFile( ...
   'Save IrisData File', ...
@@ -33,6 +34,11 @@ if isempty(userFile)
   app.ui.focus();
   return;
 end
+
+% set the desired file name into the iData object
+iData = iData.UpdateFileList(userFile);
+
+% update the progress dialog
 app.loadShow.updatePercent('Saving Session...');
 
 try
@@ -51,17 +57,14 @@ fprintf('IrisData saved to:\n"%s"\n',userFile);
 fprintf('To load the data use:\n    load("%s",''-mat'');\n',userFile);
 
 fprintf('Be sure to add the location for the IrisData class definition to your path.\n');
-fprintf('It is located at:\n  "%s"\n', ...
+fprintf('It is currently located at:\n  "%s"\n', ...
   fullfile(iris.app.Info.getAppPath(), 'lib', 'IrisData.m') ...
   );
-fprintf(2, ...
-  [ ...
-    '\n\nNote: Sometimes MATLAB hangs after exporting a file from Iris.\n', ...
-    'If you find Iris unresponsive, wait a few minutes.\n' ...
-  ] ...
-  );
+
 app.ui.focus();
 app.loadShow.shutdown();
+app.options.LastSavedDirectory = fileparts(userFile);
+
 return %explicit?
 end
 

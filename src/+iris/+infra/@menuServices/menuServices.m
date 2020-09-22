@@ -76,6 +76,54 @@ classdef menuServices < handle
       pref = obj.Preferences.getPreference(prefName);
     end
     
+    function setPref(obj,prefName,pref)
+      obj.Preferences.setPreference(prefName,pref);
+    end
+    
+    function setGroups(obj,groupings)
+      stats = obj.getPref('statistics');
+      hPref = obj.Preferences.GroupBySelect;
+      % Get the previous set selection (either here or by user interaction)
+      selection = stats.GroupBy;
+      % Collect the grouping fields
+      groupField = ["None";sort(string(groupings(:)))]';
+      % If there is any update, update the groupby list
+      if ~isequal(groupField, string(hPref.Items))
+        hPref.Items = groupField;
+      end
+      % Make sure our selection contains members of groupField
+      selectionKeepers = ismember(selection,groupField);
+      if ~any(selectionKeepers)
+        selection = groupField{1};
+      else
+        selection = selection(selectionKeepers);
+      end
+      % update the selection if we need to
+      obj.setGroupBy(selection);
+    end
+    
+    function groupings = getGroups(obj)
+      hPref = obj.Preferences.GroupBySelect;
+      groupings = hPref.Items;
+    end
+    
+    function setGroupBy(obj,selection)
+      stats = obj.getPref('statistics');
+      hPref = obj.Preferences.GroupBySelect;
+      if ~isequal(hPref.Value, selection)
+        hPref.Value = selection;
+        stats.GroupBy = selection;
+        % for now, we'll update the group fields just in case we want them elsewhere.
+        stats.GroupFields = groupField;
+        obj.setPref('statistics',stats);
+      end
+    end
+    
+    function groupby = getGroupBy(obj)
+      hPref = obj.Preferences.GroupBySelect;
+      groupby = hPref.Value;
+    end
+    
     function bind(obj,menuName)
       import iris.infra.eventData;
       
@@ -108,7 +156,7 @@ classdef menuServices < handle
           obj.addListener(pr, 'ScalingChanged', ...
             @(s,e) obj.displayChangedEvent('Scaling',e.Data) ...
             );
-            
+          
         case 'FileInfo'
           fi = obj.FileInfo;
           obj.addListener(fi,'Close', @obj.destroyWindow);
@@ -160,7 +208,7 @@ classdef menuServices < handle
             obj.Analyze = iris.ui.analyze();
           end
           if nargin < 3
-            error('DataOverview Requires Handler object as input.');
+            error('Analysis Requires Handler object as input.');
           end
           % varargin should contain data Handler
           obj.Analyze.buildUI(varargin{:});
@@ -174,7 +222,7 @@ classdef menuServices < handle
           end
         case 'FileInfo'
           if isempty(obj.FileInfo) || ~obj.isOpen('FileInfo')
-            obj.FileInfo = iris.ui.fileInfo(); 
+            obj.FileInfo = iris.ui.fileInfo();
           end
           if nargin < 3
             error( ...
@@ -185,7 +233,7 @@ classdef menuServices < handle
           obj.FileInfo.buildUI(varargin{:});
         case 'DataOverview'
           if isempty(obj.DataOverview) || ~obj.isOpen('DataOverview')
-            obj.DataOverview = iris.ui.dataOverview(); 
+            obj.DataOverview = iris.ui.dataOverview();
           end
           if nargin < 3
             error('DataOverview Requires Handler object as input.');
@@ -194,7 +242,7 @@ classdef menuServices < handle
           obj.DataOverview.buildUI(varargin{:});
         case 'Notes'
           if isempty(obj.Notes) || ~obj.isOpen('Notes')
-            obj.Notes = iris.ui.notes(); 
+            obj.Notes = iris.ui.notes();
           end
           if nargin < 3
             error('Notes requires a Nx2 Cell of Notes');
@@ -274,7 +322,7 @@ classdef menuServices < handle
         if isempty(obj.(uis{p})) || obj.(uis{p}).isClosed()
           continue;
         end
-      obj.(uis{p}).reset();
+        obj.(uis{p}).reset();
       end
     end
     
@@ -347,7 +395,7 @@ classdef menuServices < handle
         % gather listeners associated with provided class
         listenerInds = cellfun( ...
           @(l) ...
-            strcmpi(class(l.Source{1}),varargin{1}), ...
+          strcmpi(class(l.Source{1}),varargin{1}), ...
           obj.listeners, ...
           'uniformOutput', true ...
           );
@@ -364,8 +412,8 @@ classdef menuServices < handle
           for e = 1:length(obj.listeners)
             delete( ...
               obj.listeners{ ...
-                eventMatches(e) && ...
-                listenerInds(e) ...
+              eventMatches(e) && ...
+              listenerInds(e) ...
               });
           end
         else
@@ -396,7 +444,7 @@ classdef menuServices < handle
       evData.type = evt{1};
       evData.event = evt{2};
       
-      notify(obj, 'onDisplayChanged', eventData(evData)); 
+      notify(obj, 'onDisplayChanged', eventData(evData));
     end
   end
   

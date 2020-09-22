@@ -5,13 +5,14 @@ classdef Iris < iris.app.Container
   
   properties
     sessionInfo %contains a log of current session actions
+    loadShow
   end
   
   properties (Access = private)
     validFiles iris.data.validFiles
-    loadShow
     keyMap
     navMap
+    openedModules = {}
   end
   
   
@@ -32,6 +33,124 @@ classdef Iris < iris.app.Container
       app.validFiles = iris.data.validFiles();
       app.keyMap = iris.pref.keyboard.getDefault();
       app.navMap = iris.pref.controls.getDefault();
+    end
+    
+    function onInstallHelpersRequested(app,~,~)
+      
+      % locate the known directory and the root
+      hDir = app.options.HelpersDirectory;
+            
+      sourceRootPath = fullfile(iris.app.Info.getResourcePath(),'scripts','helper');
+      sourcePath = fullfile(sourceRootPath,'@IrisDVA');
+      
+      if (isempty(hDir) || strcmp(hDir,""))
+        % prompt
+        pt = iris.ui.questionBox( ...
+          'Title', 'Install Helpers', ...
+          'Prompt', 'Install helper files? This will also add the files to your path.', ...
+          'Options', {'Yes', 'No'}, ...
+          'Default', 'Yes' ...
+          );
+        if strcmp(pt.response,'No'), return; end
+        installLocation = '';
+        
+      else
+        oldDir = pwd();
+        cd(sourceRootPath);
+        newVersion = IrisDVA.VERSION;
+        cd(oldDir);
+        
+        % f should be "...\@IrisDVA\IrisDVA.m"
+        f = which('IrisDVA.m');
+        if ~isempty(f)
+          % we expect to enter this condition.
+          installLocation = fileparts(fileparts(f));
+          
+          cd(installLocation);
+          installedVersion = IrisDVA.VERSION;
+          cd(oldDir);
+          
+          if newVersion == installedVersion
+            fprintf("Current IrisDVA class is up-to-date!\n");
+            app.options.HelpersDirectory = installLocation;
+            return
+          end
+          qString = sprintf( ...
+            "Would you like to update the IrisDVA V%s class to V%s?", ...
+            installedVersion, newVersion ...
+            );
+          pt = iris.ui.questionBox( ...
+            'Title', 'Update Helpers', ...
+            'Prompt', qString, ...
+            'Options', {'Yes', 'Cancel'}, ...
+            'Default', 'Yes' ...
+            );
+          if strcmp(pt.response,'Cancel'), return; end
+        else
+          % we have an helpers directory but it isn't added to the path
+          % let's verify we have the right docs there
+          try
+            cd(hDir);
+            installedVersion = IrisDVA.VERSION;
+            cd(oldDir);
+            
+            if newVersion == installedVersion
+              fprintf("Current IrisDVA class is up-to-date!\n");
+              app.options.HelpersDirectory = hDir;
+              return
+            end
+            qString = sprintf( ...
+              "Would you like to update the IrisDVA V%s class to V%s?", ...
+              installedVersion, newVersion ...
+              );
+            pt = iris.ui.questionBox( ...
+              'Title', 'Update Helpers', ...
+              'Prompt', qString, ...
+              'Options', {'Yes', 'Cancel'}, ...
+              'Default', 'Yes' ...
+              );
+            if strcmp(pt.response,'Cancel'), return; end
+            
+            installLocation = hDir;
+            
+          catch
+            % if any of those fail, we assume the hDir is wrong for some reason.
+            cd(oldDir);
+            installLocation = '';
+          end
+          
+        end
+        
+      end
+      
+      if isempty(installLocation)
+        installLocation = iris.app.Info.getFolder( ...
+          'Select Install Location', ...
+          app.options.UserDirectory ...
+          );
+        if isempty(installLocation), return; end
+      end
+
+      % copy to the new location
+      copyfile(sourcePath,fullfile(installLocation,'@IrisDVA'),'f');
+      
+      pdef = strsplit(pathdef,';');
+      pdef(cellfun(@isempty,pdef,'uniformoutput', true)) = [];
+      
+      currentPath = strsplit(path,';');
+      currentPath(cellfun(@isempty,currentPath,'uniformoutput', true)) = [];
+      
+      pathsToRestore = strjoin(currentPath(~ismember(currentPath,pdef)),pathsep);
+      rmpath(pathsToRestore);
+      pause(0.01);
+      addpath(installLocation);
+      savepath();
+      pause(0.05);
+      addpath(pathsToRestore);
+      % store the install location
+      app.options.HelpersDirectory = installLocation;
+      % report
+      fprintf('Operation completed successfully!\n');
     end
     
   end
@@ -61,6 +180,8 @@ classdef Iris < iris.app.Container
       end
       % Start ButterParam saving/loading parameters
       ButterParam('save');
+      % 
+      
       % Make the app visible
       app.visualize();
     end
@@ -71,31 +192,18 @@ classdef Iris < iris.app.Container
     end
     
     function preStop(app)
+      import iris.infra.eventData;
       preStop@iris.app.Container(app);
       cT = now;
       app.sessionInfo.sessionEnd = cT;
-      if app.handler.isready
-        % if data is running prompt if you would like to save the session
-        doSave = iris.ui.questionBox( ...
-          'Prompt', 'Would you like to save the current session?', ...
-          'Title', 'Quit Iris', ...
-          'Options', {'Yes','No'}, ...
-          'Default', 'No' ...
-          );
-        if strcmp(doSave.response,'Yes')
-          try
-            app.saveSession([],[]);
-          catch x
-            %log x?
-            iris.app.Info.showWarning('Session not saved.');
-          end
-        end
-      end
       % reset stored prefs for toggles to false
-      import iris.infra.eventData;
       for tID = {'Filter', 'Scale', 'Baseline'}
         Iris.setTogglePref(eventData(struct('source',tID{1},'value',false)));
       end
+      try %#ok<TRYNC>
+        app.options.save();
+      end
+      
     end
     
     function postStop(app)
@@ -105,13 +213,13 @@ classdef Iris < iris.app.Container
       duration = datestr(endTime - startTime,'hh:MM:ss');
       dtime = @(t)sprintf('%s (%s)',datestr(t,'mmm DD, YYYY'),strtrim(datestr(t,'hh:MM:ssPM')));
       
-      displayStruct = fastrmField(app.sessionInfo, {'sessionStart','sessionEnd'});
+      displayStruct = utilities.fastrmField(app.sessionInfo, {'sessionStart','sessionEnd'});
       displayStruct.startTime = dtime(startTime);
       displayStruct.endTime = dtime(endTime);
       displayStruct.duration = duration;
       fprintf('Exiting Iris DVA:\n');
       disp(displayStruct);
-      fprintf('%%%s%%\n\n', repmat('-',1,40));
+      fprintf('%%%s%%\n\n', repmat('-',1,40));      
       try
         if ~app.loadShow.isClosed
           app.loadShow.shutdown();
@@ -131,6 +239,13 @@ classdef Iris < iris.app.Container
           end
         end
       end
+      nw = utilities.getNumWorkers();
+      if nw
+        p = gcp('nocreate');
+        p.IdleTimeout = 30;
+      end
+      % clean modules
+      Iris.cleanModules();
     end
     
     function bind(app)
@@ -142,6 +257,8 @@ classdef Iris < iris.app.Container
       s = app.services;
       h = app.handler;
       
+      % App events
+      app.addListener(app, 'didStop',               @app.shutdownApp);
       
       % Listen to the UI      
       app.addListener(v, 'KeyPress',              @app.keyedInput);
@@ -153,11 +270,10 @@ classdef Iris < iris.app.Container
       app.addListener(v, 'ExportDataView',        @app.onExportDataView);
       app.addListener(v, 'MenuCalled',            @app.callMenu);
       app.addListener(v, 'ModuleCalled',          @app.callModule);
-      app.addListener(v, 'Close',                 @app.shutdownApp);
       app.addListener(v, 'DeviceViewChanged',     @app.onDeviceViewChange);
       app.addListener(v, 'TickerChanged',         @app.onTickerUpdated);
       app.addListener(v, 'NavigateData',          @app.onButtonNav);
-      app.addListener(v, 'EpochToggled',          @app.onToggleEpoch);
+      app.addListener(v, 'DatumToggled',          @app.onToggleDatum);
       app.addListener(v, 'SwitchToggled',         @app.onToggleSwitch);
       app.addListener(v, 'SendToCmd',             @app.onSendToCmd);
       app.addListener(v, 'ImportAnalysis',        @app.onAnalysisImport);
@@ -166,6 +282,7 @@ classdef Iris < iris.app.Container
       app.addListener(v, 'SessionConversionCalled', @app.openSessionConverter);
       app.addListener(v, 'FixLayoutRequest',        @app.onFixLayoutRequest);
       app.addListener(v, 'RevertView',            @app.onRevertRequest);
+      app.addListener(v, 'InstallHelpersRequest', @app.onInstallHelpersRequested);
       %app.addListener(v, 'PlotCompletedUpdate', @app.onPlottingCompleted); %unused
       
       % Listen to menu server
@@ -216,8 +333,8 @@ classdef Iris < iris.app.Container
     %
     function onButtonNav(app,~,event)
       ed = event.Data;
-      %struct('Direction','Increment', 'Amount', 'Small', 'Type', 'Epoch') ...
-      if strcmpi(ed.Type, 'epoch')
+      %struct('Direction','Increment', 'Amount', 'Small', 'Type', 'Data') ...
+      if strcmpi(ed.Type, 'Data')
         if strcmpi(ed.Direction, 'Increment')
           navString = [lower(ed.Amount),'Right'];
         else
@@ -258,14 +375,20 @@ classdef Iris < iris.app.Container
           app.services.shutdown(openMenus);
         end
         % exit
-        return;
+        return
       end
-      app.ui.toggleDataDependentUI('on');
-      app.updateMenus();
       app.draw();
+      app.updateLoadPercent([],struct('Data','Updating Menus...'));
+      CU = onCleanup(@()killload(app.loadShow));
+      app.updateMenus();
+      app.services.setGroups(app.handler.getAllGroupingFields);
+      app.ui.toggleDataDependentUI('on');
+      function killload(ls)
+        ls.shutdown();
+      end
     end
     %
-    function onToggleEpoch(app,~,event)
+    function onToggleDatum(app,~,event)
       % sel toggle selection
       app.handler.setInclusion(event.Data.index,event.Data.value);
       % allow primary to recolor through the axes object
@@ -275,6 +398,7 @@ classdef Iris < iris.app.Container
     function onToggleSwitch(app,~,event)
       Iris.setTogglePref(event);
       % Update any open menus, set calculations for stats and scales prefs.
+      
       app.updateMenus();
       % update view
       if ~app.isStopped
@@ -320,14 +444,17 @@ classdef Iris < iris.app.Container
     end
     %
     function callModule(app,~,event)
-      if ~app.handler.isready, return; end
-      % collect current data from handler then send to module.
-      doSave = iris.ui.questionBox( ...
-        'Prompt', 'Send data from the current view, entire session, or without any inputs?', ...
-        'Title', 'Open Module', ...
-        'Options', {'Current','Session','Empty','Cancel'}, ...
-        'Default', 'Cancel' ...
-        );
+      if ~app.handler.isready
+        doSave.response = 'Empty'; 
+      else
+        % collect current data from handler then send to module.
+        doSave = iris.ui.questionBox( ...
+          'Prompt', 'Send data from the current view, entire session, or without any inputs?', ...
+          'Title', 'Open Module', ...
+          'Options', {'Current','Session','Empty','Cancel'}, ...
+          'Default', 'Current' ...
+          );
+      end
 
       switch doSave.response
         case 'Current'
@@ -339,16 +466,50 @@ classdef Iris < iris.app.Container
         otherwise
           return;
       end
+      % check if previously opened modules are now closed
+      wasClosed = cellfun(@(m)~isvalid(m), app.openedModules,'UniformOutput',true);
+      app.openedModules(wasClosed) = [];
       
-      try
-        iris.modules.(event.Data)(iData);
-      catch x
-        iris.app.Info.throwError( ...
-          sprintf( ...
-          'Could not open module with reason:\n"%s"\n', ...
-          x.message ...
-          ) ...
-          );
+      % called module name
+      moduleName = sprintf('iris.modules.%s',event.Data);
+      % check opened modules for requested module.
+      isOpen = cellfun( ...
+        @(m) isa(m,moduleName), ...
+        app.openedModules, ...
+        'UniformOutput', true ...
+        );
+      
+      if any(isOpen)
+        % if the module is already open and valid, let's try to access the
+        % setData() method in order to update the data object.
+        m = app.openedModules{isOpen};
+        try
+          m.setData(iData);
+        catch x
+          iris.app.Info.throwError( ...
+            sprintf( ...
+            ['Could not update module data with reason:\n"%s"\n(%s)\n(%s)\n', ...
+            'Implement a public setData() method to allow Iris to update data.'],...
+            x.message, ...
+            sprintf('line %d : %s',x.stack(1).line,x.stack(1).name), ...
+            sprintf('line %d : %s',x.stack(end).line,x.stack(end).name) ...
+            ) ...
+            );
+        end
+      else
+        try
+          m = feval(moduleName,iData);
+        catch x
+          iris.app.Info.throwError( ...
+            sprintf( ...
+            'Could not open module with reason:\n"%s"\n(%s)\n(%s)\n', ...
+            x.message, ...
+            sprintf('line %d : %s',x.stack(1).line,x.stack(1).name), ...
+            sprintf('line %d : %s',x.stack(end).line,x.stack(end).name) ...
+            ) ...
+            );
+        end
+        app.openedModules{end+1} = m;
       end
     end
     %%%
@@ -391,8 +552,7 @@ classdef Iris < iris.app.Container
     end
     
     function shutdownApp(app,~,~)
-      % shutdown the application
-      app.stop;
+      delete(app);
     end
     
     function onRedrawRequest(app,~,~)
@@ -403,7 +563,7 @@ classdef Iris < iris.app.Container
     
     function openSessionConverter(app,~,~)
       app.ui.hide();
-      files = ReadToSession();
+      files = utilities.ReadToSession();
       if ~isempty(files)
         openFiles = iris.ui.questionBox( ...
           'Prompt', 'Would you like to import converted files?', ...
@@ -426,9 +586,9 @@ classdef Iris < iris.app.Container
     end
     
     function onFixLayoutRequest(app,~,~)
+      import iris.infra.eventData;
       hasData = app.handler.isready;
       if hasData
-        import iris.infra.eventData;
         currentState = app.handler.currentSelection.selected;
         tmpData = [tempname,'.isf'];
         session = app.handler.saveobj();
@@ -439,7 +599,7 @@ classdef Iris < iris.app.Container
         end
       end  
       
-      app.removeAllListeners();
+      app.unbind();
       
       app.ui.shutdown();
       app.ui.reset();
@@ -452,7 +612,7 @@ classdef Iris < iris.app.Container
       if hasData
         app.handler.new(tmpData);
         app.handler.currentSelection = currentState;
-        drawnow();
+        app.ui.toggleDataDependentUI('on');
       else
         app.ui.toggleDataDependentUI('off');
       end
@@ -474,88 +634,8 @@ classdef Iris < iris.app.Container
 %% Static
   methods (Static)
     
-    function varargout = getModules(forceReload)
-      % getModules Locate and install external and builtin modules
-      %  Use @param forceRelaod = true to reload from builtin and user modules
-      if nargin < 1, forceReload = true; end
-      % module package location
-      modulePkgDir = fullfile( ...
-        iris.app.Info.getAppPath(),'src','+iris','+modules' ...
-        );
-      installedModules = regexprep(cellstr(ls([modulePkgDir,filesep,'*.mlapp'])),'\.mlapp', '');
-      % reload from builtin and user directories?
-      if forceReload
-        %Builtin modules will be stored in a resource folder, which isn't added to
-        %path.
-        builtinDir = fullfile( ...
-          iris.app.Info.getResourcePath, ...
-          'Modules' ...
-          );
-        builtinModules = cellstr(ls( ...
-          fullfile(builtinDir,'*.mlapp') ...
-          ));
-        % get custom from preferences Module directory.
-        wsVars = iris.pref.analysis.getDefault();
-        externalModules = cellstr(ls( ...
-          fullfile( ...
-            wsVars.ExternalModulesDirectory, ...
-            '*.mlapp' ...
-            ) ...
-          ));
-        % make absolute paths
-        modules = [ ...
-          fullfile(builtinDir,builtinModules(:)); ...
-          fullfile(wsVars.ExternalModulesDirectory,externalModules(:)) ...
-          ];
-        % filter out the empty case (doesn't end with .mlapp)
-        modules = modules(endsWith(modules,'.mlapp','IgnoreCase',true));
-        % copy to a package folder to prevent overloading any functions. This method
-        % will always search the user and builtin directories and replace/clear missing
-        % modules in the package folder +modules. This let's us make changes to module
-        % code and refresh
-        if ispc
-          folderSep = [filesep,filesep];
-        else
-          folderSep = filesep;
-        end
-        modNames = regexp( ...
-          modules, ...
-          sprintf('(?<=%s)\\w*(?=\\.mlapp$)', ...
-          folderSep), ...
-          'match' ...
-          );
-        if ~ischar(modNames{1})
-          modNames = cat(1,modNames{:});
-        end
-        modNames = regexprep(modNames, '\.mlapp', '');
-        % camelize names
-        modNames = cellfun(@camelizer,modNames,'unif',0);
-        % gen paths
-        newPaths = fullfile( ...
-          modulePkgDir, ...
-          strcat(modNames,'.mlapp') ...
-          );
-        
-        % clear modules package
-        delete(fullfile(modulePkgDir,'*.mlapp'));
-        % copy files to package
-        msgs = cell(length(modules),1);
-        for m = 1:length(modules)
-          [status,msg] = copyfile(modules{m},newPaths{m},'f');
-          if ~status
-            msgs{m} = msg;
-          end
-        end
-      else
-        msgs = {};
-        modNames = installedModules(:);
-      end
-      
-      %outputs
-      if ~nargout, return; end
-      varargout{1} = modNames;
-      varargout{2} = msgs;
-    end
+    varargout = getModules(forceReload)
+    [installedModules,status] = cleanModules()
     
     function status = versionCheck()
       %default output
@@ -571,7 +651,11 @@ classdef Iris < iris.app.Container
       
       % compare versions
       prevVer = prevPrefs.iris_pref_Iris('iris_pref_Iris');
-      prevVer = prevVer('CurrentVersion');
+      if ~prevVer.isKey('CurrentVersion')
+        prevVer = '0';
+      else
+        prevVer = prevVer('CurrentVersion');
+      end
       
       if strcmp(instVer,prevVer)
         % same version, ok return good

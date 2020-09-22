@@ -1,16 +1,16 @@
 function createNewAnalysis(obj,~,evt)
 params = evt.Data;
 
-oo = strjoin(params.output,', ');
-ii = strjoin(params.input(:,1), ', ');
+oo = strjoin(params.output.Name,', ');
+ii = strjoin(params.input.Name(:,1), ', ');
 
 inputsWithDefault = params.input( ...
-  ~cellfun(@isempty,params.input(:,2),'unif',1), : ...
+  ~cellfun(@isempty,params.input.("Default Value"),'unif',1), : ...
   );
 
 defs  = cell(size(inputsWithDefault,1),1);
 for d = 1:size(inputsWithDefault,1)
-  defs{d} = strjoin(inputsWithDefault(d,:), ':=');
+  defs{d} = strjoin([inputsWithDefault{d,:}], ':=');
 end
 
 readmeText = iris.app.Aes.strLib('analysisReadme');
@@ -43,6 +43,6 @@ fclose(fid);
 edit(filename);
 
 % update the analyze menu
-obj.updateAnalysesList();
+obj.updateAnalysesList(); 
 end
 

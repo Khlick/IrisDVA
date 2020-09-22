@@ -88,12 +88,14 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
         'DefaultHgjavacomponentBackgroundColor', [1,1,1], ...
         'HandleVisibility', 'off' ...
         );
+      oldWarn = warning('off','MATLAB:ui:javaframe:PropertyToBeRemoved');
       try
         obj.createUI(varargin{:});
       catch r
         try
           obj.createUI();
         catch x
+          warning(oldWarn);
           delete(obj.container);
           rethrow(x);
         end
@@ -102,6 +104,7 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
       obj.window = [];
       % make modifications
       obj.startup(varargin{:});
+      warning(oldWarn);
     end
     
     %% set
@@ -163,7 +166,7 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
     end
     
     function tf = isVisible(obj)
-      tf = strcmpi(obj.container.Visible, 'on');
+      tf = obj.container.isvalid && strcmpi(obj.container.Visible, 'on');
     end
     
     %% interactive functions

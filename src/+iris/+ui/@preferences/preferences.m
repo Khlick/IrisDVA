@@ -32,10 +32,10 @@ properties (Access = public)
   KeyboardConfig                 matlab.ui.container.Panel
   % control
   ControlPanel                   matlab.ui.container.Panel
-  EpochStepSmallLabel            matlab.ui.control.Label
-  EpochStepSmallInput            matlab.ui.control.NumericEditField
-  EpochStepBigLabel              matlab.ui.control.Label
-  EpochStepBigInput              matlab.ui.control.NumericEditField
+  DataStepSmallLabel            matlab.ui.control.Label
+  DataStepSmallInput            matlab.ui.control.NumericEditField
+  DataStepBigLabel              matlab.ui.control.Label
+  DataStepBigInput              matlab.ui.control.NumericEditField
   OverlaySmallLabel              matlab.ui.control.Label
   OverlaySmallInput              matlab.ui.control.NumericEditField
   OverlayBigLabel                matlab.ui.control.Label
@@ -120,7 +120,7 @@ properties (Access = public)
 end
 
 %% Public
-methods (Access = public)
+methods
   
   function styles = getStyles(obj)
     if ~obj.isClosed
@@ -137,13 +137,21 @@ methods (Access = public)
   function setPreference(obj, prefName, S)
     prefName = validatestring(prefName,properties(obj.options));
     obj.options.(prefName) = S;
-    obj.save();
-    obj.getContainerPrefs;
+    if obj.isVisible
+      obj.save();
+      obj.getContainerPrefs;
+    end
   end
   
   function selfDestruct(obj)
     % required for integration with menuservices
     obj.onCloseRequest();
+  end
+  
+  function show(obj)
+    obj.save();
+    obj.getContainerPrefs();
+    show@iris.ui.UIContainer(obj);
   end
   
 end

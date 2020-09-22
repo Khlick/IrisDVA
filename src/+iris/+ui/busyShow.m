@@ -7,11 +7,11 @@ classdef busyShow < iris.ui.JContainer
   end
   
   properties (Access=protected)
-    isWaiting@logical = true;
+    isWaiting = true;
   end
   
   properties (SetObservable=true)
-    backgroundColor@cell = {0,0,0};
+    backgroundColor = {0,0,0};
     logoDim = [100,100];
   end
   
@@ -24,7 +24,9 @@ classdef busyShow < iris.ui.JContainer
       import iris.infra.*;
       import iris.app.*;
       
-      obj.position = centerFigPos(170-16,215-39);
+      oldWarn = warning('off','MATLAB:ui:javacomponent:FunctionToBeRemoved');
+      
+      obj.position = utilities.centerFigPos(170-16,215-39);
       
       set(obj.container, ...
         'Name', 'Loading...',...
@@ -61,6 +63,8 @@ classdef busyShow < iris.ui.JContainer
       addlistener(obj, 'Close', @obj.doClose);
       addlistener(obj, 'logoDim', 'PostSet', @obj.setLogoPos);
       addlistener(obj, 'backgroundColor', 'PostSet', @obj.setColor);
+      
+      warning(oldWarn);
     end
   end
   

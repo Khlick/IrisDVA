@@ -15,9 +15,10 @@ classdef primary < iris.ui.UIContainer
     ExportDataView
     SendToCmd
     ShowHelpDocs
+    InstallHelpersRequest
     TickerChanged
     NavigateData
-    EpochToggled
+    DatumToggled
     DeviceViewChanged
     RequestRedraw
     SessionConversionCalled
@@ -28,6 +29,7 @@ classdef primary < iris.ui.UIContainer
   
   
   properties (Access = public) %private)
+    % Menus
     FileMenu                 matlab.ui.container.Menu
     NewMenu                  matlab.ui.container.Menu
     DataMenu                 matlab.ui.container.Menu
@@ -49,57 +51,72 @@ classdef primary < iris.ui.UIContainer
     CreateNewMenu            matlab.ui.container.Menu
     ExportFigureMenuD        matlab.ui.container.Menu
     SendtoCmdMenuD           matlab.ui.container.Menu
-    ModulesMenuD             matlab.ui.container.Menu
-    ModulesContainer         cell
+    ModulesMenu             matlab.ui.container.Menu
     ModulesRefresh           matlab.ui.container.Menu
     HelpMenu                 matlab.ui.container.Menu
     AboutMenu                matlab.ui.container.Menu
     DocumentationMenu        matlab.ui.container.Menu
     FixLayoutMenu            matlab.ui.container.Menu
     SessionConverterMenu     matlab.ui.container.Menu
+    InstallHelpersMenu       matlab.ui.container.Menu
+    
+    % Grids
+    containerGrid                  matlab.ui.container.GridLayout
+    PlotControlGrid                matlab.ui.container.GridLayout
+    SwitchGrid                     matlab.ui.container.GridLayout
+    OverlapGrid                    matlab.ui.container.GridLayout
+    NavigatorGrid                  matlab.ui.container.GridLayout
+    ExtendedInfoGrid               matlab.ui.container.GridLayout
+    CurrentInfoGrid                matlab.ui.container.GridLayout
+    
+    % Panels
     AxesPanel                matlab.ui.container.Panel
-    Axes                     iris.ui.elements.AxesPanel%matlab.ui.control.UIAxes
-    CurrentInfo              matlab.ui.container.Panel
-    ExtendedInfo             matlab.ui.container.Panel
-    ShowingLabel             matlab.ui.control.Label
-    ShowingValueString       matlab.ui.control.Label
-    DevicesLabel             matlab.ui.control.Label
-    DevicesSelection         matlab.ui.control.ListBox
-    ViewNotesButton          matlab.ui.control.Button
-    ExtendedInfoButton       matlab.ui.control.Button
-    CurrentInfoTable         matlab.ui.control.Table
+    CurrentInfoPanel         matlab.ui.container.Panel
+    ExtendedInfoPanel        matlab.ui.container.Panel
     PlotControlTools         matlab.ui.container.Panel
+    SwitchPanel              matlab.ui.container.Panel
+    Axes                     iris.ui.elements.AxesPanel
+    
+    % Labels
+    ShowingLabel             matlab.ui.control.Label
+    ShowingValueLabel        matlab.ui.control.Label
+    DevicesLabel             matlab.ui.control.Label
     OverlapLabel             matlab.ui.control.Label
-    OverlapTicker            matlab.ui.control.EditField
-    CurrentEpochLabel         matlab.ui.control.Label
-    CurrentEpochTicker       matlab.ui.control.EditField
-    CurrentEpochSlider       matlab.ui.control.Slider
-    CurrentEpochDecSmall     matlab.ui.control.Button
-    CurrentEpochIncSmall     matlab.ui.control.Button
+    CurrentDataLabel         matlab.ui.control.Label
+    SelectionNavigatorLabel  matlab.ui.control.Label
+    StatsLabel               matlab.ui.control.Label
+    ScaleLabel               matlab.ui.control.Label
+    BaselineLabel            matlab.ui.control.Label
+    FilterLabel              matlab.ui.control.Label
+    DataLabel                matlab.ui.control.Label
+    
+    % Components
+    %ViewNotesButton          matlab.ui.control.Button
+    %ExtendedInfoButton       matlab.ui.control.Button
+    CurrentDatumDecSmall     matlab.ui.control.Button
+    CurrentDatumIncSmall     matlab.ui.control.Button
     OverlapInc               matlab.ui.control.Button
     OverlapDec               matlab.ui.control.Button
-    CurrentEpochIncBig       matlab.ui.control.Button
-    CurrentEpochDecBig       matlab.ui.control.Button
-    SelectionNavigatorLabel  matlab.ui.control.Label
-    SwitchPanel              matlab.ui.container.Panel
-    StatsLabel               matlab.ui.control.Label
+    CurrentDatumIncBig       matlab.ui.control.Button
+    CurrentDatumDecBig       matlab.ui.control.Button
+    OverlapTicker            matlab.ui.control.EditField
+    CurrentDataTicker        matlab.ui.control.EditField
     StatsLamp                matlab.ui.control.Lamp
-    StatsSwitch              matlab.ui.control.ToggleSwitch
-    ScaleLabel               matlab.ui.control.Label
     ScaleLamp                matlab.ui.control.Lamp
-    ScaleSwitch              matlab.ui.control.ToggleSwitch
-    BaselineLabel            matlab.ui.control.Label
     BaselineLamp             matlab.ui.control.Lamp
-    BaselineSwitch           matlab.ui.control.ToggleSwitch
-    FilterLabel              matlab.ui.control.Label
     FilterLamp               matlab.ui.control.Lamp
+    DataLamp                matlab.ui.control.Lamp
+    DevicesSelection         matlab.ui.control.ListBox
+    SelectionNavigatorSlider matlab.ui.control.Slider
+    CurrentInfoTable         matlab.ui.control.Table
+    DatumSwitch              matlab.ui.control.ToggleSwitch
     FilterSwitch             matlab.ui.control.ToggleSwitch
-    EpochLabel               matlab.ui.control.Label
-    EpochLamp                matlab.ui.control.Lamp
-    EpochSwitch              matlab.ui.control.ToggleSwitch
-    StartPanel              matlab.ui.container.Panel
-    StartLabel              matlab.ui.control.Label
-    %KeyboardButton           matlab.ui.control.Button
+    BaselineSwitch           matlab.ui.control.ToggleSwitch
+    StatsSwitch              matlab.ui.control.ToggleSwitch
+    ScaleSwitch              matlab.ui.control.ToggleSwitch
+    
+    % Containers
+    ModulesContainer         cell
   end
   
   properties (Access= public, SetObservable = true)
@@ -139,45 +156,46 @@ classdef primary < iris.ui.UIContainer
       obj.setUI(dMenus,'Enable', status);
       % Switches
       switches = uiObjs(contains(uiObjs,{'Switch','Lamp'}));
-      switches = switches(~contains(switches,'Panel'));
+      switches = switches(~contains(switches,{'Panel','Grid'}));
       obj.setUI(switches,'Enable', status);
-      % Set axes visibility
-      obj.AxesPanel.Visible = status;
+      
       % Controls and buttons
       controls = uiObjs( ...
         contains( ...
-          uiObjs, ...
-          {'Ticker','Devices','Showing','Button','Selection','Overlap','CurrentEpoch'} ...
+        uiObjs, ...
+        {'Ticker','Devices','Showing','Button','Selection','Overlap','CurrentDatum'} ...
         ));
+      controls(contains(controls,'Grid')) = [];
       obj.setUI(controls, 'Enable', status);
       if isempty(obj.selection) || (length(obj.selection.selected) < 2)
         obj.setSlider('off');
       end
       if invStatus
-        %turning on UI so hide startpanel
-        obj.StartPanel.Visible = 'off';
+        %data is present, show the axes
+        obj.Axes.toggleAxes(true);
       else
-        obj.StartPanel.Visible = 'on';
+        % data is not present, hide the axes
+        obj.Axes.showLabel("Load data to get started.");
       end
     end
     
     function setSlider(obj, status)
       status = validatestring(status,{'off','on'});
       obj.setUI( ...
-        {'CurrentEpochSlider','SelectionNavigatorLabel'}, ...
+        {'SelectionNavigatorSlider','SelectionNavigatorLabel'}, ...
         'Enable', status ...
         );
     end
     
     function updateInclusion(obj,value)
-      % toggle the epoch lamp/switch for the selected EPOCH
+      % toggle the datum lamp/switch for the selected EPOCH
       if value
         col = iris.app.Aes.appColor(1,'green');
       else
         col = iris.app.Aes.appColor(1,'red');
       end
-      obj.EpochLamp.Color = col;
-      obj.EpochSwitch.Value = num2str(value);
+      obj.DataLamp.Color = col;
+      obj.DatumSwitch.Value = num2str(value);
       
     end
     
@@ -186,29 +204,33 @@ classdef primary < iris.ui.UIContainer
       fprintf('JOut: %s.\n', out)
     end
     
-    function A = getScreenshot(obj)
+    function A = getScreenshot(obj,display)
+      if nargin < 2, display = false; end
       if obj.isClosed
         A = [];
         return
       end
       A = obj.window.getScreenshot;
-      f = figure( ...
-        'Name','Iris Screenshot', ...
-        'NumberTitle', 'on', ...
-        'Visible', 'off', ...
-        'units', 'pixels' ...
-        );
-      f.Position = [100,100,obj.position(3:4)+[0,-10]];
-      a = axes(f,'units', 'pixels');
-      image(a,A);
-      a.Visible = 'off';
-      a.Position = [0,0,f.InnerPosition(3:4)];
-      f.Visible = 'on';
+      if display
+        f = figure( ...
+          'Name','Iris Screenshot', ...
+          'NumberTitle', 'on', ...
+          'Visible', 'off', ...
+          'units', 'pixels' ...
+          );
+        f.Position = [100,100,obj.position(3:4)+[0,-10]];
+        a = axes(f,'units', 'pixels');
+        image(a,A);
+        a.Visible = 'off';
+        a.Position = [0,0,f.InnerPosition(3:4)];
+        a.DataAspectRatio = [1 1 1];
+        f.Visible = 'on';
+      end
     end
     
     function setDisplayData(obj,propCell)
       % collapse to only unique entries in the first column.
-      propCell = collapseUnique(propCell,1,true);
+      propCell = utilities.collapseUnique(propCell,1,true,true);
       % set the data
       obj.CurrentInfoTable.Data = propCell;
       % determine the best widths
@@ -216,7 +238,7 @@ classdef primary < iris.ui.UIContainer
       tWidth = obj.CurrentInfoTable.Position(3)-127;
       obj.CurrentInfoTable.ColumnWidth = {125,max([tWidth,max(lens)*6.56])};
     end
-  
+    
   end
   
   %% Startup and Callback Methods
@@ -230,10 +252,10 @@ classdef primary < iris.ui.UIContainer
     % resize components
     windowResized(obj,source,event)
     
-    % Validate epoch ticker and overlay ticker values
+    % Validate datum ticker and overlay ticker values
     function ValidateTicker(obj,tag,event)
       switch tag
-        case {'Overlap','CurrentEpoch'}
+        case {'Overlap','CurrentDatum'}
           try
             num = eval(sprintf('[%s]',event.Value));
           catch
@@ -249,9 +271,9 @@ classdef primary < iris.ui.UIContainer
           % current selections.
           num = round(event.Value);
           if ~ismember(num,obj.selection.selected), return; end
-          obj.CurrentEpochTicker.Value = sprintf('%d',num);
+          obj.CurrentDataTicker.Value = sprintf('%d',num);
           % quantize slider position
-          obj.CurrentEpochSlider.Value = num;
+          obj.SelectionNavigatorSlider.Value = num;
           obj.selection.highlighted = num;
         case 'selection'
           % if we click the only line on the figure, do nothing
@@ -259,19 +281,19 @@ classdef primary < iris.ui.UIContainer
           num = double(event.Data);
           if isempty(num), return; end
           if ~ismember(num,obj.selection.selected), return; end
-          obj.CurrentEpochTicker.Value = sprintf('%d',num);
-          obj.CurrentEpochSlider.Value = num;
+          obj.CurrentDataTicker.Value = sprintf('%d',num);
+          obj.SelectionNavigatorSlider.Value = num;
           obj.selection.highlighted = num;
           % override tag so Iris knows what to do:
           tag = 'Slider';
       end
       notify(obj, 'TickerChanged', ...
         iris.infra.eventData( ...
-          struct('Type', tag, 'Value', num)) ...
+        struct('Type', tag, 'Value', num)) ...
         );
     end
     
-    % Epoch slider changing
+    % Data slider changing
     function SliderChanging(obj,source,event)
       num = round(event.Value);
       if (source.Value == num)
@@ -279,7 +301,7 @@ classdef primary < iris.ui.UIContainer
       end
       if ~ismember(num,obj.selection.selected), return; end
       source.Value = num;
-      obj.CurrentEpochTicker.Value = sprintf('%d',num);
+      obj.CurrentDataTicker.Value = sprintf('%d',num);
       dOpts = iris.pref.display.getDefault();
       obj.Axes.setHighlighted(num,dOpts.LineWidth);
       obj.updateInclusion( ...
@@ -294,59 +316,63 @@ classdef primary < iris.ui.UIContainer
     % Display control switch flipped
     function SwitchFlipped(obj,source,event)
       value = event.Value == '1';
-      if value && strcmpi(source.Tag,'Epoch')
+      if value && strcmpi(source.Tag,'Data')
         col = iris.app.Aes.appColor(1,'green');
-      elseif ~value && strcmpi(source.Tag,'Epoch')
+      elseif ~value && strcmpi(source.Tag,'Data')
         col = iris.app.Aes.appColor(1,'red');
       else
         col = iris.app.Aes.appColor(1,'amber');
       end
       obj.([source.Tag,'Lamp']).Color = col;
-      pause(0.01);%drawnow('limitrate'); pause(0.01);
+      drawnow();
       
-      % if we are toggling the epoch, send the info to Iris for handling
-      if strcmp(source.Tag,'Epoch')
-        notify(obj, 'EpochToggled', ...
+      % if we are toggling the datum, send the info to Iris for handling
+      if strcmp(source.Tag,'Data')
+        notify(obj, 'DatumToggled', ...
           iris.infra.eventData( ...
           struct( ...
-            'index', obj.selection.highlighted, ...
-            'value', value ...
-            ) ...
+          'index', obj.selection.highlighted, ...
+          'value', value ...
+          ) ...
           ) ...
           );
-        return;
+        return
       end
+      
       % otherwise, notify for redraw
       notify(obj,'SwitchToggled', ...
         iris.infra.eventData(struct('source',source.Tag,'value',value)));
     end
     
     function populateModules(obj)
-      modNames = Iris.getModules(); % will copy modules into +iris/+modules
+      modNames = Iris.getModules(true); % will copy modules into +iris/+modules
       
       % First delete module links
       cellfun(@delete,obj.ModulesContainer,'unif', false);
       % build new modules
       obj.ModulesContainer = cell(numel(modNames),1);
       for I = 1:numel(modNames)
-        obj.ModulesContainer{I} = uimenu(obj.ModulesMenuD);
-        obj.ModulesContainer{I}.Text = camelizer(modNames{I},true);
+        obj.ModulesContainer{I} = uimenu(obj.ModulesMenu);
+        obj.ModulesContainer{I}.Text = utilities.camelizer(modNames{I},true);
         obj.ModulesContainer{I}.Enable = 'on';
         obj.ModulesContainer{I}.MenuSelectedFcn = ...
           @(s,e) ...
-            notify(obj,'ModuleCalled', iris.infra.eventData(modNames{I}));
+          notify(obj,'ModuleCalled', iris.infra.eventData(modNames{I}));
         obj.ModulesContainer{I}.Tag = modNames{I};
       end
-       % reorder menus to keep Reset on bottom
-       chld = obj.ModulesMenuD.Children;
-       
-       % locate Refresh
-       rfInd = strcmpi({chld.Text}, 'Refresh');
-       obj.ModulesMenuD.Children = [ ...
-         obj.ModulesMenuD.Children(rfInd); ...
-         obj.ModulesMenuD.Children(~rfInd) ...
-         ];
-       pause(0.01);%drawnow('limitrate');
+      % reorder menus to keep Reset on bottom
+      chld = obj.ModulesMenu.Children;
+      
+      % locate Refresh and Session Converter
+      rfInd = strcmpi({chld.Text}, 'Refresh');
+      scInd = strcmpi({chld.Text}, 'Session Converter');
+      
+      obj.ModulesMenu.Children = [ ...
+        obj.ModulesMenu.Children(rfInd); ...
+        obj.ModulesMenu.Children(scInd); ...
+        obj.ModulesMenu.Children(~any([rfInd(:),scInd(:)],2)) ...
+        ];
+      pause(0.01);%drawnow('limitrate');
     end
     
     function onAxesDataSelected(obj,~,event)
@@ -393,15 +419,37 @@ classdef primary < iris.ui.UIContainer
       notify(obj,'PlotCompletedUpdate');
     end
     
+    function resetContainerView(obj,~,~)
+      p = obj.position;
+      p(3:4) = [1610,931];
+      obj.position = p;
+    end
+    
+    % copy cell contents callback
+    function doCopyUITableCell(obj,source,event) %#ok<INUSL>
+      try
+        ids = event.Indices;
+        nSelections = size(ids,1);
+        merged = cell(nSelections,1);
+        for sel = 1:nSelections
+          merged{sel} = source.Data{ids(sel,1),ids(sel,2)};
+        end
+        stringified = utilities.unknownCell2Str(merged,';',false);
+        clipboard('copy',stringified);
+      catch x
+        fprintf('Copy failed for reason:\n "%s"\n',x.message);
+      end
+    end
+    
   end
   
   %% Preferences
   methods (Access = protected)
-
+    
     function resetContainerPrefs(obj)
       obj.reset;
     end
-
+    
     function setContainerPrefs(obj)
       setContainerPrefs@iris.ui.UIContainer(obj);
     end
@@ -461,19 +509,15 @@ classdef primary < iris.ui.UIContainer
       
       if obj.isAggregated
         obj.manualSwitchThrow('Stats');
-        pause(1);
       end
       if obj.isFiltered
         obj.manualSwitchThrow('Filter');
-        pause(1);
       end
       if obj.isBaselined
         obj.manualSwitchThrow('Baseline');
-        pause(1);
       end
       if obj.isScaled
         obj.manualSwitchThrow('Scale');
-        pause(1);
       end
       %pause(0.01);%drawnow('limitrate');
       %notify(obj,'RequestRedraw');
@@ -491,6 +535,8 @@ classdef primary < iris.ui.UIContainer
       prop.Value = newVal;
       prop.ValueChangedFcn(prop,evt);
     end
+    
   end
+  
 end
 

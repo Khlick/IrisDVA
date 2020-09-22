@@ -40,3 +40,68 @@ img.plain {
 .transparent-panel-85 {
   opacity: 0.85 !important;
 }
+
+.iris-btn {
+  -ms-touch-action: manipulation !important;
+  touch-action: manipulation !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+.iris-btn-raised {
+  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12), 0 3px 1px -2px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.iris-btn-raised:active {
+  box-shadow: 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12), 0 5px 5px -3px rgba(0, 0, 0, 0.4) !important;
+}
+
+.iris-btn-ripple {
+  
+}
+
+.iris-btn-ripple:after {
+  content: "" !important;
+  left: 50% !important;
+  top: 50% !important;
+  width: 120px !important;
+  height: 120px !important;
+  margin-left: -60px !important;
+  margin-top: -60px !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-radius: 100% !important;
+  transform: scale(0) !important;
+}
+
+@keyframes iris-btn-ripple {
+  0% {
+    transform: scale(0) !important;
+  }
+  20% {
+    transform: scale(1) !important;
+  }
+  100% {
+    opacity: 0 !important;
+    transform: scale(1) !important;
+  }
+}
+
+.iris-btn-ripple:not(:active):after {
+  animation: iris-btn-ripple 0.6s ease-out !important;
+}
+
+.iris-btn-ripple:after {
+  visibility: hidden !important;
+}
+
+.iris-btn-ripple:focus:after {
+  visibility: visible !important;
+}
+
+/* override grid layout transparency  for 2020b */
+.gbtWidget.gbtGrid {
+  background-color: transparent !important;
+}

@@ -1,5 +1,5 @@
 classdef Tracker < handle
-%% TRACKER Keep track of currently selected epochs.
+%% TRACKER Keep track of currently selected Datums.
 % Having index and currentIndex separate allows a forward facing index to
 % be different from the internal index.
   events

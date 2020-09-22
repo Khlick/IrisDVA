@@ -56,7 +56,7 @@ classdef notes < iris.ui.UIContainer
       if isempty(pos)
         initW = 800;
         initH = 350;
-        pos = centerFigPos(initW,initH);
+        pos = utilities.centerFigPos(initW,initH);
       end
       obj.position = pos; %sets container too
       

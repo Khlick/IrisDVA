@@ -51,7 +51,6 @@ classdef Handler < matlab.mixin.Copyable
     function import(obj,files,reader)
       % IMPORT Read new files and append them onto the current data object.
       if nargin < 2, reader = ''; end
-      % read data always output data,filter,meta,n?
       [d,f,m,n] = obj.readData(files,reader);
       obj.append(d,f,m,n);
       if obj.Tracker.currentIndex == 0
@@ -116,16 +115,23 @@ classdef Handler < matlab.mixin.Copyable
           (length(notes) == length(files)), ...
         'All inputs must be equal length.' ...
         );
+      
+      % once we are good, begin parsing contents
+      import utilities.*; % utility library
+      
       for f = 1:length(files)
         
         % Metainformation
         thisMeta = meta{f}; %first unpack in case nested
         if iscell(thisMeta)
-          %wrap meta into cell
+          %unpack
           thisMeta = [thisMeta{:}];
         end
-        obj.Meta{end+1} = thisMeta;
         
+        combinedMeta = uniqueContents({thisMeta});
+        %if ~iscell(combinedMeta), combinedMeta = {combinedMeta}; end
+        obj.Meta{f} = combinedMeta;
+                
         % Data
         ofst = length(obj.Data);
         newDataLength = length(data{f});
@@ -149,19 +155,47 @@ classdef Handler < matlab.mixin.Copyable
         thisNote(cellfun(@isempty,thisNote(:,1),'unif',1),:) = [];
         
         prevNoteLength = size(obj.Notes,1);
-        thisNoteLength = size(thisNote,1);
         % append
-        obj.Notes = cat(1,obj.Notes,thisNote);
+        combinedNotes  = uniqueContents({obj.Notes,thisNote});
+        
+        if ~iscell(combinedNotes{1})
+          noteMerge = combinedNotes;
+        else
+          noteMerge = cat(1,combinedNotes{:});
+        end
+        
+        thisNoteLength = size(noteMerge,1) - prevNoteLength;
+        
+        obj.Notes = noteMerge;
         
         % append file to list, which will update obj.nFiles
-        obj.fileList(obj.nFiles+1) = files(f); 
+        thisFile = files(f);
+        combinedFiles = uniqueContents([obj.fileList,thisFile]);
+        if ~iscell(combinedFiles)
+          obj.fileList = cellstr(combinedFiles);
+        else
+          obj.fileList = combinedFiles;
+        end
         
         % Finally, update the membership information
         % Membership
-        obj.membership{obj.nFiles} = struct( ...
+        thisMembership = struct( ...
           'data', ofst + (1:newDataLength), ...
           'notes', prevNoteLength + (1:thisNoteLength) ...
           );
+        combinedMemberships = uniqueContents([obj.membership,{thisMembership}]);
+        if ~iscell(combinedMemberships),combinedMemberships = {combinedMemberships}; end
+        if obj.nFiles < numel(combinedMemberships)
+          % need to merge memberships
+          idx = ismember(obj.fileList,thisFile);
+          mbrToMerge = combinedMemberships{idx};
+          mbrToMerge.data = unique([mbrToMerge.data,thisMembership.data]);
+          mbrToMerge.notes = unique([mbrToMerge.notes,thisMembership.notes]);
+          combinedMemberships{idx} = mbrToMerge;
+          combinedMemberships(end) =[];% the end should be the new one we've merged
+        end
+        
+        obj.membership = combinedMemberships;
       end
       obj.Tracker = iris.data.Tracker();
       obj.Tracker.total = length(obj.Data);
@@ -291,7 +325,7 @@ classdef Handler < matlab.mixin.Copyable
       % create function to compute scalar scale
       switch scaleType
         case 'Absolute Max'
-          func = @(matx)AbsMax(matx);
+          func = @(matx)utilities.AbsMax(matx);
         case 'Max'
           func = @(matx)max(matx,[],'all','omitnan');
         case 'Min'
@@ -329,7 +363,7 @@ classdef Handler < matlab.mixin.Copyable
     end
     
     function iData = exportCurrent(obj)
-      % EXPORTCURRENT Export IrisData of the currently selected epochs.
+      % EXPORTCURRENT Export IrisData of the currently selected Datums.
       % This method returns an irisData class object
       % This will be used to send data to analysis scripts
       subs = obj.currentSelection.selected;
@@ -531,7 +565,7 @@ classdef Handler < matlab.mixin.Copyable
       end
       if length(reader) ~= length(files)
         % assume reader was a scalar string or cellstr
-        reader = rep(reader,length(files));
+        reader = utilities.rep(reader,length(files));
       end
       
       validFiles = iris.data.validFiles;
@@ -558,10 +592,12 @@ classdef Handler < matlab.mixin.Copyable
           d{f}= contents.Data; % should be cell array of struct array
           m{f}= contents.Meta;
           n{f}= contents.Notes;
-          try
-            fl{f} = contents.Files;
-          catch
+          % if we are importing a session containing multiple files, we need to
+          % extract those files and append this file onto those names
+          if ~isfield(contents,'Files') || isequal(files(f),contents.Files)
             fl{f} = files(f);
+          else
+            fl{f} = strcat(files(f),';',contents.Files);
           end
         catch er
           skipped{f,1} = files{f};
@@ -574,7 +610,7 @@ classdef Handler < matlab.mixin.Copyable
         obj, 'fileLoadStatus', ...
         iris.infra.eventData(accDataRead/totalDataSize) ...
         );
-      
+        
       emptySlots = cellfun(@isempty,d,'unif',1);
       skipped = skipped(emptySlots,:);
       if ~isempty(skipped)
@@ -596,11 +632,14 @@ classdef Handler < matlab.mixin.Copyable
     end
     
   end
-  methods (Static= true)
-    function obj = loadobj(s)
+  
+  methods (Static = true)
+    
+    function obj = loadobj(s)%#ok
       e = MException('Iris:Data:Handler:Load', 'Use ISF reader.');
       throw(e);
     end
+    
   end
 end%eoc
 

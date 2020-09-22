@@ -58,6 +58,7 @@ classdef (Abstract) StoredPrefs < handle
       fprintf(dispStr)
       %}
       %%%
+      
     end
 
     function tf = isKey(obj, key)
@@ -72,6 +73,7 @@ classdef (Abstract) StoredPrefs < handle
         v = obj.instanceMap(key);
       else
         v = default;
+        obj.put(key,v);
       end
     end
 

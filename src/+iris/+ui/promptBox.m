@@ -100,7 +100,7 @@ classdef promptBox < iris.ui.JContainer
       h = buttonOffset + promptHeight + 5; %add 5 for top margin
       
       %
-      pos = centerFigPos(w,h);
+      pos = utilities.centerFigPos(w,h);
       obj.position = pos;
       
       set(obj.container, ...
@@ -120,7 +120,7 @@ classdef promptBox < iris.ui.JContainer
       if length(ip.Results.Camelize) == nInputs
         cam = ip.Results.Camelize;
       else
-        cam = rep(ip.Results.Camelize(1),nInputs);
+        cam = utilities.rep(ip.Results.Camelize(1),nInputs);
       end
       % Build UIs
       [obj.label,obj.input] = deal(cell(nInputs,1));
@@ -180,7 +180,7 @@ classdef promptBox < iris.ui.JContainer
   methods (Access = private)
     
     function validateInput(obj,src,~)
-      src.String = camelizer(src.String);
+      src.String = utilities.camelizer(src.String);
       obj.inputs{src.UserData} = src.String;
     end
     

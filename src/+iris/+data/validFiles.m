@@ -101,11 +101,17 @@ classdef validFiles < handle
     function rf = getReadFxnFromFile(obj,fileName)
       [~,~,ext] = fileparts(fileName);
       % support any case
-      ext = lower(ext);
+      ext = strrep(lower(ext),'.','');
       list = cellfun(@(s)s,obj.options.Supported.values,'UniformOutput',1);
-      supportedExtensions = [list.exts];
-      loc = find(ismember(strcat('.',supportedExtensions),ext),1,'first');
-      rf = list(loc).reader;
+      loc = 0;
+      for L = 1:numel(list)
+        if ismember(ext,list(L).exts)
+          loc = L;
+          break; 
+        end
+      end
+      if ~loc, iris.app.Info.throwError("Unsupported file type."); end
+      rf = list(L).reader;
     end
     
   end

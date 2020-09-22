@@ -56,7 +56,7 @@ classdef protocols < iris.ui.UIContainer
       if isempty(pos)
         initW = 800;
         initH = 350;
-        pos = centerFigPos(initW,initH);
+        pos = utilities.centerFigPos(initW,initH);
       end
       obj.position = pos; %sets container too
       
@@ -64,7 +64,7 @@ classdef protocols < iris.ui.UIContainer
       obj.container.Name = 'Protocols';
       obj.container.SizeChangedFcn = @obj.containerSizeChanged;
       obj.container.Resize = 'on';
-
+      
       % Create ProtocolsTable
       obj.ProtocolsTable = uitable(obj.container);
       obj.ProtocolsTable.ColumnName = {'Property'; 'Value'};
@@ -73,7 +73,8 @@ classdef protocols < iris.ui.UIContainer
       obj.ProtocolsTable.RowName = {};
       obj.ProtocolsTable.HandleVisibility = 'off';
       obj.ProtocolsTable.Position = [10, 6, pos(3)-20,pos(4)-50-6];
-
+      obj.ProtocolsTable.CellSelectionCallback = @obj.doCopyUITableCell;
+      
       % Create ProtocolsLabel
       obj.ProtocolsLabel = uilabel(obj.container);
       obj.ProtocolsLabel.HorizontalAlignment = 'center';
@@ -94,11 +95,26 @@ classdef protocols < iris.ui.UIContainer
       obj.ProtocolsTable.Position = [10,6,position(3)-20,position(4)-50-6];
       obj.ProtocolsLabel.Position = [10,position(4)-45,position(3)-20,position(4)-5];
     end
+    % copy cell contents callback
+    function doCopyUITableCell(obj,source,event) %#ok<INUSL>
+      try
+        ids = event.Indices;
+        nSelections = size(ids,1);
+        merged = cell(nSelections,1);
+        for sel = 1:nSelections
+          merged{sel} = source.Data{ids(sel,1),ids(sel,2)};
+        end
+        stringified = utilities.unknownCell2Str(merged,';',false);
+        clipboard('copy',stringified);
+      catch x
+        fprintf('Copy failed for reason:\n "%s"\n',x.message);
+      end
+    end
   end
   %% Preferences
   methods (Access = protected)
-
-   function setContainerPrefs(obj)
+    
+    function setContainerPrefs(obj)
       setContainerPrefs@iris.ui.UIContainer(obj);
     end
     

@@ -106,7 +106,7 @@ classdef fileInfo < iris.ui.UIContainer
     
     % Set Table Data
     function setData(obj,d)
-      d(:,2) = arrayfun(@unknownCell2Str,d(:,2),'unif',0);
+      d(:,2) = arrayfun(@utilities.unknownCell2Str,d(:,2),'unif',0);
       obj.PropTable.Data = d;
       lens = cellfun(@length,d(:,2),'UniformOutput',true);
       tWidth = obj.PropTable.Position(3)-127;
@@ -122,7 +122,7 @@ classdef fileInfo < iris.ui.UIContainer
       if isempty(pos)
         initW = 616;
         initH = 366;
-        pos = centerFigPos(initW,initH);
+        pos = utilities.centerFigPos(initW,initH);
       end
       obj.position = pos; %sets container too
       w = pos(3);
@@ -201,7 +201,7 @@ classdef fileInfo < iris.ui.UIContainer
   %% Preferences
   methods (Access = protected)
 
-   function setContainerPrefs(obj)
+    function setContainerPrefs(obj)
       setContainerPrefs@iris.ui.UIContainer(obj);
     end
     

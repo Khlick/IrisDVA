@@ -146,6 +146,16 @@ methods (Static)
     end
     pObj.save();
   end
+  
+  function d = getDefault()
+    % force init of each default if class doesn't exist.
+    persistent default;
+    if isempty(default) || ~isvalid(default)
+      default = iris.pref.preferences();
+    end
+    d = default;
+  end
+  
 end
 
 end

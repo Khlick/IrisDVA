@@ -13,6 +13,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
   properties (SetAccess = protected)
     container
     window
+    synchronizer
   end
   
   methods
@@ -27,16 +28,11 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       import iris.infra.*;
       import iris.app.*;
       
+      SJO = warning('off','MATLAB:ui:javaframe:PropertyToBeRemoved');
+      SOO = warning('off','MATLAB:structOnObject');
+      
       %build figure base
-      obj.container = uifigure( ...
-        'Visible', 'off', ...
-        'NumberTitle', 'off', ...
-        'MenuBar', 'none', ...
-        'Toolbar', 'none', ...
-        'Color', [1,1,1], ...
-        'AutoResizeChildren', 'off', ...
-        'Resize', 'off', ...
-        'HandleVisibility', 'off', ...
+      params = { ...
         'DefaultAxesInterruptible', 'off', ...
         'DefaultAxesFontName', Aes.uiFontName, ...
         'DefaultAxesFontsize', Aes.uiFontSize(),...
@@ -143,16 +139,35 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
         'defaultUitableInterruptible', 'off', ...
         'defaultUitogglesplittoolInterruptible', 'off', ...
         'defaultUitoggletoolInterruptible', 'off', ...
-        'defaultUitoolbarInterruptible', 'off', ...
+        'defaultUitoolbarInterruptible', 'off' ...
+        };
+      
+      params = reshape(params,2,[]);
+      
+      obj.container = uifigure( ...
+        'Visible', 'off', ...
+        'NumberTitle', 'off', ...
+        'MenuBar', 'none', ...
+        'Toolbar', 'none', ...
+        'Color', [1,1,1], ...
+        'AutoResizeChildren', 'off', ...
+        'Resize', 'off', ...
+        'HandleVisibility', 'off', ...
         'CloseRequestFcn', ...
           @(src,evnt)notify(obj, 'Close') ...
         );
-
+      
       try
         obj.container.WindowKeyPressFcn = ...
             @(src,evnt)notify(obj, 'KeyPress', eventData(evnt));
       catch x
         fprintf('Keyboard functionality is not available.\n');
+      end
+      
+      for p = 1:size(params,2)
+        try %#ok<TRYNC>
+          set(obj.container,params{1,p},params{2,p});
+        end
       end
       
       
@@ -165,9 +180,12 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
           pause(0.2);
         catch x
           delete(obj.container);
-          rethrow(x)
+          warning(SOO);
+          warning(SJO);
+          rethrow(x);
         end
       end
+      
       % now gather the web window for the container
       while true
         try
@@ -180,6 +198,10 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       end
       % make modifications
       obj.startup(varargin{:});
+      
+      %return warning status
+      warning(SOO);
+      warning(SJO);
     end
     
     
@@ -291,11 +313,12 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     end
     
     function show(obj)
-      if obj.isClosed, error('%s already closed.',class(obj)); end
+      if obj.isClosed, error('%s is closed.',class(obj)); end
       if strcmpi(obj.container.Visible, 'off')
         obj.container.Visible = 'on';
       end
       obj.window.show;
+      drawnow();
       obj.window.bringToFront;
     end
     

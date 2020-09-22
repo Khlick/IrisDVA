@@ -188,20 +188,21 @@ classdef plotData
             flt = 2*obj.filterPrefs.HighPassFrequency;
         end
           
+        yLen = size(yvals,1);
         
-        preVal = mean(yvals(1:100,:)-mu(ones(100,1),:));
-        postVal = mean(yvals(end-(99:-1:0),:)-mu(ones(100,1),:));
+        yvals = yvals - mu;
+        
         %build filter
         [b,a] = ButterParam(obj.filterPrefs.Order,flt./obj.sampleRate, ftype);
         
         % pad and filter
-        fY = FiltFiltM(b,a, ...
-          [ ...
-            preVal(ones(2000,1),:); ...
-            yvals-mu(ones(size(yvals,1),1),:); ...
-            postVal(ones(2000,1),:) ...
-          ]);
-        yvals = fY(2000 + (1:size(yvals,1)),:) + mu(ones(size(yvals,1),1),:);
+        pre = mean(yvals(1:200,:),1,'omitnan');
+        post = mean(yvals((end-199):end,:),1,'omitnan');
+        
+        yvals = [pre(ones(200,1),:);yvals;post(ones(200,1),:)];
+        yvals = FiltFiltM(b,a, yvals);
+        yvals = yvals(200+(1:yLen),:) +  mu;
+        
       end
       
       %If Scaled

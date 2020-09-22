@@ -2,7 +2,7 @@ function onTickerUpdated(app,src,event)
 %src will be shortcut handle to primary ui
 cSel = app.handler.currentSelection;
 switch event.Data.Type
-  case 'CurrentEpoch'
+  case 'CurrentDatum'
     if length(event.Data.Value) > 1
       newSel = event.Data.Value;
     else

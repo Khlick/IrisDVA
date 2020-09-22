@@ -32,23 +32,39 @@
   }
 }
 
+.reflow {
+  display: inline-block !important;
+  left: 0 !important;
+  right: 0 !important;
+  max-height: 100% !important;
+}
+
+.reflow span {
+  overflow-wrap: break-word !important;
+  word-wrap: break-word !important;
+  width: 50% !important;
+  height: auto !important;
+}
+
 .funtext {
-  width: 0px;
   animation:
-    fadein 5s ease 0s 1 normal forwards,
+    fadein 1s ease 0s 1 normal forwards,
     arrive 5s ease 0s 1 normal forwards;
 }
 
 @keyframes fadein {
-  0% {opacity:0;width:0%;}
-  10% {opacity:1;width:0%;}
-  15% {width:100%;}
-  100% {opacity:1;width:100%;}
+  0% {opacity:0;}
+  8% {opacity:1;}
+  100% {opacity:1;}
 }
 
 @keyframes arrive {
-  0% { margin-left:-800px; }
-  5% { margin-left:-800px; }
-  20% { margin-left:0px; }
-  100% { margin-left:0px; }
+  0%   { margin-left:-800px; }
+  3%   { margin-left:-800px; }
+  12%  { margin-left:40px;  }
+  15%  { margin-left:-30px;  }
+  17%  { margin-left:5px;   }
+  18%  { margin-left:-2px;   }
+  19%  { margin-left:0px;    }
+  100% { margin-left:0px;    }
 }

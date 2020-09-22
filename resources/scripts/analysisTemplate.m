@@ -17,7 +17,7 @@ function [output1,output2] = analysisTemplate(Data,input1,input2)
 % argument will be of class irisData, the file should be on your MATLAB
 % path so you can use it without running Iris in a later MATLAB session.
 % This object has a few convenience methods builtin that help you perform
-% common tasks such as averaging groups of epochs. For a detailed
+% common tasks such as averaging groups of Datums. For a detailed
 % description of the included mehtods, see doc('Iris').
 %
 % Next, any input can have, but doesn't require, default values which

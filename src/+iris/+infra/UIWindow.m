@@ -22,12 +22,17 @@ classdef (Abstract) UIWindow < iris.infra.StoredPrefs
     function obj = UIWindow(varargin)
       cName = regexp(class(obj), '(?<=\.)\w*$', 'match', 'once');
       try
-        options = iris.pref.(cName);
+        options = iris.pref.(cName).getDefault();
       catch
         options = [];
       end
       obj.options = options;
+      w = warning('off','MATLAB:ui:javaframe:PropertyToBeRemoved');
+      pause(0.001);
       obj.constructContainer(varargin{:});
+      
+      pause(0.001);
+      warning(w);
     end
     
     %abstract

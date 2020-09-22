@@ -9,6 +9,7 @@ classdef (Abstract) Container < handle
     ui        iris.ui.primary
     services  iris.infra.menuServices
     options
+    appData struct = struct()
     isStopped
   end
   
@@ -27,7 +28,8 @@ classdef (Abstract) Container < handle
       obj.listeners = cell(0);
       cName = regexp(class(obj), '(?<=\.?)\w*$', 'match', 'once');
       try
-        options = iris.pref.(cName);
+        options = iris.pref.(cName).getDefault();
+        
       catch
         options = [];
       end
@@ -38,6 +40,7 @@ classdef (Abstract) Container < handle
       if ~obj.isStopped
         obj.stop();
       end
+      delete(obj);
     end
     
     function run(obj)
@@ -48,6 +51,7 @@ classdef (Abstract) Container < handle
     end
     
     function stop(obj)
+      if obj.isStopped, return; end
       obj.isStopped = true;
       obj.preStop;
       obj.unbind;
@@ -59,6 +63,32 @@ classdef (Abstract) Container < handle
     function show(obj)
       obj.ui.show();
       obj.ui.focus();
+    end
+    
+    function setappdata(obj,name,val)
+      name = matlab.lang.makeValidName(name);
+      obj.appData.(name) = val;
+    end
+    
+    function vals = getappdata(obj,varargin)
+      names = string(varargin);
+      if numel(names) == 0
+        vals = obj.appData;
+        return
+      elseif numel(names) == 1
+        try
+          vals = obj.appData.(names);
+        catch x
+          iris.app.Info.showWarning(x.message);
+        end
+        return
+      end
+      % is array
+      vals = arrayfun(@obj.getappdata,names,'UniformOutput',0);
+    end
+    
+    function tf = ishandle(obj)
+      tf = ~obj.isStopped;
     end
     
   end
@@ -121,7 +151,7 @@ classdef (Abstract) Container < handle
     function enableListener(obj, listener)
       loc = ismember(...
         cellfun(@(l)l.EventName, obj.listeners, 'unif',0),...
-        listener.EventName);
+        listener);
       if ~any(loc), disp('Listener non-existent'); end
       obj.listeners{loc}.Enabled = true;
     end
@@ -129,7 +159,7 @@ classdef (Abstract) Container < handle
     function disableListener(obj,listener)
       loc = ismember(...
         cellfun(@(l)l.EventName, obj.listeners,'unif',0),...
-        listener.EventName);
+        listener);
       if ~any(loc), disp('Listener non-existent'); end
       obj.listeners{loc}.Enabled = false;
     end
@@ -163,7 +193,7 @@ classdef (Abstract) Container < handle
     end
     
     function onUIClose(obj,~,~)
-      obj.stop;
+      obj.stop();
     end
     
   end

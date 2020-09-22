@@ -12,7 +12,7 @@ end
 % original position
 initW = 1610;
 initH = 931;
-pos = centerFigPos(initW,initH);
+pos = utilities.centerFigPos(initW,initH);
 
 %drawnow();
 

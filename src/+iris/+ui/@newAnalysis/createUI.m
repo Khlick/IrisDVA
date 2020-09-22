@@ -11,7 +11,7 @@ h = 390;
 
 pos = obj.position;
 if isempty(pos)
-  pos = centerFigPos(w,h);
+  pos = utilities.centerFigPos(w,h);
 end
 %force startup to max height
 pos(4) = h;

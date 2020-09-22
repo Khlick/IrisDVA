@@ -22,6 +22,16 @@ classdef keyboard < iris.infra.StoredPrefs
   end
   
   methods
+
+    function obj = keyboard()
+      obj = obj@iris.infra.StoredPrefs();
+      % gather the public visible properties
+      this = properties(obj);
+      for p = 1:numel(this)
+        obj.(this{p}) = obj.(this{p});
+      end
+      obj.save();
+    end
     
     % B key
     function a = get.b(obj)
@@ -155,7 +165,7 @@ classdef keyboard < iris.infra.StoredPrefs
     function a = get.s(obj)
       sc = [ ...
         iris.pref.keyboard.createKeyCode(1,0,0,'actionSave'); ...
-        iris.pref.keyboard.createKeyCode(0,0,1,'toggleStatistics') ...
+        iris.pref.keyboard.createKeyCode(0,0,1,'toggleScale') ...
         ];
       a = obj.get('s',sc);
     end
@@ -163,7 +173,7 @@ classdef keyboard < iris.infra.StoredPrefs
       % for now we won't allow overrride
       v = [ ...
         iris.pref.keyboard.createKeyCode(1,0,0,'actionSave'); ...
-        iris.pref.keyboard.createKeyCode(0,0,1,'toggleStatistics') ...
+        iris.pref.keyboard.createKeyCode(0,0,1,'toggleScale') ...
         ];
       obj.put('s',v);
     end
@@ -181,12 +191,12 @@ classdef keyboard < iris.infra.StoredPrefs
     
     % X key
     function a = get.x(obj)
-      sc = iris.pref.keyboard.createKeyCode(0,0,0,'toggleEpoch');
+      sc = iris.pref.keyboard.createKeyCode(0,0,0,'toggleDatum');
       a = obj.get('x',sc);
     end
     function set.x(obj,v)%#ok
       % for now we won't allow overrride
-      v = iris.pref.keyboard.createKeyCode(0,0,0,'toggleEpoch'); 
+      v = iris.pref.keyboard.createKeyCode(0,0,0,'toggleDatum'); 
       obj.put('x',v);
     end
     

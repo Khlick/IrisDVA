@@ -12,6 +12,16 @@ classdef display < iris.infra.StoredPrefs
   
   methods
     
+    function obj = display()
+      obj = obj@iris.infra.StoredPrefs();
+      % gather the public visible properties
+      this = properties(obj);
+      for p = 1:numel(this)
+        obj.(this{p}) = obj.(this{p});
+      end
+      obj.save();
+    end
+
     % LineStyle
     function v = get.LineStyle(obj)
       v = obj.get('LineStyle','Solid');

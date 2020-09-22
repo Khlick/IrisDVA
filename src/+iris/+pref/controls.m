@@ -9,6 +9,16 @@ classdef controls < iris.infra.StoredPrefs
 
   methods
     
+    function obj = controls()
+      obj = obj@iris.infra.StoredPrefs();
+      % gather the public visible properties
+      this = properties(obj);
+      for p = 1:numel(this)
+        obj.(this{p}) = obj.(this{p});
+      end
+      obj.save();
+    end
+
     % StepSmall
     function v = get.StepSmall(obj)
       v = obj.get('StepSmall',1);

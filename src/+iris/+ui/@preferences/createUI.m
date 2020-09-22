@@ -14,7 +14,7 @@ pos = obj.position;
 if isempty(pos)
   initW = 616;
   initH = 366;
-  pos = centerFigPos(initW,initH);
+  pos = utilities.centerFigPos(initW,initH);
 end
 obj.position = pos; %sets container too
 
@@ -108,7 +108,7 @@ obj.KeyboardPanel.Position = [184 15 415 339];
 obj.KeyboardConfig = uipanel(obj.KeyboardPanel);
 obj.KeyboardConfig.AutoResizeChildren = 'off';
 obj.KeyboardConfig.BorderType = 'none';
-obj.KeyboardConfig.Title = 'Keyboard Configuration';
+obj.KeyboardConfig.Title = '';
 obj.KeyboardConfig.BackgroundColor = [1 1 1];
 obj.KeyboardConfig.FontName = Aes.uiFontName;
 obj.KeyboardConfig.FontSize = 16;
@@ -122,43 +122,43 @@ obj.ControlPanel.BackgroundColor = [1 1 1];
 obj.ControlPanel.FontName = Aes.uiFontName;
 obj.ControlPanel.Position = [184 15 415 339];
 
-% Create EpochStepSmallLabel
-obj.EpochStepSmallLabel = uilabel(obj.ControlPanel);
-obj.EpochStepSmallLabel.HorizontalAlignment = 'right';
-obj.EpochStepSmallLabel.FontName = Aes.uiFontName;
-obj.EpochStepSmallLabel.FontSize = 20;
-obj.EpochStepSmallLabel.Position = [19 223 228 25];
-obj.EpochStepSmallLabel.Text = 'Epoch Step Small:';
+% Create DataStepSmallLabel
+obj.DataStepSmallLabel = uilabel(obj.ControlPanel);
+obj.DataStepSmallLabel.HorizontalAlignment = 'right';
+obj.DataStepSmallLabel.FontName = Aes.uiFontName;
+obj.DataStepSmallLabel.FontSize = 20;
+obj.DataStepSmallLabel.Position = [19 223 228 25];
+obj.DataStepSmallLabel.Text = 'Data Step Small:';
 
-% Create EpochStepSmallInput
-obj.EpochStepSmallInput = uieditfield(obj.ControlPanel, 'numeric');
-obj.EpochStepSmallInput.Limits = [1 100];
-obj.EpochStepSmallInput.RoundFractionalValues = 'on';
-obj.EpochStepSmallInput.ValueDisplayFormat = '%.0f';
-obj.EpochStepSmallInput.FontName = 'Courier New';
-obj.EpochStepSmallInput.FontSize = 16;
-obj.EpochStepSmallInput.Position = [331 226 53 22];
-obj.EpochStepSmallInput.Value = 1;
-obj.EpochStepSmallInput.ValueChangedFcn = @obj.validateStepSize;
+% Create DataStepSmallInput
+obj.DataStepSmallInput = uieditfield(obj.ControlPanel, 'numeric');
+obj.DataStepSmallInput.Limits = [1 100];
+obj.DataStepSmallInput.RoundFractionalValues = 'on';
+obj.DataStepSmallInput.ValueDisplayFormat = '%.0f';
+obj.DataStepSmallInput.FontName = 'Courier New';
+obj.DataStepSmallInput.FontSize = 16;
+obj.DataStepSmallInput.Position = [331 226 53 22];
+obj.DataStepSmallInput.Value = 1;
+obj.DataStepSmallInput.ValueChangedFcn = @obj.validateStepSize;
 
-% Create EpochStepBigLabel
-obj.EpochStepBigLabel = uilabel(obj.ControlPanel);
-obj.EpochStepBigLabel.HorizontalAlignment = 'right';
-obj.EpochStepBigLabel.FontName = Aes.uiFontName;
-obj.EpochStepBigLabel.FontSize = 20;
-obj.EpochStepBigLabel.Position = [19 176 228 25];
-obj.EpochStepBigLabel.Text = 'Epoch Step Big:';
+% Create DataStepBigLabel
+obj.DataStepBigLabel = uilabel(obj.ControlPanel);
+obj.DataStepBigLabel.HorizontalAlignment = 'right';
+obj.DataStepBigLabel.FontName = Aes.uiFontName;
+obj.DataStepBigLabel.FontSize = 20;
+obj.DataStepBigLabel.Position = [19 176 228 25];
+obj.DataStepBigLabel.Text = 'Data Step Big:';
 
-% Create EpochStepBigInput
-obj.EpochStepBigInput = uieditfield(obj.ControlPanel, 'numeric');
-obj.EpochStepBigInput.Limits = [1 100];
-obj.EpochStepBigInput.RoundFractionalValues = 'on';
-obj.EpochStepBigInput.ValueDisplayFormat = '%.0f';
-obj.EpochStepBigInput.FontName = 'Courier New';
-obj.EpochStepBigInput.FontSize = 16;
-obj.EpochStepBigInput.Position = [331 179 53 22];
-obj.EpochStepBigInput.Value = 10;
-obj.EpochStepBigInput.ValueChangedFcn = @obj.validateStepSize;
+% Create DataStepBigInput
+obj.DataStepBigInput = uieditfield(obj.ControlPanel, 'numeric');
+obj.DataStepBigInput.Limits = [1 100];
+obj.DataStepBigInput.RoundFractionalValues = 'on';
+obj.DataStepBigInput.ValueDisplayFormat = '%.0f';
+obj.DataStepBigInput.FontName = 'Courier New';
+obj.DataStepBigInput.FontSize = 16;
+obj.DataStepBigInput.Position = [331 179 53 22];
+obj.DataStepBigInput.Value = 10;
+obj.DataStepBigInput.ValueChangedFcn = @obj.validateStepSize;
 
 % Create OverlaySmallLabel
 obj.OverlaySmallLabel = uilabel(obj.ControlPanel);

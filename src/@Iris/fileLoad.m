@@ -75,6 +75,8 @@ app.options.PreviousExtension = selectedExt;
 app.options.save();
 app.ui.toggleSwitches('off');
 
+
+
 % get the reader function name
 label = filterText{fltIdx,2};
 reader = app.validFiles.getReadFxnByLabel(label);
