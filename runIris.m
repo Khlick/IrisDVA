@@ -14,9 +14,7 @@ splash = iris.ui.about();
 while ~splash.isready
   pause(0.001);
 end
-splash.contianer.Name = "Starting...";
-
-splash.show();
+splash.container.Name = "Starting...";
 
 cu = onCleanup(@()onLoaded(splash));
 
@@ -27,7 +25,8 @@ if str2double(v.Version) < 9.5
   error('Iris DVA requires matlab version 9.5 (2018b) or newer.');
 end
 
-splash.start(sprintf('Iris DVA %s %s', char(hex2dec('00a9')), iris.app.Info.year));
+%splash.start(sprintf('Iris DVA %s %s', char(hex2dec('00a9')), iris.app.Info.year));
+splash.show();
 
 tStart = tic;
 minDelay = 5; %seconds
@@ -69,6 +68,7 @@ catch runError
   rethrow(runError);
 end
 
+splash.show();
 splash.container.Name = "Loaded!";
 pause(1);
 

@@ -13,9 +13,12 @@ installedModules = regexp( ...
   '(?<=@|^)(\w+)(?=\.mlapp|$)', ...
   'tokens', 'emptymatch' ...
   );
-while ~ischar(installedModules{1})
-  installedModules = cat(1,installedModules{:});
+if ~isempty(installedModules)
+  while ~ischar(installedModules{1})
+    installedModules = cat(1,installedModules{:});
+  end
 end
+
 % camelize names
 installedModules = cellfun(@utilities.camelizer,installedModules,'UniformOutput',false);
 

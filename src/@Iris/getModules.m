@@ -58,14 +58,15 @@ if forceReload
     '(?<=@|^)(\w+)(?=\.mlapp|$)', ...
     'tokens', 'emptymatch' ...
     );
-  while ~ischar(modNames{1})
-    modNames = cat(1,modNames{:});
+  if ~isempty(modNames)
+    while ~ischar(modNames{1})
+      modNames = cat(1,modNames{:});
+    end
   end
   % camelize names
   modNames = cellfun(@utilities.camelizer,modNames,'UniformOutput',false);
   % gen paths
   newPaths = fullfile(modulePkgDir,moduleDestinationName);
-
   % clear modules package
   if ispc
     rmCmd = sprintf( ...

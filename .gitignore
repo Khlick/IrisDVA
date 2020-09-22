@@ -23,7 +23,7 @@ UNDEV.m
 _*
 *.mlappinstall
 *.bak
-TODO.m
+TODO*
 
 
 # OS generated files 

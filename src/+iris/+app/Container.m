@@ -46,7 +46,6 @@ classdef (Abstract) Container < handle
     function run(obj)
       obj.preRun;
       obj.bind;
-      obj.show;
       obj.postRun;
     end
     
