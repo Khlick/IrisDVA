@@ -212,6 +212,8 @@ classdef dataOverview < iris.ui.UIContainer
     
     % Construct view
     function createUI(obj)
+      % TODO: Update to uigridlayout
+      
       import iris.app.*;
       
       finalPos = obj.position;

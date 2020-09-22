@@ -11,6 +11,7 @@
 - [Introduction](#introduction)
   - [Some Commentary](#some-commentary)
 - [Release Schedule](#release-schedule)
+  - [2020-09-22 Release 2.0.110](#2020-09-22-release-20110)
   - [2020-09-15 Release 2.0.104](#2020-09-15-release-20104)
   - [2020-04-10 Release 2.0.97](#2020-04-10-release-2097)
   - [2020-04-01 Release 2.0.96b](#2020-04-01-release-2096b)
@@ -76,6 +77,14 @@ have taken care to ensure if the hack breaks, functionality will not be lost.
 <div style="page-break-after: always;"></div>
 
 # Release Schedule
+
+## 2020-09-22 Release 2.0.110
+
+Compatibility with 2020b and minor updates and bug fixes.
+
+- Removed Response Families module for the time being. Will return in the near-future.
+- IrisData:
+  - Improved `subsref` method for accessing UserData.
 
 ## 2020-09-15 Release 2.0.104
 
