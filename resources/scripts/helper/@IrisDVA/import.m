@@ -4,7 +4,7 @@ appInfo = IrisDVA.info();
 
 if isempty(appInfo)
   fprintf(2,'IrisDVA is not installed!\n');
-  return;
+  return
 end
 
 % app location string

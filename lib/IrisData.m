@@ -3291,7 +3291,7 @@ classdef IrisData
             
           end
           % UserData
-          if strcmp(s(1).subs,'UserData')
+          if strcmp(s(1).subs,'UserData') && numel(s) > 1
             if ~strcmpi(s(2).type,'.')
               error("IRISDATA:SUBSREF:USERDATA","Must be a field."); 
             end
@@ -3299,7 +3299,7 @@ classdef IrisData
             if ~isfield(ud,s(2).subs)
               error("IRISDATA:SUBSREF:USERDATA","'%s' is not a property of UserData",char(s(2).subs));
             end
-            [varargout{1:nargout}] = builtin('subsref',ud,s(2));
+            [varargout{1:nargout}] = builtin('subsref',ud,s(2:end));
           end
         case '()'
           % first need to verify that obj is not an array. If it is, we will try

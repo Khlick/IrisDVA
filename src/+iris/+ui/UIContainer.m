@@ -187,6 +187,17 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
         end
       end
       
+      % This overcomes some "infinite" loop in MATLAB, which appears to be a workaround for "g1658467".
+      % The consequences of doing this are unclear.
+      % See also MATLAB\R20###\toolbox\matlab\uitools\uicomponents\components\...
+      %            +matlab\+ui\+internal\+controller\FigureController.m\flushCoalescer()
+      % See  https://gist.github.com/Dev-iL/398a38ae03c6ef9ebf935d46884ce74d
+      obj.synchronizer = struct(struct(struct(obj.container).Controller).PeerModelInfo).Synchronizer;
+      obj.synchronizer.setCoalescerMinDelay(1);
+      obj.synchronizer.setCoalescerMaxDelay(5);
+      pause(0.001);
+      
+      
       % now gather the web window for the container
       while true
         try

@@ -28,13 +28,13 @@ classdef (Abstract) IrisDVA
     
     tf = isRunning()
     
+    tf = isMounted()
+    
   end
   
-  methods (Access = public, Static = true)
+  methods (Access = private, Static = true)
     
     appInfo = info()
-    
-    tf = isMounted()
     
   end
   

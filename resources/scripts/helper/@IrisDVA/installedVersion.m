@@ -8,7 +8,7 @@ if isempty(appInfo)
   return
 end
 % parse the installed metainfo
-m = com.mathworks.appmanagement.MlappinstallUtil.getAppMetadataByGuid(appInfo.GUID);
+m = com.mathworks.appmanagement.MlappinstallUtil.getAppMetadataByGuid(appInfo.GUID); %#ok<JAPIMATHWORKS>
 % return the version as a string.
 v = string(m.getVersion());
 
