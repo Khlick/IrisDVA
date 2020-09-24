@@ -226,6 +226,7 @@ classdef Iris < iris.app.Container
         end
       catch x
         % log x
+        fprintf('postStop caught\n')
         h = findall(groot,'HandleVisibility', 'off');
         if ~isempty(h)
           for i = 1:length(h)

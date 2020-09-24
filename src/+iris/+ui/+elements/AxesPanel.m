@@ -234,7 +234,7 @@ classdef AxesPanel < handle
       try
         obj.setupDOM;
       catch err
-        obj.delete;
+        delete(obj);
         iris.app.Info.throwError(err.message);
       end
       

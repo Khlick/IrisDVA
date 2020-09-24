@@ -293,7 +293,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       try
         obj.startupFcn(varargin{:}); %abstract
       catch x
-        delete(obj.container);
+        delete(obj);
         rethrow(x)
       end
       import iris.app.*;
