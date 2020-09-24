@@ -1,7 +1,7 @@
 classdef (Abstract) IrisDVA
   %IRISDVA Helper static class for manipulating IrisDVA
   properties (Constant = true)
-    VERSION = "1.0";
+    VERSION = "1.1";
   end
   
   properties (Access = public, Constant = true)

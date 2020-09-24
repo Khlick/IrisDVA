@@ -40,7 +40,6 @@ classdef (Abstract) Container < handle
       if ~obj.isStopped
         obj.stop();
       end
-      delete(obj);
     end
     
     function run(obj)
@@ -82,8 +81,14 @@ classdef (Abstract) Container < handle
         end
         return
       end
+      
       % is array
       vals = arrayfun(@obj.getappdata,names,'UniformOutput',0);
+    end
+    
+    function tf = isAppData(obj,name)
+      d = obj.appData;
+      tf = isfield(d,name);
     end
     
     function tf = ishandle(obj)
@@ -115,6 +120,10 @@ classdef (Abstract) Container < handle
       end
       obj.services.shutdown();
       obj.handler.shutdown();
+      if obj.isAppData('AppCleanupCode')
+        cleanupFcn = obj.getappdata('AppCleanupCode');
+        cleanupFcn();
+      end
     end
     
     function bind(obj)

@@ -239,11 +239,6 @@ classdef Iris < iris.app.Container
           end
         end
       end
-      nw = utilities.getNumWorkers();
-      if nw
-        p = gcp('nocreate');
-        p.IdleTimeout = 30;
-      end
       % clean modules
       Iris.cleanModules();
     end
@@ -256,9 +251,6 @@ classdef Iris < iris.app.Container
       v = app.ui;
       s = app.services;
       h = app.handler;
-      
-      % App events
-      app.addListener(app, 'didStop',               @app.shutdownApp);
       
       % Listen to the UI      
       app.addListener(v, 'KeyPress',              @app.keyedInput);
@@ -549,10 +541,6 @@ classdef Iris < iris.app.Container
       fprintf('Iris Session saved to:\n"%s"\n',userFile);
       app.ui.focus();
       app.loadShow.shutdown();
-    end
-    
-    function shutdownApp(app,~,~)
-      delete(app);
     end
     
     function onRedrawRequest(app,~,~)

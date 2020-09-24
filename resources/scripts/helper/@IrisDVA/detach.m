@@ -16,7 +16,7 @@ apppath = java.io.File(appinstalldir);
 
 resourcesfolder = matlab.internal.ResourcesFolderUtils.FolderName; 
 canonicalpathtocodedir = fullfile(char(apppath.getCanonicalPath()));
-allpaths = AppUtil.genpath(canonicalpathtocodedir);
+allpaths = matlab.internal.apputil.AppUtil.genpath(canonicalpathtocodedir);
 % do not allow resources or metadata folders to be added to the path
 pathsToRm = strrep( ...
   strrep( ...

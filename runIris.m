@@ -1,5 +1,5 @@
 function app = runIris(varargin)
-
+fprintf('Starting Iris\n');
 % add the app to the matlab path
 addAppToPath();
 pause(0.01);

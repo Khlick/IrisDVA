@@ -315,7 +315,6 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       obj.setContainerPrefs();
       obj.save();
       obj.hide();
-      obj.destroy();
       obj.close();
     end
     
@@ -398,9 +397,6 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     function close(obj)
       if ~obj.isClosed
         try %#ok<TRYNC>
-          obj.window.close();
-        end
-        try %#ok<TRYNC>
           delete(obj.container);
         end
       end
@@ -408,9 +404,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     
     function destroy(obj)
       if obj.isClosed, return; end
-      try %#ok<TRYNC>
-        delete(obj.container.Children);
-      end
+      delete(obj.container.Children);
     end
     
   end

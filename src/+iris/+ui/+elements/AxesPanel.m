@@ -493,6 +493,12 @@ classdef AxesPanel < handle
       n = length(obj.currentLines);
     end
     
+    function delete(obj)
+      if obj.container.isvalid
+        delete(obj.container);
+      end
+    end
+    
   end
   
 %% Plotting/Updating
@@ -600,13 +606,6 @@ classdef AxesPanel < handle
       obj.XLabel = 'X';
       obj.YLabel = 'Y';
       obj.resetView;
-    end
-    
-    function delete(obj)
-      delete(obj.Axes);
-      delete(obj.xlab);
-      delete(obj.ylab);
-      delete(obj.container);
     end
     
     function resetView(obj)

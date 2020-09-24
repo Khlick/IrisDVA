@@ -1,7 +1,7 @@
 function status = update(appfilename)
 if nargin < 1, return; end
 
-if IrisDVA.isRunning()
+if IrisDVA.isMounted() && IrisDVA.isRunning()
   error("Please close Iris before updating.");
 end
 appfilename = char(appfilename);

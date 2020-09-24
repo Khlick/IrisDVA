@@ -55,12 +55,12 @@ classdef IrisDVAObj < IrisDVAApp
     
     function attachOncleanupToFigure(obj, fig)
       % Setup cleanup code on figure handle using onCleanup object
-      cleanupObj = onCleanup(@()appinstall.internal.stopapp([],[],obj));
+      cleanupFc = @()appinstall.internal.stopapp([],[],obj);
       appdata = getappdata(fig);
       appfields = fields(appdata);
       found = cellfun(@(x) strcmp(x,'AppCleanupCode'), appfields);
       if(~any(found))
-        setappdata(fig, 'AppCleanupCode', cleanupObj);
+        setappdata(fig, 'AppCleanupCode', cleanupFc);
       end
     end %attachOnCleanupToFigure
       
