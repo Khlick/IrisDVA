@@ -252,6 +252,9 @@ classdef Iris < iris.app.Container
       s = app.services;
       h = app.handler;
       
+      % listen to the didStop
+      app.addListener(app, 'didStop', @app.onAppStopped);
+      
       % Listen to the UI      
       app.addListener(v, 'KeyPress',              @app.keyedInput);
       app.addListener(v, 'LoadData',              @app.fileLoad);
@@ -605,6 +608,10 @@ classdef Iris < iris.app.Container
         app.ui.toggleDataDependentUI('off');
       end
       app.show();
+    end
+    
+    function onAppStopped(app,~,~) %#ok<INUSD>
+      % do anything?
     end
     
   end

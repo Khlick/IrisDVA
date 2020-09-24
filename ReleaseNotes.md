@@ -50,9 +50,33 @@
 
 # Introduction
 
-Iris DVA is a MATLAB based tool for visualizing and analyzing electrophysiology data. Iris was originally created to standardize the process for viewing and performing offline analysis of physiological data acquired via [Symphony](https://symphony-das.github.io/) in the Sampath Lab, UCLA. While Iris is still in development stages, a secondary goal was to make the software extensible and modular to allow for any data and any analysis to be easily created by the end-user. Documentation is essentially non-existent except which resides in code comments, UI tooltips, and this document, some of which is likely to be out-dated or simply inadequate... Sorry about that! Eventually, documentation will reside in this [gitbook](https://sampathlab.gitbook.io/iris-dva).
+Iris DVA is a MATLAB based tool for visualizing and analyzing electrophysiology
+data. Iris was originally created to standardize the process for viewing and
+performing offline analysis of physiological data acquired via
+[Symphony](https://symphony-das.github.io/) in the Sampath Lab, UCLA. Although
+Iris is still in development stages, a secondary feature is that the software
+extensible and modular to allow for any data and any analysis to be easily
+created by the end-user. Documentation is essentially non-existent except which
+resides in code comments, UI tooltips, and this document, some of which is
+likely to be out-dated or simply inadequate... Sorry about that! Eventually,
+documentation will reside in this
+[gitbook](https://sampathlab.gitbook.io/iris-dva).
 
-> *Usage Note:* Iris was developed in MATLAB 9.6+ (>=2019a) on windows (x64) platform using both 1080p and 4K displays. That said, it has ~~not been~~ been minimally tested on Mac and Unix distributions of MATLAB and if screen scaling (typically handled by the OS) is other than 100%, visual issues may be present. This app utilizes MATLAB's newer `uifigure` (app designer) which has some inherent bugs. One of which occurs sometimes when `drawnow()` is invoked, causing MATLAB to hang during a "coalescer flush" (see: matlab.ui.internal.controller.FigureController/flushCoalescer (line 473) ) and the app ui to stop responding. The best way to resolve this is to issue a `drawnow()` command from the command window with the debugger in "pause on error" mode and pressing `cmd+c` or `Ctrl+c` when the console hangs. It should take you to the `flushCoalescer` method. Hit continue in the editor toolstrip (may have to press more than once). Iris will resume after that. I've also noticed that this happens in other appDesigner apps. Hopefully the next MATLAB release will resolve this.
+> *Usage Note:* Iris was developed in MATLAB 9.6+ (>=2019a) on windows (x64)
+> platform using both 1080p and 4K displays. That said, it has ~~not been~~
+> been minimally tested on Mac and Unix distributions of MATLAB and if screen
+> scaling (typically handled by the OS) is other than 100%, visual issues may be
+> present. This app utilizes MATLAB's newer `uifigure` (app designer) which has
+> some inherent bugs. One of which occurs sometimes when `drawnow()` is invoked,
+> causing MATLAB to hang during a "coalescer flush" (see:
+> matlab.ui.internal.controller.FigureController/flushCoalescer (line 473) ) and
+> the app ui to stop responding. The best way to resolve this is to issue a
+> `drawnow()` command from the command window with the debugger in "pause on
+> error" mode and pressing `cmd+c` or `Ctrl+c` when the console hangs. It should
+> take you to the `flushCoalescer` method. Hit continue in the editor toolstrip
+> (may have to press more than once). Iris will resume after that. I've also
+> noticed that this happens in other appDesigner apps. Hopefully the next MATLAB
+> release will resolve this.
 
 > *Update (January 2020):* As of MATLAB 2019b, the coalescer issue persists, though less frequently. Iris is compatible with 2019b and I recommend updating to the latest release (Release 3 at the time of writing).
 

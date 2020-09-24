@@ -1,5 +1,5 @@
 <img src="./resources/img/Iris100px.png" align="right" alt="Iris DVA Logo"
-title="Iris DVA" height="100px" />
+title="Iris DVA" height="60px" />
 
 Iris (Data Visualization and Analysis)
 ====================================

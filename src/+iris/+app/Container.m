@@ -37,7 +37,7 @@ classdef (Abstract) Container < handle
     end
     
     function delete(obj)
-      if ~obj.isStopped
+      if ~obj.isStopped || ~isempty(obj.ui)
         obj.stop();
       end
     end
@@ -112,18 +112,11 @@ classdef (Abstract) Container < handle
     end
     
     function close(obj)
-      if isempty(obj.ui), return; end
-      try
+      if ~isempty(obj.ui)
         obj.ui.shutdown();
-      catch
-        delete(obj.ui)
       end
       obj.services.shutdown();
       obj.handler.shutdown();
-      if obj.isAppData('AppCleanupCode')
-        cleanupFcn = obj.getappdata('AppCleanupCode');
-        cleanupFcn();
-      end
     end
     
     function bind(obj)

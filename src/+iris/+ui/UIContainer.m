@@ -270,7 +270,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     
     function tf = get.isready(obj)
       try
-        tf = obj.window.isWindowValid;
+        tf = obj.window.isWindowValid || obj.container.isvalid;
       catch
         tf = false;
       end
@@ -396,9 +396,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     %% base routines
     function close(obj)
       if ~obj.isClosed
-        try %#ok<TRYNC>
-          delete(obj.container);
-        end
+        delete(obj.container);
       end
     end
     
