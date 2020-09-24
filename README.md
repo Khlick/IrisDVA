@@ -1,13 +1,7 @@
-<div style="background:rgb(0,0,0);height:100px;">
-<div style="float:left;width:calc(100% - 100px);">
-  <h1 style="color:#acacac;">Iris (Data Visualization and Analysis)</h1>
-</div>
-<div style="float:right;width:100px;">
-  <img src="./resources/img/Iris100px.png" alt="Iris DVA Logo" title="Iris DVA" />
-</div>
-</div>
+<img src="./resources/img/Iris100px.png" align="right" height="60px" alt="Iris DVA Logo" title="Iris DVA" />
 
----
+Iris Data Visualization and Analysis
+====================================
 
 Iris DVA is a MATLAB based tool for visualizing and analyzing electrophysiology data. Iris was originally created to standardize the process for viewing and performing offline analysis of physiological data acquired via [Symphony](https://symphony-das.github.io/) in the Sampath Lab, UCLA. While Iris is still in development stages, a secondary goal was to make the software extensible and modular to allow for any data and any analysis to be easily created by the end-user. Documentation is essentially non-existent except which resides in code comments, UI tooltips, and this document, some of which is likely to be out-dated or simply inadequate... Sorry about that! Eventually, documentation will reside in this [gitbook](https://sampathlab.gitbook.io/iris-dva).
 
