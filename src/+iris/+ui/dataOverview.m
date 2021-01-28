@@ -103,7 +103,7 @@ classdef dataOverview < iris.ui.UIContainer
           'File_Icon.png' ...
           );
         
-        %obj.drawnow();
+        %obj.drawnow('limitrate');
         
         thisNode.NodeData = [];
         % create childNode for each datum
@@ -368,17 +368,18 @@ classdef dataOverview < iris.ui.UIContainer
             strsplit(obj.Actions.Value,' '), ...\
             struct('type', '{}', 'subs', {{2}}) ...
             );
-          if strcmp(deleteType,'Selected')
-            keepInds = ~ismember(1:numel(obj.PropNodes),inds);
-          else
-            keepInds = ismember(1:numel(obj.PropNodes),inds);
-          end
-          obj.Handler.subset(keepInds);
           
-          obj.buildUI(obj.Handler, true);
+          keepInds = ismember(1:numel(obj.PropNodes),inds);
+          if strcmp(deleteType,'Selected')
+            keepInds = ~keepInds;
+          end
+          h = obj.Handler.subset(keepInds);
+          
+          obj.clearView();
+          obj.buildUI(h, true);
           
         case 'Export Selected'
-          obj.exportSelectedData
+          obj.exportSelectedData();
         otherwise
           return
       end
@@ -480,6 +481,8 @@ classdef dataOverview < iris.ui.UIContainer
       obj.togglePropTable('off');
       obj.isBound = false;
       if isempty(obj.PropNodes), return; end
+      
+      
       cellfun(@delete,obj.PropNodes,'UniformOutput',false);
       cellfun(@delete,obj.FileNodes,'UniformOutput',false);
     end

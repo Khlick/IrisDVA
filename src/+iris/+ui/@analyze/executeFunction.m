@@ -27,16 +27,12 @@ if isempty(obj.outputFile)
   return;
 end
 
-outFile = obj.outputFile;
-
 %Check args for empties
 check = [...
     cellfun(@isempty, obj.Args.Input(:,2),  'unif',1)  ;...
     cellfun(@isempty, obj.Args.Output(:,2), 'unif',1)  ...
   ];
 if any(check)
-  loadSplash.shutdown();
-  delete(loadSplash);
   iris.app.Info.throwError( ...
     sprintf('Cannot provide empty arguments for function ''%s(...)''.',Fx) ...
     );
@@ -45,9 +41,9 @@ end
 ArgOut = obj.Args.Output(:,2);
 ArgIn = obj.Args.Input(:,2);
 try
-  ArgIn{strcmpi(ArgIn,'DataObject')} = 'DataObject';
+  ArgIn{strcmpi(ArgIn,obj.DATA_OBJECT_LABEL)} = obj.DATA_OBJECT_LABEL;
 catch x
-  warndlg('Input values must contain a ''DataObject'' reference.');
+  warndlg('Input values must contain a "%s" reference.',obj.DATA_OBJECT_LABEL);
   rethrow(x);
 end
 
@@ -69,6 +65,10 @@ S.Call.String = callString;
 subs = obj.datumIndices;
 S.Call.Indices = subs;
 try
+  % Until I find a better way 
+  if ~strcmp(obj.DATA_OBJECT_LABEL,'DataObject')
+    error('Data object label constant does not match. Expected "DataObject"');
+  end
   DataObject = obj.Handler.exportSubs(subs);
 catch x
   iris.app.Info.throwError( ...
@@ -88,31 +88,45 @@ catch x
 end
 
 % append the user specified file
+outFile = obj.outputFile;
 DataObject = DataObject.AppendUserData('AnalysisPath',outFile); %#ok<NASGU>
 
 try
-  evalc(callString);
+  fprintf("Executing '%s'...\n", Fx);
+  % Run function string and capture any outputs
+  T = evalc(callString);
 catch x
   iris.app.Info.throwError( ...
     sprintf( ...
-    'Could not perform analysis with reason:\n"%s"\n(%s > %s)\n', ...
+    'Could not perform analysis with reason:\n"%s"\n(%s)\n', ...
     x.message, ...
-    sprintf('line %d : %s',x.stack(1).line,x.stack(1).name), ...
-    sprintf('line %d : %s',x.stack(2).line,x.stack(2).name) ...
+    strjoin( ...
+      arrayfun( ...
+        @(s)sprintf("[line %d : %s]",s.line,s.name), ...
+        x.stack, ...
+        'UniformOutput', true ...
+        ), ...
+      " > " ...
+      ) ...
     ) ...
     );
 end
 
-%% save and assign
+if ~isempty(T)
+  disp(T);
+end
 
+%% save and assign
+loadSplash.updatePercent('Saving...');
 doAppend = obj.checkboxAppend.Value;
 fileExists = exist(outFile,'file');
+
 if fileExists && ~doAppend
   % prompt to overwrite
   doOverwrite = iris.ui.questionBox( ...
-    'Prompt', 'File exists already. Overwrite?', ...
+    'Prompt', 'File exists already. Are you sure you want to overwrite it?', ...
     'Title', 'Overwrite File', ...
-    'Options', {'Yes','No','Append','Cancel'}, ...
+    'Options', {'Overwrite','New','Append','Cancel'}, ...
     'Default', 'Append' ...
     );
   switch doOverwrite.response
@@ -120,7 +134,7 @@ if fileExists && ~doAppend
       % changed our minds about exporting the result
       fprintf('Analysis successful. Results not saved!\n');
       return
-    case 'No'
+    case 'New'
       % Do no want to overwrite after all, prompt for new path
       outFile = iris.app.Info.putFile( ...
         'Analysis Output File', ...
@@ -131,6 +145,9 @@ if fileExists && ~doAppend
         fprintf('Analysis successful. Results not saved!\n');
         return
       end
+      [obj.labelFileRoot.String, obj.editFileOutput.String,~] = fileparts(outFile);
+      obj.validateFilename(obj.editFileOutput,[]);
+      pause(0.001);
     case 'Append'
       % don't overwrite but append new variables.
       doAppend = true;
@@ -139,13 +156,12 @@ end
 
 % save the vars to mat file.
 vars = fieldnames(S);
-vars(ismember(vars,'Call')) = [];
-
-fCx = matfile(outFile,'Writable',true);
+vars(ismember(vars,'Call')) = []; %Call is always present
+  
 if doAppend && fileExists
-  fConts = who(fCx);
+  fConts = who(obj.outputFileHandle);
   if ismember('Call',fConts)
-    tmp = fCx.Call;
+    tmp = obj.outputFileHandle.Call;
     try
       tmp = [tmp,S.Call];
     catch x
@@ -157,38 +173,49 @@ if doAppend && fileExists
         );
       tmp = {tmp,S.Call};
     end
-    fCx.Call = tmp;
+    obj.outputFileHandle.Call = tmp;
   else
-    fCx.Call = S.Call;
+    obj.outputFileHandle.Call = S.Call;
   end
   % loop, if a variable already exists, load it and make a cell array, if not
   % just append the new variables.
   for v = string(vars')
     isExisting = ismember(v,fConts);
     if isExisting
-      tmp = fCx.(v);
+      tmp = obj.outputFileHandle.(v);
       % append same variable only if the new varaible is different.
       if isequaln(tmp,S.(v)), continue; end
       % append onto the end
-      nEx = size(fCx,v,2);
-      tmp(1,1:(nEx+1)) = fCx.(v);
-      try
-        % try to horzcat
-        tmp(end) = S.(v);
-      catch
-        % use cells
-        tmp(end) = {S.(v)};
+      switch class(tmp)
+        case 'table'
+          % try to vertcat (assuming same vars)
+          try
+            tmp = vertcat(tmp,S.(v)); %#ok<AGROW>
+          catch
+            % simply turn into cell array
+            tmp = [{tmp},{S.(v)}];
+          end
+        otherwise
+          % assuming existing is an array-able data type
+          nEx = numel(S.(v));
+          try
+            % try to horzcat
+            tmp(1,end+(1:nEx)) = reshape(S.(v),1,[]);
+          catch
+            % use cells
+            tmp(end) = {S.(v)};
+          end
       end
-      fCx.(v) = tmp;
+      obj.outputFileHandle.(v) = tmp;
     else
-      fCx.(v) = S.(v);
+      obj.outputFileHandle.(v) = S.(v);
     end
   end
 else
   % store each variable
-  fCx.Call = S.Call;
+  obj.outputFileHandle.Call = S.Call;
   for v = string(vars')
-    fCx.(v) = S.(v);
+    obj.outputFileHandle.(v) = S.(v);
   end
 end
 
@@ -214,7 +241,7 @@ if obj.checkboxSendToCmd.Value
       end
       continue
     end
-    assignin('base',varsToSave{i},S.(varsToSave{i}));
+    assignin('base',['Iris_',varsToSave{i}],S.(varsToSave{i}));
   end
 end
 fprintf('Succesful export!\n');

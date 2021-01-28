@@ -91,8 +91,6 @@ classdef primary < iris.ui.UIContainer
     DataLabel                matlab.ui.control.Label
     
     % Components
-    %ViewNotesButton          matlab.ui.control.Button
-    %ExtendedInfoButton       matlab.ui.control.Button
     CurrentDatumDecSmall     matlab.ui.control.Button
     CurrentDatumIncSmall     matlab.ui.control.Button
     OverlapInc               matlab.ui.control.Button
@@ -119,9 +117,10 @@ classdef primary < iris.ui.UIContainer
     ModulesContainer         cell
   end
   
-  properties (Access= public, SetObservable = true)
+  properties (SetAccess= ?Iris, GetAccess= public, SetObservable = true)
     LUT %lookup for html to matlab elements
     selection
+    previousSelction
     layout
   end
   
@@ -141,10 +140,24 @@ classdef primary < iris.ui.UIContainer
   methods (Access = public)
     % External Methods
     % UI update
+    
     %updateView(obj,handler)
     updateView(obj, newSelection, newDisplay, newData, newUnits)
+    
     % Update view during selection changes
     onSelectionUpdate(obj)
+    
+    % Store a selection update before it changes
+    function onSelectionWillUpdate(obj,~,~)
+      obj.previousSelction = obj.selection;
+    end
+    
+    function onSelectionDidUpdate(obj,~,~)
+      if isequal(obj.previousSelction,obj.selection)
+        return
+      end
+      obj.onSelectionUpdate();
+    end
     
     function toggleDataDependentUI(obj,status)
       %data dependent menu items
@@ -259,11 +272,11 @@ classdef primary < iris.ui.UIContainer
           try
             num = eval(sprintf('[%s]',event.Value));
           catch
-            obj.([tag,'Ticker']).Value = event.PreviousValue;
+            event.Source.Value = event.PreviousValue;
             return
           end
           if isempty(num)
-            obj.([tag,'Ticker']).Value = event.PreviousValue;
+            event.Source.Value = event.PreviousValue;
             return
           end
         case 'Slider'
@@ -271,21 +284,39 @@ classdef primary < iris.ui.UIContainer
           % current selections.
           num = round(event.Value);
           if ~ismember(num,obj.selection.selected), return; end
-          obj.CurrentDataTicker.Value = sprintf('%d',num);
+          % set the selection and allow postset to handle changes
+          obj.selection.highlighted = num;
           % quantize slider position
           obj.SelectionNavigatorSlider.Value = num;
           obj.selection.highlighted = num;
+          return
         case 'selection'
           % if we click the only line on the figure, do nothing
           if length(obj.selection.selected) == 1, return; end
-          num = double(event.Data);
+          
+          num = double(event.Data.datumIndex);
           if isempty(num), return; end
-          if ~ismember(num,obj.selection.selected), return; end
-          obj.CurrentDataTicker.Value = sprintf('%d',num);
-          obj.SelectionNavigatorSlider.Value = num;
-          obj.selection.highlighted = num;
-          % override tag so Iris knows what to do:
-          tag = 'Slider';
+          curSelection = obj.selection;
+          if curSelection.highlighted == num, return; end
+          curSelection.highlighted = num;
+          obj.selection = curSelection;
+          % allow selection update to capture the change.
+          return
+        otherwise
+          if isfield(event,'PreviousValue') && isa(event.Source,'matlab.ui.control.EditField')
+            try
+              num = eval(sprintf('[%s]',event.Value));
+            catch
+              event.Source.Value = event.PreviousValue;
+              return
+            end
+            if isempty(num)
+              event.Source.Value = event.PreviousValue;
+              return
+            end
+          else
+            return
+          end
       end
       notify(obj, 'TickerChanged', ...
         iris.infra.eventData( ...
@@ -297,7 +328,7 @@ classdef primary < iris.ui.UIContainer
     function SliderChanging(obj,source,event)
       num = round(event.Value);
       if (source.Value == num)
-        return;
+        return
       end
       if ~ismember(num,obj.selection.selected), return; end
       source.Value = num;
@@ -309,8 +340,8 @@ classdef primary < iris.ui.UIContainer
         );
       
       if num == obj.selection.highlighted, return; end
+      % use selection update
       obj.selection.highlighted = num;
-      
     end
     
     % Display control switch flipped
@@ -324,7 +355,7 @@ classdef primary < iris.ui.UIContainer
         col = iris.app.Aes.appColor(1,'amber');
       end
       obj.([source.Tag,'Lamp']).Color = col;
-      drawnow();
+      drawnow('update');
       
       % if we are toggling the datum, send the info to Iris for handling
       if strcmp(source.Tag,'Data')
@@ -378,7 +409,7 @@ classdef primary < iris.ui.UIContainer
     function onAxesDataSelected(obj,~,event)
       import iris.infra.eventData;
       % Send the index to the ticker validation method
-      obj.ValidateTicker('selection', eventData(event.Data.datumIndex) );
+      obj.ValidateTicker('selection', eventData(event.Data) );
       if ~isequal(obj.lastDataPoint, event.Data.lastDataCoordinates)
         obj.lastDataPoint = event.Data.lastDataCoordinates;
       end
@@ -388,7 +419,7 @@ classdef primary < iris.ui.UIContainer
       col = iris.app.Aes.appColor(1,'red');
       obj.([source.Tag,'Lamp']).Color = col;
       source.Value = '0';
-      %obj.drawnow();
+      %obj.drawnow('limitrate');
     end
     
     function onPlotUpdated(obj,~,~)
@@ -414,7 +445,7 @@ classdef primary < iris.ui.UIContainer
       else
         obj.ScaleLamp.Color = iris.app.Aes.appColor(1,'red');
       end
-      %obj.drawnow();
+      drawnow('limitrate');
       % send notification to main class
       notify(obj,'PlotCompletedUpdate');
     end

@@ -4,6 +4,7 @@ classdef Handler < matlab.mixin.Copyable
     fileLoadStatus
     onCompletedLoad
     onSelectionUpdated
+    handlerModified
   end
   
   properties (SetAccess = private)
@@ -14,15 +15,18 @@ classdef Handler < matlab.mixin.Copyable
   end
   
   properties (Hidden=true,Access=private)
-    fileList  cell
+    fileList  string
+    rootList  string
   end
   
   properties (Hidden = true, SetAccess = private)
     membership cell
+    fileMap containers.Map
   end
   
   properties (Dependent)
     currentSelection
+    FileNames
     nFiles
     nDatum
     isready
@@ -62,7 +66,6 @@ classdef Handler < matlab.mixin.Copyable
     function cleanup(obj)
       % CLEANUP Remove any datums marked as "not included".
       drop = obj.Tracker.cleanup();
-      delete(obj.Data(drop));% clean from memory first
       obj.Data(drop) = [];
       
       filesToDrop = cellfun( ...
@@ -75,6 +78,7 @@ classdef Handler < matlab.mixin.Copyable
       for d = 1:length(obj.Data)
         obj.Data(d).index = d;
       end
+      
       % reevaluate membership
       ofst=0;
       nOfst = 0;
@@ -89,11 +93,12 @@ classdef Handler < matlab.mixin.Copyable
           obj.membership{m}.notes = nOfst + (1:nNotes);
           nOfst = nOfst + nNotes;
         end
+        obj.fileMap(obj.fileList{obj.membership{m}.File}) = obj.membership{m};
       end
       % reevaluate Meta, Notes and Files
       if any(filesToDrop)
+        remove(obj.fileMap,obj.fileList(filesToDrop));
         obj.Meta(filesToDrop) = [];
-        % notes
         noteInds = [obj.membership{filesToDrop}];
         noteInds = [noteInds.notes];
         obj.Notes(noteInds,:) = [];
@@ -106,7 +111,7 @@ classdef Handler < matlab.mixin.Copyable
     function append(obj,data,files,meta,notes)
       % APPEND Append parsed data onto existing object.
       assert( ...
-        iscell(data) && iscell(meta) && iscell(notes) && iscell(files), ...
+        iscell(data) && iscell(meta) && iscell(notes) && (iscell(files)||isstring(files)), ...
         'data, meta and notes arguments must be cells or cell arrays.' ...
         );
       assert( ...
@@ -119,7 +124,13 @@ classdef Handler < matlab.mixin.Copyable
       % once we are good, begin parsing contents
       import utilities.*; % utility library
       
+      % setup memberships
+      fmap = containers.Map('KeyType','char','ValueType','any');
+      
       for f = 1:length(files)
+        IDX = obj.nFiles + 1;
+        
+        thisMembership = struct();
         
         % Metainformation
         thisMeta = meta{f}; %first unpack in case nested
@@ -128,10 +139,16 @@ classdef Handler < matlab.mixin.Copyable
           thisMeta = [thisMeta{:}];
         end
         
-        combinedMeta = uniqueContents({thisMeta});
-        %if ~iscell(combinedMeta), combinedMeta = {combinedMeta}; end
-        obj.Meta{f} = combinedMeta;
-                
+        if isempty(obj.Meta)
+          combinedMeta = {uniqueContents({thisMeta})};
+        else
+          combinedMeta = uniqueContents([obj.Meta,thisMeta]);
+          if ~iscell(combinedMeta),combinedMeta = {combinedMeta}; end
+        end
+        
+        obj.Meta = combinedMeta;
+        thisMembership.Meta = numel(obj.Meta);
+        
         % Data
         ofst = length(obj.Data);
         newDataLength = length(data{f});
@@ -140,6 +157,7 @@ classdef Handler < matlab.mixin.Copyable
         else
           obj.Data(ofst+(1:newDataLength)) = iris.data.Datum(data{f},ofst);
         end
+        thisMembership.data = ofst+(1:newDataLength);
         
         % Notes
         thisNote = notes{f};
@@ -147,58 +165,53 @@ classdef Handler < matlab.mixin.Copyable
         if size(thisNote,2) ~= 2
           thisNote = cat(1,thisNote{:});
         end
-        % append file for clarity
-        if ~any(contains(thisNote(:,2), files(f)))
-          thisNote = [[{'File:'},files(f)];thisNote];%#ok
-        end
+        
         % clear empty rows
         thisNote(cellfun(@isempty,thisNote(:,1),'unif',1),:) = [];
-        
-        prevNoteLength = size(obj.Notes,1);
-        % append
-        combinedNotes  = uniqueContents({obj.Notes,thisNote});
-        
-        if ~iscell(combinedNotes{1})
-          noteMerge = combinedNotes;
-        else
-          noteMerge = cat(1,combinedNotes{:});
+        % replace file contents
+        if ~any(contains(thisNote(:,2), files(f)))
+          hasFile = contains(thisNote(:,1),'File:');
+          thisNote(hasFile,:) = [];
+          thisNote = [[{'File:'},files(f)];thisNote];%#ok
         end
-        
-        thisNoteLength = size(noteMerge,1) - prevNoteLength;
-        
-        obj.Notes = noteMerge;
+          
+        if isempty(obj.Notes)
+          obj.Notes = thisNote;
+          thisMembership.notes = 1:size(thisNote,1);
+        else
+          existingNotes = obj.Notes;
+          newNoteFileIdx = contains(thisNote(:,1),'File:');
+          newNoteContent = thisNote(~newNoteFileIdx,:);
+          % intersect the notes
+          [a,b] = ismember(existingNotes(:,1), newNoteContent(:,1));
+          newNoteContent(b(b ~= 0),:) = [];
+          if isempty(newNoteContent)
+            fileLoc = find(a,1,'first')-1;
+            existingNotes{fileLoc,2} = strjoin([existingNotes(fileLoc,2),files{f}],';');
+            thisMembership.notes = [fileLoc,find(a)'];
+            obj.Notes = existingNotes;
+          else
+            newNote = [thisNote(newNoteFileIdx,:);newNoteContent];
+            newNoteLen = size(newNote,1);
+            obj.Notes = [existingNotes;newNote];
+            thisMembership.notes = (1:newNoteLen) + size(existingNotes,1);
+          end
+        end
         
         % append file to list, which will update obj.nFiles
-        thisFile = files(f);
-        combinedFiles = uniqueContents([obj.fileList,thisFile]);
-        if ~iscell(combinedFiles)
-          obj.fileList = cellstr(combinedFiles);
-        else
-          obj.fileList = combinedFiles;
-        end
+        [thisRoot,thisFile,thisExt] = fileparts(char(files(f)));
         
-        % Finally, update the membership information
+        obj.fileList{IDX} = [thisFile,thisExt];
+        obj.rootList{IDX} = thisRoot;
+        thisMembership.File = IDX;
+        
         % Membership
-        thisMembership = struct( ...
-          'data', ofst + (1:newDataLength), ...
-          'notes', prevNoteLength + (1:thisNoteLength) ...
-          );
-        combinedMemberships = uniqueContents([obj.membership,{thisMembership}]);
-        if ~iscell(combinedMemberships),combinedMemberships = {combinedMemberships}; end
-        if obj.nFiles < numel(combinedMemberships)
-          % need to merge memberships
-          idx = ismember(obj.fileList,thisFile);
-          mbrToMerge = combinedMemberships{idx};
-          mbrToMerge.data = unique([mbrToMerge.data,thisMembership.data]);
-          mbrToMerge.notes = unique([mbrToMerge.notes,thisMembership.notes]);
-          combinedMemberships{idx} = mbrToMerge;
-          combinedMemberships(end) =[];% the end should be the new one we've merged
-        end
-        
-        obj.membership = combinedMemberships;
+        obj.membership{IDX} = thisMembership;
+        fmap([thisFile,thisExt]) = thisMembership;
+        pause(0.001);
       end
-      obj.Tracker = iris.data.Tracker();
-      obj.Tracker.total = length(obj.Data);
+      obj.Tracker = iris.data.Tracker(obj.Data.getInclusion);
+      obj.fileMap = [obj.fileMap;fmap];
     end
     
     function obj = subset(obj,subs)
@@ -209,6 +222,7 @@ classdef Handler < matlab.mixin.Copyable
       obj.cleanup();
       obj.Tracker(:) = currentInclusions(subs);
       obj.Tracker.currentIndex = 1;
+      notify(obj,'handlerModified');
     end
     
     function popped = pop(obj)
@@ -219,7 +233,7 @@ classdef Handler < matlab.mixin.Copyable
         'file', obj.fileList{end}, ...
         'Meta', obj.Meta{end}, ...
         'dataIndex', obj.membership{end}.data, ...
-        'noteIndex', obj.membership{end}.notes ...
+        'noteIndex', obj.membership{end}.Notes ...
         );
       popped.data = obj(poppped.dataIndex);
       popped.notes = obj.Notes(popped.noteIndex,:);
@@ -325,7 +339,7 @@ classdef Handler < matlab.mixin.Copyable
       % create function to compute scalar scale
       switch scaleType
         case 'Absolute Max'
-          func = @(matx)utilities.AbsMax(matx);
+          func = @(matx)utilities.AbsMax(matx,'all');
         case 'Max'
           func = @(matx)max(matx,[],'all','omitnan');
         case 'Min'
@@ -348,9 +362,9 @@ classdef Handler < matlab.mixin.Copyable
       % data
       dat = obj.getCurrentData();
       sizes = dat.getDataLengths(device);
-      dataMat = nan(max(cat(2,sizes{:})),length(dat));
+      dataMat = nan(max(cat(2,sizes{:})),numel(sizes));
       ds = dat.getDataByDeviceName(device);
-      for I = 1:length(dat)
+      for I = 1:numel(sizes)
         dataMat(1:sizes{I},I) = ds(I).y(:);
       end
       v = func(dataMat);
@@ -378,17 +392,19 @@ classdef Handler < matlab.mixin.Copyable
       %   constructed from a subset of the handler, thus we first copy the handler,
       %   then subset the copy
       h = obj.copySubs(subs);
-      % reassign datums their original indices
+      d = h.Data.getDatumsAsStructs();
       for i = 1:length(subs)
-        h.Data(i).index = subs(i);
+        % reassign id, we are keeping original inds elsewhere
+        d(i).id = sprintf('Epoch%04d',i);
       end
       % create a struct from the handler copy
       s = struct();
-      s.Meta = h.Meta;% cell array
+      s.Meta = cell(1,h.nFiles);
       s.Data = cell(1,h.nFiles); %empty
       s.Notes = cell(1,h.nFiles);%empty
       for F = 1:h.nFiles
         mbrs = h.membership{F};
+        s.Meta{F} = obj.Meta{mbrs.Meta};
         s.Data{F} = h.Data(mbrs.data).getDatumsAsStructs();
         s.Notes{F} = h.Notes(mbrs.notes,:);
       end
@@ -413,6 +429,10 @@ classdef Handler < matlab.mixin.Copyable
       n = length(obj.fileList);
     end
     
+    function list = get.FileNames(obj)
+      list = string(obj.fileList);
+    end
+    
     function n = get.nDatum(obj)
       n = length(obj.Data);
     end
@@ -423,7 +443,7 @@ classdef Handler < matlab.mixin.Copyable
     
     function set.currentSelection(obj,inds)
       if isequal(obj.Tracker.currentIndex(:),inds(:))
-        return;
+        return
       end
       obj.Tracker.currentIndex = inds;
       notify(obj,'onSelectionUpdated');
@@ -506,13 +526,14 @@ classdef Handler < matlab.mixin.Copyable
       % no loadobj method will be implemented as we want to import the
       % saved objects through a separate reader.
       s = struct();
-      s.Meta = obj.Meta;% cell array
-      s.Data = cell(1,obj.nFiles); %empty
-      s.Notes = cell(1,obj.nFiles);%empty
+      s.Meta = cell(1,obj.nFiles);
+      s.Data = cell(1,obj.nFiles); 
+      s.Notes = cell(1,obj.nFiles);
       for F = 1:obj.nFiles
-        mbrs = obj.membership{F};
-        s.Data{F} = obj.Data(mbrs.data).saveobj;
+        mbrs = obj.fileMap(obj.fileList{F});
+        s.Data{F} = obj.Data(mbrs.data).saveobj();
         s.Notes{F} = obj.Notes(mbrs.notes,:);
+        s.Meta{F} = obj.Meta{mbrs.Meta};
       end
       s.Files = obj.fileList;
     end
@@ -554,6 +575,7 @@ classdef Handler < matlab.mixin.Copyable
       obj.Tracker = iris.data.Tracker();
       obj.Notes = {};
       obj.membership = {};
+      obj.fileMap = containers.Map();
     end
     
     function [d,fl,m,n] = readData(obj,files,reader)
@@ -579,6 +601,7 @@ classdef Handler < matlab.mixin.Copyable
       [totalDataSize,eachFileSize] = iris.app.Info.getBytes(files);
       accDataRead = 0;
       skipped = cell(nf,2);
+      cu = onCleanup(@()cleanupFx(obj));
       for f = 1:nf
         notify( ...
           obj, 'fileLoadStatus', ...
@@ -592,13 +615,7 @@ classdef Handler < matlab.mixin.Copyable
           d{f}= contents.Data; % should be cell array of struct array
           m{f}= contents.Meta;
           n{f}= contents.Notes;
-          % if we are importing a session containing multiple files, we need to
-          % extract those files and append this file onto those names
-          if ~isfield(contents,'Files') || isequal(files(f),contents.Files)
-            fl{f} = files(f);
-          else
-            fl{f} = strcat(files(f),';',contents.Files);
-          end
+          fl{f} = files(f);
         catch er
           skipped{f,1} = files{f};
           skipped{f,2} = er.message;
@@ -629,6 +646,10 @@ classdef Handler < matlab.mixin.Copyable
       m = [m{:}];
       n = [n{:}];
       fl = [fl{:}];
+      % cleanup function
+      function cleanupFx(par)
+        notify(par,'fileLoadStatus',iris.infra.eventData('!'));
+      end
     end
     
   end

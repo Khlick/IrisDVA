@@ -20,7 +20,7 @@ classdef loadShow < iris.ui.UIContainer
       if nargin < 3, preText = 'Loading...'; end
       if obj.isClosed
         obj.rebuild;
-        pause(0.25);
+        pause(0.01);
       end
       if obj.isHidden
         obj.show();
@@ -31,12 +31,7 @@ classdef loadShow < iris.ui.UIContainer
       switch class(frac)
         case 'double'
           if frac > 1
-            exponent = 0;
-            fStart = frac;
-            while frac > 1
-              exponent = exponent-1;
-              frac = fStart * 10^exponent;
-            end
+            frac = 1;
           end
           
           obj.LoadingText.Text = sprintf('%s (%d%%)',preText,fix(frac*100));
@@ -48,10 +43,10 @@ classdef loadShow < iris.ui.UIContainer
             drawnow('update');
             pause(1.3);
           end
-        case 'char'
+        case {'char','string'}
+          obj.focus();
           obj.LoadingText.Text = frac;
           drawnow('update');
-          obj.focus();
           return
       end
       obj.shutdown;
@@ -59,6 +54,7 @@ classdef loadShow < iris.ui.UIContainer
     
     %override shutdown
     function shutdown(obj)
+      if obj.isClosed, return; end
       obj.reset; % always show in the center of the screen
       notify(obj,'shuttingDown');
       shutdown@iris.ui.UIContainer(obj);
@@ -228,8 +224,7 @@ classdef loadShow < iris.ui.UIContainer
       obj.LoadingText.FontSize = 28;
       obj.LoadingText.Text = 'Loading...';
       
-      drawnow();
-      pause(0.2);
+      drawnow('limitrate');
     end
     
   end

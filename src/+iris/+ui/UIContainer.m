@@ -8,6 +8,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
   properties (Dependent)
     isClosed
     isready
+    hasWindow
   end
   
   properties (SetAccess = protected)
@@ -174,11 +175,10 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       
       try
         obj.createUI(varargin{:});
-        pause(0.2);
       catch
+        obj.destroy();
         try
           obj.createUI();
-          pause(0.2);
         catch x
           delete(obj.container);
           warning(SOO);
@@ -186,22 +186,23 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
           rethrow(x);
         end
       end
-      
+      drawnow();
+      pause(0.2);
       % This overcomes some "infinite" loop in MATLAB, which appears to be a workaround for "g1658467".
       % The consequences of doing this are unclear.
       % See also MATLAB\R20###\toolbox\matlab\uitools\uicomponents\components\...
       %            +matlab\+ui\+internal\+controller\FigureController.m\flushCoalescer()
       % See  https://gist.github.com/Dev-iL/398a38ae03c6ef9ebf935d46884ce74d
       obj.synchronizer = struct(struct(struct(obj.container).Controller).PeerModelInfo).Synchronizer;
-      obj.synchronizer.setCoalescerMinDelay(1);
+      obj.synchronizer.setCoalescerMinDelay(0);
       obj.synchronizer.setCoalescerMaxDelay(5);
-      pause(0.001);
-      
-      
+            
       % now gather the web window for the container
+      drawnow('limitrate');
+      
       while true
         try
-        obj.window = mlapptools.getWebWindow(obj.container);
+          obj.window = mlapptools.getWebWindow(obj.container);
         catch x
           %log this
           continue
@@ -276,19 +277,26 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       end
     end
     
+    function tf = get.hasWindow(obj)
+      tf = ~isempty(obj.window);
+    end
+    
     function v = getUI(obj, uiObj, propName)
       uiObj = validatestring(uiObj,properties(obj));
       v = obj.(uiObj).(propName);
     end
       
     function tf = isVisible(obj)
-      tf = strcmpi(obj.container.Visible, 'on');
+      tf = ~obj.isClosed && logical(obj.container.Visible);
     end
  
     
     %% interactive functions
     
     function startup(obj,varargin)
+      
+      import iris.app.Info
+      
       obj.getContainerPrefs;
       try
         obj.startupFcn(varargin{:}); %abstract
@@ -296,19 +304,15 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
         delete(obj);
         rethrow(x)
       end
-      import iris.app.*;
-      obj.window.Icon = fullfile(Info.getResourcePath,'icn','favicon.ico');
-      pause(0.01);
-      % remove interrupts in attempt to prevent the drawnow crash
-      hAll = findall(obj.container);
-      for h = 1:numel(hAll)
+      
+      try
+        obj.window.Icon = fullfile(Info.getResourcePath,'icn','favicon.ico');
+      catch
         try %#ok<TRYNC>
-          hAll(h).Interruptible = 'off';
-        end
-        try %#ok<TRYNC>
-          hAll(h).BusyAction = 'cancel';
+          obj.window.Icon = fullfile(Info.getResourcePath,'icn','favicon.png');
         end
       end
+      
     end
     
     function shutdown(obj)
@@ -325,12 +329,9 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     
     function show(obj)
       if obj.isClosed, error('%s is closed.',class(obj)); end
-      if strcmpi(obj.container.Visible, 'off')
+      if ~obj.isVisible
         obj.container.Visible = 'on';
       end
-      obj.window.show;
-      drawnow();
-      obj.window.bringToFront;
     end
     
     function hide(obj)
@@ -338,7 +339,6 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
         obj.container.Visible = 'off';
       end
       obj.window.hide;
-      %obj.window.executeJS('window.blur();');
       obj.resume();
     end
     
@@ -386,7 +386,11 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     end
     
     function focus(obj)
-      obj.window.bringToFront;
+      if obj.hasWindow
+        obj.window.bringToFront;
+      else
+        figure(obj.container);
+      end
     end
     
     

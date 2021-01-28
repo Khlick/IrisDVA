@@ -112,7 +112,7 @@ classdef newAnalysis < iris.ui.UIContainer
     function validateFxName(obj,src,evt) 
        value = utilities.camelizer(evt.Value);
        src.Value = value;
-       %drawnow;
+       %drawnow('limitrate')
        % check for existing functions and throw error message
        if ~obj.isValidFx
          warndlg( ...

@@ -22,7 +22,7 @@ switch resp
     obj.reset();
     obj.options.reset();
     obj.getContainerPrefs();
-    %drawnow();
+    %drawnow('limitrate');
     return
   case 'Cancel'
     return 
@@ -57,5 +57,5 @@ end
 
 obj.options.reset(rProps);
 obj.getContainerPrefs();
-%drawnow();
+%drawnow('limitrate');
 end

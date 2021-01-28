@@ -508,7 +508,7 @@ classdef IrisData
       
       aggs(1:nGroups,1) = data(1); % copy structure layout
       % keep track of groups for building new maps
-      oldMbr = obj.getFileFromIndex(subs);%#ok
+      oldMbr = obj.getFileFromIndex(subs);
       newMbr = cell(nGroups,2);
       for g = 1:nGroups
         thisGroupNum = groupMap(g);
@@ -984,6 +984,11 @@ classdef IrisData
       iData = iData.AppendUserData('BaselineValues',baselineValues);
     end
     
+    function iData = Reorder(obj,newOrder)
+      % REORDER Reorder data entries, excluded numbers will be dropped (not implemented)
+      error("Not yet implemented");
+    end
+    
     function iData = UpdateData(obj,S)
       % UPDATEDATA Designed for use following edits to IrisData.copyData();
       
@@ -1318,39 +1323,66 @@ classdef IrisData
       nOfst = max(cellfun(@(m)max(m.notes),baseValues,'UniformOutput',true));
       for d = 1:numel(vObjs)
         this = vObjs{d};
-        
-        % meta;
-        meta = IrisData.uniqueContents([sObj.Meta,this.Meta]);
-        if ~iscell(meta)
-          meta = {meta};
-        end
-        sObj.Meta = meta;
-        
-        % notes
-        note = IrisData.uniqueContents([sObj.Notes,this.Notes]);
-        if ~iscell(note{1})
-          noteMerge = {note};
-        else
-          noteMerge = note;
-        end
-        sObj.Notes = noteMerge;
-        
-        % files
-        sObj.Files = unique([sObj.Files,this.Files],'stable');
-        sObj.FileHistory = unique([sObj.FileHistory,this.FileHistory],'stable');
-        
         % memberships
         thisMmbr = this.Membership;
         thisKeys = thisMmbr.keys();
         for k = 1:numel(thisKeys)
-          kthKey = thisKeys{k};
-          % update the baseMap with the new datums
+          % TODO:
+          % This is a mess right now. We expect that concatenating multiple
+          % IrisData objects will come from different files. Though they may
+          % originally come from the same source file, i.e. they have the same
+          % meta information. If this is true, how should we manage the merge?
+          % That is, should we simply merge by source file and keep the most
+          % updated file names in the file history list? Or should we merge
+          % with a pointer in the membership entry for the new files? The
+          % latter will require some changes made to the subsref method to rely
+          % on the membership struct to contain all the relevant indexing
+          % locations.
+          kthKey = string(thisKeys{k});
+          % update the baseMap with the new indices
+          fIdx = find(strcmp(kthKey,this.Files),1,'first');
           thisM = thisMmbr(kthKey);
+          if ~isfield(thisM,"Meta")
+            mIdx = fIdx;
+          else
+            mIdx = thisM.Meta;
+          end
+          
+          % meta
+          mMatch = cellfun(@(m)isequal(m,this.Meta{mIdx}),sObj.Meta,'UniformOutput',true);
+          if ~any(mMatch)
+            sObj.Meta{end+1} = this.Meta{mIdx};
+            newMetaIdx = numel(sObj.Meta);
+          else
+            newMetaIdx = find(mMatch);
+          end
+          thisM.Meta = newMetaIdx;
+          
+          % notes
+          noteMatch = cellfun(@(n)isequal(n,this.Notes{fIdx}),sObj.Notes,'UniformOutput',true);
+          if ~any(mMatch)
+            sObj.Notes{end+1} = this.Notes{fIdx};
+            newNoteIdx = nOfst + (1:size(this.Notes{fIdx},1));
+          else
+            newNoteIdx = baseValues{find(noteMatch,1,'first')}.notes;
+          end
+          thisM.notes = newNoteIdx;
+          
+          % files
+          fileMatch = sObj.Files == kthKey;
+          if ~any(fileMatch)
+            sObj.Files(end+1) = kthKey;
+            fileIndex = numel(sObj.Files);
+          else
+            fileIndex = find(fileMatch,1,'first');
+          end
+          thisM.File = fileIndex;
+          
+          sObj.FileHistory = unique([sObj.FileHistory,this.FileHistory],'stable');
           
           % get new data
-          thisDloc = ismember(this.Files,kthKey);
-          thisD = this.Data{thisDloc};
-          if ismember(kthKey,baseKeys)
+          thisD = this.Data{fIdx};
+          if ismember(kthKey,string(baseKeys))
             % this key is also present in the growing baseKeys, so let's append
             % the data to the list and update that map
             dataLoc = ismember(sObj.Files,kthKey);
@@ -1401,14 +1433,12 @@ classdef IrisData
             % the membership key
             sObj.Data{end+1} = thisD;
             thisM.data = thisM.data - thisM.data(1) + 1 + dOfst;
-            thisM.notes = thisM.notes - thisM.notes(1) + 1 + nOfst;
             % update keys
             baseMembership(kthKey) = thisM;
             baseKeys{end+1} = kthKey; %#ok
             
             % update offsets
             dOfst = dOfst + numel(thisD);
-            nOfst = max(thisM.notes);
           end
           
         end
@@ -1428,22 +1458,26 @@ classdef IrisData
       
       % organize the membership contianer in case ordering got off.
       dataIDs = 1:dOfst;
-      noteIDs = 1:nOfst;
       for n = 1:numel(sObj.Files)
         newKey = sObj.Files(n);
         mbrS = baseMembership(newKey);
         
         thisDlen = numel(sObj.Data{n});
         dSubs = 1:thisDlen;
-        thisNlen = size(sObj.Notes{n},1);
-        nSubs = 1:thisNlen;
+        
         % update the membership struct
         mbrS.data = dataIDs(dSubs);
-        mbrS.notes = noteIDs(nSubs);
         
         % drop the used indices from the the ID vectors
         dataIDs(dSubs) = [];
-        noteIDs(nSubs) = [];
+        
+        % update membership struct
+        if ~isfield(mbrS,"Meta")
+          mbrS.Meta = n;
+        end
+        if ~isfield(mbrS,"File")
+          mbrS.File = n;
+        end
         
         % update base membership
         baseMembership(newKey) = mbrS;
@@ -1519,7 +1553,7 @@ classdef IrisData
       % validate input strings
       [~,groupBy] = IrisData.ValidStrings( ...
         p.Results.groupBy, ...
-        [{'none';'devices'};validGroups(:)] ...
+        [{'none';'all';'devices'};validGroups(:)] ...
         );
       
       requestedDeviceSplit = ismember(groupBy,'devices');
@@ -1569,11 +1603,21 @@ classdef IrisData
       elseif any(strcmpi('all',groupBy))
         groupBy = {'all'};
         filterTable.all = num2str(ones(height(filterTable),1));
+        %{
+      elseif any(strcmpi('files',groupBy))
+        % append a files column to the filter table
+        keys = obj.Membership.keys();
+        for k = 1:obj.Membership.Count
+           s = obj.Membership(keys{k});
+           
+        end
+        %}
       end
       
       % determine the grouping
       groupingTable = filterTable(:,groupBy);
-      groups = IrisData.determineGroups(groupingTable,inclusions);
+      % in this case, we split ignoring inclusions and then apply them
+      groups = IrisData.determineGroups(groupingTable);
       nGroups = height(groups.Table);
       
       [~,runStart,~] = unique(groups.Singular,'stable');
@@ -1582,6 +1626,11 @@ classdef IrisData
       
       dataCells = cell(1,nGroups);
       [dataCells{:}] = obj.subsref(substruct('()',subsIndex));
+      
+      % apply inclusions changes
+      for c = 1:nGroups
+        dataCells{c}.InclusionList = inclusions(subsIndex{c});
+      end
       
       % split each dataCell by device if requested
       if devSplit
@@ -3047,7 +3096,10 @@ classdef IrisData
         switch xLimBy{1}
           case 'Data'
             d = get(hLines,'XData');
-            doms.x = IrisData.domain(cat(2,d{:})');
+            if iscell(d)
+              d = cat(2,d{:})';
+            end
+            doms.x = IrisData.domain(d(:));
           case 'Axes'
             nChilds = numel(axs(a).Children);
             doms.x = nan(1,2);
@@ -3067,7 +3119,10 @@ classdef IrisData
         switch yLimBy{1}
           case 'Data'
             d = get(hLines,'YData');
-            doms.y = IrisData.domain(cat(2,d{:})');
+            if iscell(d)
+              d = cat(2,d{:})';
+            end
+            doms.y = IrisData.domain(d(:));
           case 'Axes'
             nChilds = numel(axs(a).Children);
             doms.y = nan(1,2);
@@ -3222,7 +3277,12 @@ classdef IrisData
                 % ignore any more inputs after s(2)
                 switch class(s(2).subs{1}) %look only at first entry
                   case {'string', 'char'}
-                    inds = ismember(obj.Files, s(2).subs{1});
+                    mb = obj.Membership(s(2).subs{1});
+                    if isfield(mb,'Meta')
+                      inds = mb.Meta;
+                    else
+                      inds = ismember(obj.Files, s(2).subs{1});
+                    end
                     varargout = obj.Meta(inds);
                     return
                 end
@@ -3293,7 +3353,7 @@ classdef IrisData
           % UserData
           if strcmp(s(1).subs,'UserData') && numel(s) > 1
             if ~strcmpi(s(2).type,'.')
-              error("IRISDATA:SUBSREF:USERDATA","Must be a field."); 
+              error("IRISDATA:SUBSREF:USERDATA","Must be a field.");
             end
             ud = obj.UserData;
             if ~isfield(ud,s(2).subs)
@@ -3320,6 +3380,7 @@ classdef IrisData
           for ss = 1:length(s(1).subs)
             % grab a copy of the original object
             newObj = obj.saveobj();
+            
             % determine the subs wanted
             subs = unique([s(1).subs{ss}]);
             indexFile = obj.getFileFromIndex(subs);
@@ -3336,9 +3397,10 @@ classdef IrisData
               histDrop = false(1,numel(newObj.FileHistory));
             end
             newObj.FileHistory(histDrop) = [];
-            newObj.Meta(~subFilesBool) = [];
+            newObj.Membership(newObj.Files(subFilesBool));
+            newObj.Meta = newObj.Meta(subFilesBool);
             newObj.Data(~subFilesBool) = [];
-            newObj.Notes(~subFilesBool) = [];
+            newObj.Notes = newObj.Notes(subFilesBool);
             newObj.Files(~subFilesBool) = [];
             for i = 1:sum(~subFilesBool)
               dropThis = dropFiles(i);
@@ -3384,7 +3446,7 @@ classdef IrisData
       
       nFiles = length(obj.Files);
       s = struct();
-      s.Meta = obj.Meta;% cell array
+      s.Meta = cell(1,nFiles);
       s.Data = cell(1,nFiles); %empty
       s.Notes = cell(1,nFiles);%empty
       for F = 1:nFiles
@@ -3393,6 +3455,7 @@ classdef IrisData
         %s.Data{F} = obj.Data(fname); %see subsref
         s.Notes{F} = obj.subsref(substruct('.','Notes','()',fname));
         %s.Notes{F} = obj.Notes(fname); %see subsref
+        s.Meta{F} = obj.subsref(substruct('.','Meta','()',fname));
       end
       s.Files = obj.Files;
       s.FileHistory = obj.FileHistory;
@@ -3434,51 +3497,33 @@ classdef IrisData
       % create a session struct for saving
       session = IrisData.fastrmField(obj.saveobj(),{'UserData','Membership','FileHistory'});
       % make modifications for session requirements
-      session.Files = cellstr(session.Files);
+      session.Files = string(session.Files);
       
       for F = 1:length(session.Files)
         thisData = session.Data{F};
-        nDatums = numel(thisData);
-        thisTemplate(nDatums,1) = struct( ...
-          'protocols', {{}}, ...
-          'displayProperties', {{}}, ...
-          'id', '', ...
-          'inclusion', 1, ...
-          'responses', struct() ...
-          );%#ok
+        nData = numel(thisData);
+        thisTemplate = IrisData.fastKeepField( ...
+          thisData, ...
+          {'protocols','displayProperties','id','inclusion'} ...
+          );
+        rData = IrisData.fastKeepField( ...
+          thisData, ...
+          { 'sampleRate', 'units', 'x', 'y', 'devices', ...
+          'stimulusConfiguration','deviceConfiguration' ...
+          } ...
+          );
+        [rData.duration] = deal(0);
+        % helper fxn to compute duration
+        calcDur = @(y,fs)arrayfun(@(v,s)size(v{1},1)/s{1},y,fs,'UniformOutput',false);
         % populate the template
-        responseData = struct();
-        for ep = 1:nDatums
-          thisD = thisData(ep);
-          
-          %populate main props
-          thisTemplate(ep).inclusion = 1;
-          thisTemplate(ep).id = thisD.id;
-          thisTemplate(ep).protocols = thisD.protocols;
-          thisTemplate(ep).displayProperties = thisD.displayProperties;
-          
-          % helper fxn to compute duration
-          calcDur = @(y,fs)size(y{:},1)/fs{:};
-          % build the response data struct
-          responseData.sampleRate = thisD.sampleRate;
-          responseData.duration = arrayfun( ...
-            calcDur, ...
-            thisD.y, ...
-            thisD.sampleRate, ...
-            'UniformOutput', false ...
-            );
-          responseData.units = thisD.units;
-          responseData.devices = thisD.devices;
-          responseData.x = thisD.x;
-          responseData.y = thisD.y;
-          responseData.stimulusConfiguration = thisD.stimulusConfiguration;
-          responseData.deviceConfiguration = thisD.deviceConfiguration;
+        for ep = 1:nData
+          % duration
+          rData(ep).duration = calcDur(rData(ep).y,rData(ep).sampleRate);
           % store in template
-          thisTemplate(ep).responses = responseData;
+          thisTemplate(ep).responses = rData(ep);
         end
-        % store and clear the temporary variable
+        % store
         session.Data{F} = thisTemplate;
-        clearvars('thisTemplate');
       end
       
       % save the session
@@ -3745,7 +3790,7 @@ classdef IrisData
             vals = struct2cell(thisS);
             
             [valStrings,insideClass] = arrayfun( ...
-              @(e)utilities.unknownCell2Str(e,sep,false), ...
+              @(e)IrisData.unknownCell2Str(e,sep,false), ...
               vals, ...
               'UniformOutput', false ...
               );
@@ -3757,11 +3802,11 @@ classdef IrisData
             end
             
             caClass{I} = cat(2, ...
-              join(utilities.rep(caClass(I),nStructs),sep), ...
+              join(IrisData.rep(caClass(I),nStructs),sep), ...
               join(insideClasses,'; ') ...
               );
             strNow = join(join([ ...
-              utilities.rep(fields(:),nStructs,1,'dims',{[],1}), ...
+              IrisData.rep(fields(:),nStructs,1,'dims',{[],1}), ...
               valStrings(:)],':',2),sep);
           otherwise
             error('"%s" Cannot be dealt with currently.', caClass{I});
@@ -4290,6 +4335,37 @@ classdef IrisData
       
     end
     
+    function A = fastKeepField(S, fname)
+      
+      fn = fieldnames(S);
+      % which names to keep
+      %fKeep = ~cellfun(@isempty, regexpi(fn,strjoin(fname,'|')));
+      fKeep = false(numel(fn),1);
+      for i = 1:numel(fn)
+        if utilities.ValidStrings(fn{i},fname)
+          fKeep(i) = true;
+        end
+      end
+      % build the last struct in the array
+      sz = size(S);
+      fdat = struct2cell(S(end,end));
+      A(sz(1),sz(2)) = cell2struct(fdat(fKeep), fn(fKeep),1);
+      
+      % If input is longer than 1 in any dimension, fill in all the values
+      if any(sz > 1)
+        
+        for i = 1:sz(1)
+          for j = 1:sz(2)
+            fdat = struct2cell(S(i,j));
+            A(i,j) = cell2struct(fdat(fKeep), fn(fKeep),1);
+          end
+        end
+        
+      end
+      
+    end
+    
+    
     function C = uniqueContents(cellAr)
       % UNIQUECONTENTS Validate cell contents for multiple cells.
       contents = cell(1,numel(cellAr));
@@ -4610,8 +4686,10 @@ classdef IrisData
       lvl = lvl + max(counts);
     end
     
-    function values = findParamCell(params,expression,anchor,returnIndex,exact)
+    function values = findParamCell(params,expression,anchor,returnIndex,exact,asStruct,first)
       %FINDPARAMCELL
+      if nargin < 7, first = true; end
+      if nargin < 6, asStruct = false; end
       if nargin < 5, exact = false; end
       fields = params(:,anchor);
       vals = params(:,returnIndex);
@@ -4620,10 +4698,31 @@ classdef IrisData
       if exact
         idx = ismember(fields,expression);
       else
-        idx = ~cellfun(@isempty,regexpi(fields,expression),'UniformOutput',1);
+        nExp = length(expression);
+        nFld = numel(fields);
+        idx = false(nFld,nExp);
+        for z = 1:nExp
+          matched = regexpi(fields,expression{z},'once');
+          if first
+            bestMatch = min(cat(2,matched{:}));
+          else
+            bestMatch = cat(2,matched{:});
+          end
+          if isempty(bestMatch), continue; end
+          idx(:,z) = cellfun( ...
+            @(i) ~isempty(i) && any(i == bestMatch), ...
+            matched, ...
+            'UniformOutput', true ...
+            );
+        end
+        idx = any(idx,2);
       end
       
-      values = [fields(idx),vals(idx)];
+      if ~asStruct
+        values = [fields(idx),vals(idx)];
+      else
+        values = cell2struct(vals(idx),fields(idx));
+      end
       
     end
     

@@ -73,10 +73,6 @@ obj.InstallHelpersMenu.MenuSelectedFcn = ...
 % Display panel
 obj.DevicesSelection.ValueChangedFcn =  @(s,e)notify(obj, 'DeviceViewChanged',  eventData(e));
 
-%obj.ViewNotesButton.ButtonPushedFcn = @(s,e)notify(obj,   'MenuCalled',     eventData('Notes'));
-
-%obj.ExtendedInfoButton.ButtonPushedFcn = @(s,e)notify(obj,'MenuCalled',     eventData('DataOverview'));
-
 % Navigation panel
 obj.OverlapTicker.ValueChangedFcn = @(s,e)obj.ValidateTicker(s.Tag,e);
 
@@ -130,7 +126,11 @@ obj.FilterSwitch.ValueChangedFcn =    @obj.SwitchFlipped;
 obj.DatumSwitch.ValueChangedFcn =     @obj.SwitchFlipped;
 
 % Axes object
-addlistener(obj.Axes,'DataSelected',@obj.onAxesDataSelected);
-addlistener(obj.Axes,'PlotUpdated', @obj.onPlotUpdated);
+obj.addListener(obj.Axes,'DataSelected',@obj.onAxesDataSelected);
+obj.addListener(obj.Axes,'PlotUpdated', @obj.onPlotUpdated);
+
+% Internal listeners
+obj.addListener(obj,'selection', 'PreSet' ,@obj.onSelectionWillUpdate);
+obj.addListener(obj,'selection', 'PostSet',@obj.onSelectionDidUpdate);
 
 end

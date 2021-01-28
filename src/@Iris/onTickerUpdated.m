@@ -1,4 +1,5 @@
 function onTickerUpdated(app,src,event)
+
 %src will be shortcut handle to primary ui
 cSel = app.handler.currentSelection;
 switch event.Data.Type
@@ -17,7 +18,7 @@ switch event.Data.Type
     % selection is already updated by the sliderChanging method, 
     % so now we just
     % update the primary view axes object to show which line is selected.
-    %HLpos = find(src.selection.selected == event.Data.Value,1,'first');
+    
     HLName = app.handler(event.Data.Value).id;
     dOpts = iris.pref.display.getDefault();
     src.Axes.highlightByName(HLName,dOpts.LineWidth);

@@ -77,9 +77,11 @@
 }
 [customtooltip]:not([flow]):hover::before {
   animation: customtooltips-vert 300ms ease-out forwards;
+	animation-delay: 0.6s;
 }
 [customtooltip]:not([flow]):hover::after {
   animation: customtooltips-vert 300ms ease-out forwards;
+	animation-delay: 0.6s;
 }
 /* Empty case */
 [customtooltip='']::before {
@@ -103,9 +105,11 @@
 }
 [customtooltip][flow^='up']:hover::before {
   animation: customtooltips-vert 300ms ease-out forwards;
+	animation-delay: 0.6s;
 }
 [customtooltip][flow^='up']:hover::after {
   animation: customtooltips-vert 300ms ease-out forwards;
+	animation-delay: 0.6s;
 }
 /* Down */
 [customtooltip][flow^='down']::before {
@@ -122,9 +126,11 @@
 }
 [customtooltip][flow^='down']:hover::before {
   animation: customtooltips-vert 300ms ease-out forwards;
+	animation-delay: 0.6s;
 }
 [customtooltip][flow^='down']:hover::after {
   animation: customtooltips-vert 300ms ease-out forwards;
+	animation-delay: 0.6s;
 }
 /* Left */
 [customtooltip][flow^='left']::before {
@@ -141,9 +147,11 @@
 }
 [customtooltip][flow^='left']:hover::before {
   animation: customtooltips-horz 300ms ease-out forwards;
+	animation-delay: 0.6s;
 }
 [customtooltip][flow^='left']:hover::after {
   animation: customtooltips-horz 300ms ease-out forwards;
+	animation-delay: 0.6s;
 }
 /* Right */
 [customtooltip][flow^='right']::before {
@@ -160,7 +168,9 @@
 }
 [customtooltip][flow^='right']:hover::before {
   animation: customtooltips-horz 300ms ease-out forwards;
+	animation-delay: 0.6s;
 }
 [customtooltip][flow^='right']:hover::after {
   animation: customtooltips-horz 300ms ease-out forwards;
+	animation-delay: 0.6s;
 }

@@ -47,7 +47,7 @@ while true
     pause(0.2);
     continue
   end
-  break;
+  break
 end
 
 % Add CSS to obj.container head
@@ -100,8 +100,6 @@ if str2double(v.Version) < 9.5
     ['Keyboard functionality requires MATLAB',char(hex2dec('00a9')),'9.5.'] ...
     );
 end
-%% Add the listener for the selection
-addlistener(obj,'selection', 'PostSet',@(s,e)obj.onSelectionUpdate);
 
 %% Tooltips
 
@@ -180,7 +178,7 @@ w.executeJS( ...
     elemNodeString ...
     ) ...
   );
-drawnow(); pause(0.01);
+drawnow('limitrate'); pause(0.01);
 %% Cleanup
 
 end

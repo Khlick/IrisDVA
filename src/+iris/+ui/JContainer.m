@@ -266,12 +266,6 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
       delete(obj.container);
     end
 
-    function delete(obj)
-      if ~obj.isClosed
-        obj.close();
-      end
-    end
-    
     function destroy(obj)
       if obj.isClosed, return; end
       try %#ok<TRYNC>

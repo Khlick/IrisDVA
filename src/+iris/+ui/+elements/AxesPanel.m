@@ -129,27 +129,23 @@ classdef AxesPanel < handle
         obj.container.Layout.Row = obj.Location(1);
         obj.container.Layout.Column = obj.Location(2);
       end
-      drawnow();
+      drawnow('limitrate');
       pause(1);
       
       obj.Position = obj.container.Position;
+      
       
       obj.Axes = axes(obj.container);
       obj.Axes.Units = 'pixels';
       obj.Axes.Color = [1 1 1,0];
       obj.Axes.Position = obj.getAxesPosition();
       obj.Axes.FontWeight = 'normal';
+      obj.Axes.HitTest = 'off';
+      obj.Axes.BusyAction = 'cancel';
+      obj.Axes.Toolbar.Visible = 'off';
+      obj.Axes.Interactions = [panInteraction zoomInteraction];
       
-      %{
-      sooState = warning('query','MATLAB:structOnObject');
-      warning('off','MATLAB:structOnObject');
-      pause(0.001);
       
-      obj.Axes = struct(obj.Axes).Axes;
-      
-      % reset the warnign state to user pref
-      warning(sooState);
-      %}
       %%% Experimental modification of the HTMLCanvas object.
       % Combining these hacks appears to have no effect on plotting but highly
       % increases performance. One caveat is that with serversiderendering = 'on', we
@@ -164,11 +160,8 @@ classdef AxesPanel < handle
         % of drawing them and zooming/panning. So I can't seem to find what exactly
         % is changed, I would expect that the render is being sent rather than the
         % data, meaning, possibly, a bmp is displayed rather than a svg.
-        % NodeChildren(1) == Axes.Canvas but 'Canvas' is not public
-        % for uiaxes()
-        %obj.Axes.NodeChildren(1).ServerSideRendering = 'on';
-        % 2020a axes() not uiaxes() we find the Canvas at
-        obj.Axes.NodeParent(1).findCanvas().ServerSideRendering = 'on';
+        % >=2020a axes() not uiaxes() we find the Canvas at
+        %obj.Axes.NodeParent(1).findCanvas().ServerSideRendering = 'on';
       end
       
       try %#ok<TRYNC>
@@ -187,7 +180,7 @@ classdef AxesPanel < handle
         try
           set(obj.Axes, f, pr.Unmatched.(f));
         catch
-          continue;
+          continue
         end
       end
       
@@ -357,12 +350,14 @@ classdef AxesPanel < handle
       for ch = 1:numel(obj.Axes.Children)
         axChInds(ch) = isa(obj.Axes.Children(ch),'matlab.graphics.primitive.Line');
       end
+      childLines = obj.Axes.Children(axChInds);
+      inds = ismember(childLines,cat(1,lObjs{:}));
+      childLines = [childLines(inds);childLines(~inds)];
       
-      inds = ismember(obj.Axes.Children(axChInds),cat(1,lObjs{:}));
       % order doesnt matter, but let's keep them consistent.
-      obj.currentLines = [obj.currentLines(inds),obj.currentLines(~inds)];
-      obj.Axes.Children(axChInds) = cat(1,obj.currentLines{:});
-      
+      obj.currentLines = num2cell(childLines)';
+      obj.Axes.Children(axChInds) = childLines;
+      drawnow('update');
     end
     
   end
@@ -407,8 +402,8 @@ classdef AxesPanel < handle
           obj.ylab.Text =  obj.(src.Name);
       end
       % drawnow has some bug that causes uifigures to hang forever use pause?
-      %drawnow('limitrate');
-      pause(0.01);
+      drawnow('limitrate');
+      %{
       if isempty(regexp(obj.(src.Name),'[^a-zA-Z0-9\[\]\s,]','once'))
         % Not math leave as non jax
         return;
@@ -435,7 +430,7 @@ classdef AxesPanel < handle
           'MathJax.Hub.Typeset();' ...
         ] ...
         );
-      
+      %}
     end
     
     function onDataSelected(obj,source,event)
@@ -450,6 +445,7 @@ classdef AxesPanel < handle
       eventStruct = struct();
       eventStruct.lastDataCoordinates = [x,y];
       eventStruct.datumIndex = source.UserData.index;
+      eventStruct.datumID = source.DisplayName;
       
       notify(obj,'DataSelected',eventData(eventStruct));
       % for future: selection of data finds nearest data point and broadcasts. This
@@ -529,7 +525,9 @@ classdef AxesPanel < handle
             'XData', hD(ix).x, ...
             'YData', hD(ix).y, ...
             hD(ix).line.collect, ...
-            hD(ix).marker.collect ...
+            hD(ix).marker.collect, ...
+            'pickableparts','visible', ...
+            'hittest', 'on' ...
             );
         end
         % apply transparency and color for lines/markers
@@ -630,7 +628,7 @@ classdef AxesPanel < handle
     
     function setHighlighted(obj,pos,defaultWidth,newColor)
       if nargin < 4, newColor = []; end
-      hlWidth = defaultWidth+2;
+      hlWidth = defaultWidth + max([abs((defaultWidth-1)*0.65),2]);
       hlInds = false(1,obj.nLines);
       for I = 1:obj.nLines
         lObj = obj.currentLines{I};
@@ -651,7 +649,7 @@ classdef AxesPanel < handle
     function highlightByName(obj,names,defaultWidth,newColor)
       if nargin < 4, newColor = []; end
       if ~iscell(names), names = cellstr(names); end
-      hlWidth = defaultWidth+2;
+      hlWidth = defaultWidth + max([abs((defaultWidth-1)*0.65),2]);
       hlInds = false(1,obj.nLines);
       for I = 1:numel(obj.currentLines)
         lObj = obj.currentLines{I};

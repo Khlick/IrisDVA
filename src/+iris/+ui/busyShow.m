@@ -78,7 +78,7 @@ classdef busyShow < iris.ui.JContainer
       import iris.app.*;
       obj.iAx.setBusyText(txt);
       obj.iAx.start;
-      drawnow;
+      drawnow('limitrate')
       obj.show;
     end
     
@@ -93,7 +93,7 @@ classdef busyShow < iris.ui.JContainer
     
     function setText(obj,txt)
       obj.iAx.setBusyText(txt);
-      %drawnow();
+      %drawnow('limitrate');
     end
     
     function show(obj)

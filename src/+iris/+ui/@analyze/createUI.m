@@ -165,6 +165,7 @@ obj.tableInput = uitable(obj.panelInput, ...
   'data', cell(1,2), ...
   'celleditcallback', @obj.validateTableEntry);
 obj.tableInput.Tag = 'Input';
+
 % get the ratio of cell widths for resize function
 obj.panelInput.UserData = obj.tableInput.ColumnWidth{1};
 obj.panelInput.SizeChangedFcn = @obj.tableChangeSize;

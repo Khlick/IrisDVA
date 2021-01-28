@@ -4,7 +4,7 @@ function varargout = getNearestRange(target,Values,nReturn,radiusStep)
 arguments
   target (1,:) {mustBeNumeric}
   Values (:,1) {mustBeNumeric}
-  nReturn (1,1) {mustBeNumeric,mustBeNonzero} = 2
+  nReturn (1,1) int64 {mustBeNumeric,mustBeNonzero} = 2
   radiusStep (1,1) double {mustBeNumeric,mustBeNonzero} = 0.01
 end
 
@@ -18,15 +18,24 @@ else
   % even
   rVector = int64((1:nReturn) - median([1,nReturn])-0.5);
 end
+
+% determine the sampling distance
+xDiff = mean(1./diff(Values,1));
+
 varargout = cell(1,nargout);
 for n = 1:nargout
   % locate the closest index to target in x
   xFirst = find(Values >= target(n),1,'first');
-  % determine the sampling distance
-  xDiff = min(mean(1./diff(Values,1)));
+  if isempty(xFirst)
+    % passed the end of the vector.
+    xFirst = nVals;
+  else
+    % iterate
+    xValue = [];
+    xIndex = [];
+  end
+  
   % iterate
-  xValue = [];
-  xIndex = [];
   searchRadius = 0;
   while isempty(xValue)
     searchRadius = searchRadius + radiusStep;

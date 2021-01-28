@@ -221,12 +221,10 @@ classdef Iris < iris.app.Container
       disp(displayStruct);
       fprintf('%%%s%%\n\n', repmat('-',1,40));      
       try
-        if ~app.loadShow.isClosed
-          app.loadShow.shutdown();
-        end
+        app.loadShow.shutdown();
       catch x
         % log x
-        fprintf('postStop caught\n')
+        fprintf('postStop caught\n');
         h = findall(groot,'HandleVisibility', 'off');
         if ~isempty(h)
           for i = 1:length(h)
@@ -289,7 +287,7 @@ classdef Iris < iris.app.Container
       app.addListener(h, 'fileLoadStatus',  @app.updateLoadPercent);
       app.addListener(h, 'onCompletedLoad', @(s,e)app.visualize);
       app.addListener(h, 'onSelectionUpdated', @(s,e)app.draw);
-      
+      app.addListener(h, 'handlerModified', @(s,e)app.visualize);
     end
     
   end
@@ -319,6 +317,10 @@ classdef Iris < iris.app.Container
     function updateLoadPercent(app,~,event)
       if ~app.loadShow.isvalid || app.loadShow.isClosed
         app.loadShow = iris.ui.loadShow();
+      end
+      if strcmp(event.Data,'!')
+        app.loadShow.shutdown();
+        return
       end
       app.loadShow.updatePercent(event.Data);
     end
@@ -529,6 +531,7 @@ classdef Iris < iris.app.Container
         return;
       end
       app.loadShow.updatePercent('Saving Session...');
+      cu = onCleanup(@()app.loadShow.shutdown());
       session = app.handler.saveobj();
       try
         save(userFile,'session','-mat','-v7.3');

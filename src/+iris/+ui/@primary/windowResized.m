@@ -14,7 +14,7 @@ initW = 1610;
 initH = 931;
 pos = utilities.centerFigPos(initW,initH);
 
-%drawnow();
+%drawnow('limitrate');
 
 
 

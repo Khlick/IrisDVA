@@ -499,7 +499,7 @@ obj.AxesPanel.Layout.Column = 1;
 obj.AxesPanel.BorderType = 'none';
 obj.AxesPanel.FontName = Aes.uiFontName;
 
-drawnow();
+drawnow('limitrate');
 pause(1);
 
 % Create Axes
@@ -602,7 +602,7 @@ obj.DevicesSelection.Value = {'Device 1', 'Device 2'};
 
 
 % draw
-drawnow();
+drawnow('limitrate');
 pause(0.05);
 
 % now that we've drawn the figure, let's reposition it by first getting the

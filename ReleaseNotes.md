@@ -11,7 +11,8 @@
 - [Introduction](#introduction)
   - [Some Commentary](#some-commentary)
 - [Release Schedule](#release-schedule)
-  - [2020-09-22 Release 2.0.110](#2020-09-22-release-20110)
+  - [2020-09-27 Release 2.0.112](#2020-09-27-release-20112)
+  - [2020-09-22 Release 2.0.111](#2020-09-22-release-20111)
   - [2020-09-15 Release 2.0.104](#2020-09-15-release-20104)
   - [2020-04-10 Release 2.0.97](#2020-04-10-release-2097)
   - [2020-04-01 Release 2.0.96b](#2020-04-01-release-2096b)
@@ -89,7 +90,7 @@ A major issue with the web-based `uifigure` is that it is remarkably ~~unstable~
 ***Update** since MATLAB Release 2020a*
 Extensive testing of Iris DVA (Release 2.1+) has revealed that The Mathworks
 Inc. (TMW) have resolved and improved a number of performance issues related to
-the App Designer (e.g. `uifigure`). Although TMW have made these considerable
+the App Designer (i.e. `uifigure`). Although TMW have made these considerable
 efforts, the issue of displaying many data points on a `uiaxes` is unfortunately
 slow and hinders performance of other components dispalyed on the canvas. For
 Iris, we always optimize with the data in mind and aim to improve useability and
@@ -102,7 +103,23 @@ have taken care to ensure if the hack breaks, functionality will not be lost.
 
 # Release Schedule
 
-## 2020-09-22 Release 2.0.110
+## 2020-09-27 Release 2.0.112
+
+Optimized plotting behavior and minor 2020b improvements.
+
+- Iris:
+  - Improved Analysis storage process. 
+
+*Note for 2020b users:* The flushCoalescer issue appears to be back but it only
+seems to reduce performance and not cause the infinite recursion issue. To help
+reduce MATLAB drawing times, I've turned off the axes toolbar feature and
+limited the interactions to pan and zoom. This doesn't seem to work well with
+many lines plotted. I think theres a new mouse and keyboard capturing mechanism
+interfering with the Axes.
+
+
+
+## 2020-09-22 Release 2.0.111
 
 Compatibility with 2020b and minor updates and bug fixes.
 

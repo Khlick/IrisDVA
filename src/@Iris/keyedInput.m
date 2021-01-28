@@ -27,7 +27,7 @@ try
     % find the first match
     if isequal(modifiers,utilities.fastrmField(stored(I),{'ACTION'}))
       action = stored(I).ACTION;
-      break;
+      break
     end
   end
 catch
@@ -45,11 +45,11 @@ action = [lower(action(remI+1)),action(remI+2:end)];
 switch char(aType)
   case 'menu'
     app.callMenu([],iris.infra.eventData(action));
-    return;
+    return
   case 'action'
     if contains(action,{'new','import'})
       app.fileLoad([],iris.infra.eventData(action));
-      return;
+      return
     end
     app.keyedAction(action);
   case 'toggle'

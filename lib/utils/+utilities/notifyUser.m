@@ -47,7 +47,7 @@ sText.FontSize = 28;
 sText.FontName = 'Times New Roman';
 sText.Text = sprintf("%*s",fix(strlength(message)*1.651),'');
 
-drawnow();
+drawnow('limitrate');
 pause(0.5);
 
 % inject css
@@ -231,7 +231,7 @@ end
 pause(0.25);
 
 h.Visible = 'on';
-drawnow();
+drawnow('limitrate');
 %figure(h);
 
 sText.Text = message;

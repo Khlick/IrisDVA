@@ -394,7 +394,7 @@ obj.AnalysisPrefixPreviewString.HorizontalAlignment = 'center';
 obj.AnalysisPrefixPreviewString.Position = [23 20 370 22];
 obj.AnalysisPrefixPreviewString.Text = 'preview';
 
-%drawnow;
+%drawnow('limitrate')
 
 obj.WorkspacePanel.Visible = 'off';
 

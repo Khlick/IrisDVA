@@ -11,6 +11,12 @@ end
 
 % Properties that correspond to app components
 properties (Access = public)
+  % Grids
+  mainGrid
+  subsetGrid
+  keyboardGrid
+  controlGrid
+  workspaceGrid
   % navigation
   PreferencesLabel               matlab.ui.control.Label
   PreferencesTree                matlab.ui.container.Tree
@@ -44,7 +50,6 @@ properties (Access = public)
   % workspace
   WorkspacePanel                 matlab.ui.container.Panel
   FileReaderButton               matlab.ui.control.Button
-  %WorkspaceVariablesLabel        matlab.ui.control.Label
   OutputDirectoryLabel           matlab.ui.control.Label
   OutputDirectoryInput           matlab.ui.control.EditField
   OutputLocationButton           matlab.ui.control.Button
@@ -59,8 +64,26 @@ properties (Access = public)
   AnalysisDirectoryInput         matlab.ui.control.EditField
   AnalysisPrefixLabel            matlab.ui.control.Label
   AnalysisPrefixInput            matlab.ui.control.EditField
-  %AnalysisPrefixPreviewLabel     matlab.ui.control.Label
   AnalysisPrefixPreviewString    matlab.ui.control.Label
+  % display
+  DisplayPanel                   matlab.ui.container.Panel
+  DisplayLabel                   matlab.ui.control.Label
+  LineDisplayStyleDropDownLabel  matlab.ui.control.Label
+  LineStyle                      matlab.ui.control.DropDown
+  MarkerDisplayStyleDropDownLabel  matlab.ui.control.Label
+  MarkerStyle                    matlab.ui.control.DropDown
+  LineDisplayWidthLabel          matlab.ui.control.Label
+  LineWidth                      matlab.ui.control.NumericEditField
+  LineWidthSlider                matlab.ui.control.Slider
+  MarkerSizeSlider               matlab.ui.control.Slider
+  MarkerSize                     matlab.ui.control.NumericEditField
+  MarkerDisplaySizeLabel         matlab.ui.control.Label
+  GridDropDownLabel              matlab.ui.control.Label
+  Grid                           matlab.ui.control.DropDown
+  XAxisDropDownLabel             matlab.ui.control.Label
+  AxesScaleX                     matlab.ui.control.DropDown
+  YAxisDropDownLabel             matlab.ui.control.Label
+  AxesScaleY                     matlab.ui.control.DropDown
   % dsp
   FilterPanel                    matlab.ui.container.Panel
   FilterSettingsLabel            matlab.ui.control.Label
@@ -96,25 +119,6 @@ properties (Access = public)
   ScaleMethodSelect              matlab.ui.control.DropDown
   ScaleValueLabel                matlab.ui.control.Label
   ScaleValue                     matlab.ui.control.Table
-  % display
-  DisplayPanel                   matlab.ui.container.Panel
-  DisplayLabel                   matlab.ui.control.Label
-  LineDisplayStyleDropDownLabel  matlab.ui.control.Label
-  LineStyle                      matlab.ui.control.DropDown
-  MarkerDisplayStyleDropDownLabel  matlab.ui.control.Label
-  MarkerStyle                    matlab.ui.control.DropDown
-  LineDisplayWidthLabel          matlab.ui.control.Label
-  LineWidth                      matlab.ui.control.NumericEditField
-  LineWidthSlider                matlab.ui.control.Slider
-  MarkerSizeSlider               matlab.ui.control.Slider
-  MarkerSize                     matlab.ui.control.NumericEditField
-  MarkerDisplaySizeLabel         matlab.ui.control.Label
-  GridDropDownLabel              matlab.ui.control.Label
-  Grid                           matlab.ui.control.DropDown
-  XAxisDropDownLabel             matlab.ui.control.Label
-  AxesScaleX                     matlab.ui.control.DropDown
-  YAxisDropDownLabel             matlab.ui.control.Label
-  AxesScaleY                     matlab.ui.control.DropDown
   % reset defaults
   ResetPreferences               matlab.ui.control.Button
 end

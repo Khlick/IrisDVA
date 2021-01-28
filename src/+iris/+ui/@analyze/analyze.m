@@ -1,6 +1,10 @@
 classdef analyze < iris.ui.JContainer
   %ANALYZE User interface for conducting a selected analysis.
   
+  properties (Constant)
+    DATA_OBJECT_LABEL = 'DataObject'
+  end
+  
   properties %(Access = private)
     %UI
     labelTitle
@@ -28,6 +32,7 @@ classdef analyze < iris.ui.JContainer
   properties (SetAccess = private)
     OutputValues = struct();
     Args = struct('Input', {[]}, 'Output', {[]}, 'Call', @(){[]});
+    outputFileHandle
   end
   
   properties (Dependent)
@@ -155,6 +160,8 @@ classdef analyze < iris.ui.JContainer
       obj.tableOutput.Data = {[],[]};
       obj.labelFunction.String = 'Function Call';
       obj.editFileOutput.String = obj.Opts.AnalysisPrefix();
+      % Allow the callback to open the connection
+      obj.validateFilename(obj.editFileOutput,[]);
       obj.selectAnalysis.String = obj.availableAnalyses;
       obj.selectAnalysis.Value = find( ...
         ismember(obj.availableAnalyses,'Select') ...
@@ -183,7 +190,7 @@ classdef analyze < iris.ui.JContainer
       import iris.infra.eventData;
       
       obj.selectAnalysis.String = obj.availableAnalyses;
-      drawnow;
+      drawnow('limitrate')
       
       obj.setFxn(eventData(obj.selectAnalysis.String{obj.selectAnalysis.Value}));
     end
@@ -194,9 +201,10 @@ classdef analyze < iris.ui.JContainer
       edit([selAna,'.m']);
     end
     
-    function validateFilename(obj,src,~)  %#ok<INUSL>
+    function validateFilename(obj,src,~)
       theStr = matlab.lang.makeValidName(src.String);
       src.String = theStr;
+      obj.outputFileHandle = matfile(obj.outputFile,'Writable',true);
     end
     
     function validateTableEntry(obj,src,evnt)
@@ -226,6 +234,25 @@ classdef analyze < iris.ui.JContainer
       end
     end
     
+    function setSelectionFromHandler(obj)
+      cur = obj.Handler.currentSelection.selected;
+      % set the string.
+      obj.datumInput.String = obj.formatDatumString(cur);
+    end
+    
+    function setFile(obj,~,~)
+      [~,f,root] = iris.app.Info.putFile( ...
+        'Analysis Output File', ...
+        '*.mat', ...
+        fullfile(obj.labelFileRoot.String,[obj.editFileOutput.String,'.mat']) ...
+        );
+      if isempty(root), return; end
+      obj.labelFileRoot.String = root;
+      f = matlab.lang.makeValidName(regexprep(f,'\.mat$',''));
+      obj.editFileOutput.String = f;
+      obj.validateFilename(obj.editFileOutput,[]);
+    end
+    
     function tableChangeSize(obj,src,evnt)
       % get the width of the figure
       figureWidth = obj.container.Position(3);
@@ -248,7 +275,7 @@ classdef analyze < iris.ui.JContainer
           evnt.Source.Position(3)*figureWidth-src.UserData-2 ...
           };
       end
-      pause(0.001); %drawnow;
+      pause(0.001); %drawnow('limitrate')
       outputCalling = [];
       inputCalling = [];
     end
@@ -272,24 +299,6 @@ classdef analyze < iris.ui.JContainer
         % otherwise
         disp(event.EventName)
       end
-    end
-    
-    function setSelectionFromHandler(obj)
-      cur = obj.Handler.currentSelection.selected;
-      % set the string.
-      obj.datumInput.String = obj.formatDatumString(cur);
-    end
-    
-    function setFile(obj,~,~)
-      [~,f,root] = iris.app.Info.putFile( ...
-        'Analysis Output File', ...
-        '*.mat', ...
-        fullfile(obj.labelFileRoot.String,[obj.editFileOutput.String,'.mat']) ...
-        );
-      if isempty(root), return; end
-      obj.labelFileRoot.String = root;
-      f = matlab.lang.makeValidName(regexprep(f,'\.mat$',''));
-      obj.editFileOutput.String = f;
     end
     
     function expressions = formatDatumString(obj,inds)

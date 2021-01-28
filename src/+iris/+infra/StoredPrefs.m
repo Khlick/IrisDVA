@@ -26,7 +26,12 @@ classdef (Abstract) StoredPrefs < handle
       setpref(obj.settingsGroup, obj.settingsPreference, settingsMap);
       obj.instanceMap = settingsMap(obj.settingsKey);
     end
-
+    
+    function delete(obj)
+      obj.save();
+      pause(0.001);
+    end
+    
   end
 
   methods (Access = protected)
@@ -43,22 +48,6 @@ classdef (Abstract) StoredPrefs < handle
         settingsMap(settingsKey) = containers.Map();
       end
       obj.instanceMap = settingsMap(settingsKey);
-      %%% DEV
-      %{
-      dispStr = sprintf( ...
-        [ ...
-          'Custom preference created:\n', ...
-          'Setting Key: %31s\n', ...
-          'Pref Key:  %33s\n' ...
-        ], ...
-        obj.settingsKey, ...
-        obj.settingsPreference ...
-      );
-      
-      fprintf(dispStr)
-      %}
-      %%%
-      
     end
 
     function tf = isKey(obj, key)
@@ -80,7 +69,7 @@ classdef (Abstract) StoredPrefs < handle
     function put(obj, key, value)
       obj.instanceMap(key) = value;
     end
-
+    
   end
 
 end

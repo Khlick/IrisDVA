@@ -49,7 +49,7 @@ catch e
   app.loadShow.shutdown();
   app.ui.focus();
   iris.app.Info.throwError(e.message);
-  return %?
+  
 end
 app.loadShow.updatePercent('Saved!');
 pause(1.5);
