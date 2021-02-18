@@ -36,11 +36,15 @@ switch type
   case 'Data'
     % otherwise use previous unless previous was a session file, then reorder to
     % first non-session file
-    while ismember(filterText(1,1),sesExt)
-      filterText = circshift(filterText,-1);
+    if ~ispc
+      filterText = allSupport;
+    else
+      while ismember(filterText(1,1),sesExt)
+        filterText = circshift(filterText,-1);
+      end
+      % append all supported back
+      filterText(end+1,:) = allSupport;
     end
-    % append all supported back
-    filterText(end+1,:) = allSupport;
 end
 
 if iris.app.Info.checkDir(opts.UserDirectory)
@@ -79,7 +83,11 @@ app.ui.toggleSwitches('off');
 
 % get the reader function name
 label = filterText{fltIdx,2};
-reader = app.validFiles.getReadFxnByLabel(label);
+if startsWith(label,'All')
+  reader = app.validFiles.getReadFxnFromFile(files);
+else
+  reader = app.validFiles.getReadFxnByLabel(label);
+end
 
 % kill dataOverview if it is open
 app.services.shutdown( ...
