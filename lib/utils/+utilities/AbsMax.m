@@ -8,6 +8,9 @@ end
 
 [~,ind] = max(abs(matx),[],dim,'linear','omitnan');
 absmax = matx(ind);
+
+[ind,~] = ind2sub(size(matx),ind);
+
 if nargout > 1, varargout{1} = ind; end
 end
 
