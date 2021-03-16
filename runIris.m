@@ -21,7 +21,8 @@ cu = onCleanup(@()onLoaded(splash));
 
 % Warn if version is < 9.5 (2018b) as 2018a will have keyboard issues.
 v = ver('matlab');
-if str2double(v.Version) < 9.5
+v = strsplit(v.Version,'.');
+if str2double(v{1}) <= 9 && str2double(v{2}) < 5
   error('Iris DVA requires matlab version 9.5 (2018b) or newer.');
 end
 

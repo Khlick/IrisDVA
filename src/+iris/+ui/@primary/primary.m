@@ -279,6 +279,7 @@ classdef primary < iris.ui.UIContainer
             event.Source.Value = event.PreviousValue;
             return
           end
+          event.Source.Value = num2str(num(1));
         case 'Slider'
           % sliders case, round to nearest int and determine if it is one of the
           % current selections.

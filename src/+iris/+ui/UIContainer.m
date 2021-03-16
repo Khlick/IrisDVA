@@ -193,9 +193,13 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       % See also MATLAB\R20###\toolbox\matlab\uitools\uicomponents\components\...
       %            +matlab\+ui\+internal\+controller\FigureController.m\flushCoalescer()
       % See  https://gist.github.com/Dev-iL/398a38ae03c6ef9ebf935d46884ce74d
-      obj.synchronizer = struct(struct(struct(obj.container).Controller).PeerModelInfo).Synchronizer;
-      obj.synchronizer.setCoalescerMinDelay(0);
-      obj.synchronizer.setCoalescerMaxDelay(5);
+      v = version('-release');
+      v = str2double(regexprep(v,'[^\d]*',''));
+      if v < 2021
+        obj.synchronizer = struct(struct(struct(obj.container).Controller).PeerModelInfo).Synchronizer;
+        obj.synchronizer.setCoalescerMinDelay(0);
+        obj.synchronizer.setCoalescerMaxDelay(5);
+      end
             
       % now gather the web window for the container
       drawnow('limitrate');

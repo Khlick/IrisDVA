@@ -94,7 +94,8 @@ end
 
 %% Keyboard
 v = ver('matlab');
-if str2double(v.Version) < 9.5
+v = strsplit(v.Version,'.');
+if str2double(v{1}) <= 9 && str2double(v{2}) < 5
 
   iris.app.Info.showWarning( ...
     ['Keyboard functionality requires MATLAB',char(hex2dec('00a9')),'9.5.'] ...

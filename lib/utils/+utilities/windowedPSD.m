@@ -6,7 +6,8 @@ arguments
   windowParams.windowDuration (1,1) double = fix(length(Y)/5)/fs;
   windowParams.windowOverlap (1,1) double  = fix(length(Y)/5)/fs / 3;
   windowParams.windowFx (1,1) string {isValidWindow(windowParams.windowFx)} = "hann"
-  fftParams.NFFT = 2^nextpow2(length(Y))
+  fftParams.NFFT (1,1) double = 2^nextpow2(length(Y))
+  fftParams.TruncateFrequency (1,1) uint64 = 0
 end
 
 if windowParams.windowOverlap >= windowParams.windowDuration
@@ -52,11 +53,17 @@ dT = 1/fs;
 nyquistFreq = fs/2;
 nFreqs = fix(fftParams.NFFT/2) + 1;
 freqs = linspace(0,1,nFreqs)' * nyquistFreq;
-factor = dT/L; % for psd
+factor = dT/sum(h.^2); % for psd
 
 x = ((1:L)' - 1) / fs;
 
-mags = nan(fftParams.NFFT,K);
+if fftParams.TruncateFrequency
+  stopIndex = find(freqs <= fftParams.TruncateFrequency,1,'last');
+else
+  stopIndex = nFreqs;
+end
+
+mags = nan(stopIndex,K);
 parfor k = 1:K
   ix = rowInds + columnInds(k);
   sig = Y(ix);
@@ -65,13 +72,13 @@ parfor k = 1:K
   sig = sig - polyval(cfs,x);
   sig = sig .* h;
   % center the signal and compute nfft size fourier
-  mags(:,k) = factor .* abs(fft(sig-mean(sig),fftParams.NFFT)) .^ 2; %#ok<*PFBNS>
+  m = abs(fft(sig,fftParams.NFFT)) .^ 2; %#ok<*PFBNS>
+  mags(:,k) = m(1:stopIndex);
 end
 
 % average and correct for windowing
-%mags = sum(mags,2)/trapz(freqs([1:end,(end-1):-1:2]),sum(mags,2));
-mags = mean(mags,2);
-mags = mags(1:nFreqs);
+mags = factor.*mean(mags,2);
+freqs = freqs(1:stopIndex);
 end
 
 
