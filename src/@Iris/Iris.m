@@ -558,7 +558,12 @@ classdef Iris < iris.app.Container
     
     function openSessionConverter(app,~,~)
       app.ui.hide();
-      files = utilities.ReadToSession();
+      files = [];
+      try
+        files = utilities.ReadToSession();
+      catch x
+        iris.app.Info.showWarning(x.message);
+      end
       if ~isempty(files)
         openFiles = iris.ui.questionBox( ...
           'Prompt', 'Would you like to import converted files?', ...

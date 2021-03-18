@@ -143,8 +143,8 @@ classdef AxesPanel < handle
       obj.Axes.HitTest = 'off';
       obj.Axes.BusyAction = 'cancel';
       obj.Axes.Toolbar.Visible = 'off';
-      obj.Axes.Interactions = [panInteraction zoomInteraction];
-      
+      %obj.Axes.Interactions = [dataTipInteraction rulerPanInteraction zoomInteraction];
+      disableDefaultInteractivity(obj.Axes);
       
       %%% Experimental modification of the HTMLCanvas object.
       % Combining these hacks appears to have no effect on plotting but highly
@@ -155,24 +155,24 @@ classdef AxesPanel < handle
       
       
       % this might break drawnow calls, not sure
-      try %#ok<TRYNC>
+      %try %#ok<TRYNC>
         % Setting this to 'on' reduces the quality of the lines but increases speed
         % of drawing them and zooming/panning. So I can't seem to find what exactly
         % is changed, I would expect that the render is being sent rather than the
         % data, meaning, possibly, a bmp is displayed rather than a svg.
         % >=2020a axes() not uiaxes() we find the Canvas at
         %obj.Axes.NodeParent(1).findCanvas().ServerSideRendering = 'on';
-      end
+      %end
       
-      try %#ok<TRYNC>
+      %try %#ok<TRYNC>
         % This may not have an effect. It seems a slight increase, maybe, when this
         % warning is turned off, perhaps only because the function is called or
         % terminates early?
         % for uiaxes()
         %obj.Axes.NodeChildren(1).RenderWarningLevel = 'off';
         % for 2020a on axes() and not uiaxes()
-        obj.Axes.NodeParent(1).findCanvas().RenderWarningLevel = 'off';
-      end
+      %  obj.Axes.NodeParent(1).findCanvas().RenderWarningLevel = 'off';
+      %end
       %}
       % set other properties on the axis, or allow override of default
       fields = fieldnames(pr.Unmatched);
@@ -225,7 +225,7 @@ classdef AxesPanel < handle
       obj.ylab.Position = [Y_x,Y_y,Y_width,Y_height];
       
       try
-        obj.setupDOM;
+        obj.setupDOM();
       catch err
         delete(obj);
         iris.app.Info.throwError(err.message);
@@ -471,17 +471,19 @@ classdef AxesPanel < handle
   methods
     
     function d = get.domain(obj)
-      lineArray = obj.Axes.Children;
+      import utilities.domain
+      
+      lineArray = obj.currentLines;
       if isempty(lineArray) 
         d = struct('x',[0,1],'y',[0,1]); 
         return; 
       end
-      doms = arrayfun( ...
-        @(ln)[utilities.domain(ln.XData);utilities.domain(ln.YData)], ...
+      doms = cellfun( ...
+        @(ln)[domain(ln.XData);domain(ln.YData)], ...
         lineArray, ...
         'UniformOutput', false ...
-        );
-      doms = utilities.domain(cat(2,doms{:})')';
+        ); %#ok<CPROP>
+      doms = domain(cat(2,doms{:})')'; %#ok<CPROP>
       d = struct('x',doms(1,:), 'y', doms(2,:));
     end
     
@@ -505,7 +507,6 @@ classdef AxesPanel < handle
       % temporarily set axis modes to auto
       %obj.Axes.YLimMode = 'auto';
       %obj.Axes.XLimMode = 'auto';
-      % if lines exist, 
       
       nExist = numel(obj.currentLines);
       for ix = 1:numel(hD)

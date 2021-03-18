@@ -66,7 +66,8 @@ else
   % using parallel pool
   % build future calls
   for I = 1:nf
-    reader = str2func(vf.getReadFxnFromFile(files{I,1}));
+    reader = vf.getReadFxnFromFile(files{I,1});
+    reader = str2func(reader{1});
     futures(I) = parfeval(POOL,reader,1,fullFiles{I}); %#ok<AGROW>
   end
   % collect from futures
