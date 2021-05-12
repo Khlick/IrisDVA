@@ -55,7 +55,7 @@ S = cell(1,nf);
 
 if nf == 1
   
-  reader{1} = vf.getReadFxnFromFile(files{1,1});
+  reader(1) = vf.getReadFxnFromFile(files{1,1});
   try
     S{1} = feval(reader{1},fullFiles{1});
   catch er

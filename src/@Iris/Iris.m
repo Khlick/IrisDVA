@@ -43,7 +43,7 @@ classdef Iris < iris.app.Container
       sourceRootPath = fullfile(iris.app.Info.getResourcePath(),'scripts','helper');
       sourcePath = fullfile(sourceRootPath,'@IrisDVA');
       
-      if (isempty(hDir) || strcmp(hDir,""))
+      if (isempty(hDir) || strcmp(hDir,"")) || strcmp(hDir,sourceRootPath)
         % prompt
         pt = iris.ui.questionBox( ...
           'Title', 'Install Helpers', ...

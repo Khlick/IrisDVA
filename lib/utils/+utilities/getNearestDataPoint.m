@@ -33,9 +33,12 @@ while isempty(xValue)
   
   range = low:high;
   
-  [yDists,xLoc] = min(abs(target(2) - Ys(range,:)));
+  %[yDists,xLoc] = min(abs(target(2) - Ys(range,:)));
+  [~,xLoc] = min(abs(target(2) - Ys(range,:)));
   %get which column vector is the closest
-  [~,colIndex] = min(yDists);
+  %[~,colIndex] = min(yDists);
+  
+  colIndex = 1;
   
   yValue = Ys(range(xLoc(colIndex)),colIndex);
   xValue = Xs(range(xLoc(colIndex)),colIndex); % could be empty
