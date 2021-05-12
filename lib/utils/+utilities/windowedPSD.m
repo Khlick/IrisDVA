@@ -6,6 +6,7 @@ arguments
   windowParams.windowDuration (1,1) double = fix(length(Y)/5)/fs;
   windowParams.windowOverlap (1,1) double  = fix(length(Y)/5)/fs / 3;
   windowParams.windowFx (1,1) string {isValidWindow(windowParams.windowFx)} = "hann"
+  windowParams.deMeanWindows (1,1) logical = false
   fftParams.NFFT (1,1) double = 2^nextpow2(length(Y))
   fftParams.TruncateFrequency (1,1) uint64 = 0
 end
@@ -67,9 +68,11 @@ mags = nan(stopIndex,K);
 parfor k = 1:K
   ix = rowInds + columnInds(k);
   sig = Y(ix);
-  % remove linear
-  cfs = polyfit(x,sig,1);
-  sig = sig - polyval(cfs,x);
+  if windowParams.deMeanWindows
+    % remove linear
+    cfs = polyfit(x,sig,1);
+    sig = sig - polyval(cfs,x);
+  end
   sig = sig .* h;
   % center the signal and compute nfft size fourier
   m = abs(fft(sig,fftParams.NFFT)) .^ 2; %#ok<*PFBNS>

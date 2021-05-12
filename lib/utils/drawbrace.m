@@ -20,14 +20,22 @@ function h = drawbrace(start, stop, width, varargin)
 %    URL: https://www.mathworks.com/matlabcentral/fileexchange/38716-curly-brace-annotation
     
     % Get axis size
-    pos = get(gca, 'Position');
+    
+    if numel(varargin)>0 && ismember("axes",lower(string(varargin(1:2:end))))
+      loc = find(ismember("axes",lower(string(varargin(1:2:end)))),1,'first')*2;
+      axs = varargin{loc};
+      varargin([loc-1,loc]) = [];
+    else
+      axs = gca;
+    end
+    pos = get(axs, 'Position');
     opos = get(gcf, 'Position');
     ylims = ylim;
     xlims = xlim;
     
     % Take logarithmic scale into account
-    isxlog = strcmp(get(gca, 'XScale'), 'log');
-    isylog = strcmp(get(gca, 'YScale'), 'log');
+    isxlog = strcmp(get(axs, 'XScale'), 'log');
+    isylog = strcmp(get(axs, 'YScale'), 'log');
     if isxlog
         start(1) = log(start(1));
         stop(1) = log(stop(1));
@@ -79,7 +87,7 @@ function h = drawbrace(start, stop, width, varargin)
         y = exp(y); end
     
     % Plot brace
-    h = line(x, y);
+    h = line(axs,x, y);
     for i = 1:2:numel(varargin)
         set(h, varargin{i}, varargin{i+1}); 
     end

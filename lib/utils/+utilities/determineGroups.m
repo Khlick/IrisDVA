@@ -1,13 +1,15 @@
-function groupInfo = determineGroups(cellArray,inclusions)
+function groupInfo = determineGroups(cellArray,inclusions,dropExcluded)
 % DETERMINEGROUPS Create a grouping vector from cell array input.
 %   DETERMINEGROUPS Expects the input table, or 2-D cell array, to contain only
 %   strings (char arrays) in order to determine grouping vectors. 
+
+if nargin < 3, dropExcluded = true; end %work just as prior to 2021 release
 if nargin < 2, inclusions = true(size(cellArray,1),1); end
 if numel(inclusions) ~= size(cellArray,1)
   error( ...
     [ ...
-      'Inclusion vector must be logical array ', ...
-      'with the same length as the input table.' ...
+    'Inclusion vector must be logical array ', ...
+    'with the same length as the input table.' ...
     ] ...
     );
 end
@@ -16,11 +18,19 @@ nIDs = length(idNames);
 if istable(cellArray)
   inputTable = cellArray;
   cellArray = table2cell(cellArray);
-else
+elseif iscell(cellArray)
   inputTable = cell2table( ...
     cellArray, ...
     'VariableNames', sprintfc('Input%d', 1:size(cellArray,2)) ...
     );
+elseif ismatrix(cellArray)
+  inputTable = array2table( ...
+    cellArray, ...
+    'VariableNames', sprintfc('Input%d', 1:size(cellArray,2)) ...
+    );
+  cellArray = table2cell(inputTable);
+else
+  error("IRISDATA:DETERMINEGROUPS:INPUTUNKNOWN","Incorrect input type.");
 end
 
 idNames = matlab.lang.makeValidName(idNames);
@@ -29,20 +39,32 @@ theEmpty = cellfun(@isempty, cellArray);
 if any(theEmpty)
   cellArray(theEmpty) = {'empty'};
 end
+
+
 %get classes of each element
 caClass = cellfun(@class, cellArray, 'unif', 0);
 groupVec = zeros(size(cellArray));
 for col = 1:size(cellArray,2)
   [classes,~,groupVec(:,col)] = unique(caClass(:,col), 'stable');
-  if length(classes) == 1
+  if numel(classes) == 1
+    % this is the simple case where the input was likely a table
     switch classes{1}
       case 'char'
         iterDat = cellArray(:,col);
+      case 'string'
+        iterDat = [cellArray{:,col}]';
+      case { ...
+          'double','single','int8','int16','int32','int64', ...
+          'uint8','uint16','uint32','uint64' ...
+          }
+        iterDat = cat(1,cellArray{:,col});
       otherwise
-        iterDat = [cellArray{:,col}];
+        % TODO: expand to other classes!
+        error('Cannot group on %s type.',classes{1});
     end
-    [~,~,groupVec(:,col)] = unique(cat(1,iterDat),'stable');
-    %simple case, skip to next iteration or end
+
+    % get the unique indices for this column
+    [~,~,groupVec(:,col)] = unique(iterDat,'stable');
     continue
   end
   groupVec(theEmpty,col) = 0;
@@ -58,75 +80,56 @@ for col = 1:size(cellArray,2)
     groupVec(cin) = groupVec(cin) + g;
   end
 end
-% subset the grouping vector
-groupVec(~inclusions,:) = [];
 
-% Turn Group Vector into table
-groupTable = table();
-for g = 1:length(idNames)
-  groupTable.(idNames{g}) = groupVec(:,g);
+% Drop exclusions
+if dropExcluded
+  vecLen = sum(inclusions);
+  groupVec(~inclusions,:) = [];
+  inputTable(~inclusions,:) = [];
+else
+  vecLen = height(inputTable);
+  groupVec(~inclusions) = 0;
 end
-groupTable.Properties.VariableNames = idNames;
-[groupTable,iSort] = unique(groupTable,'rows','stable');
-groupTable = [groupTable,inputTable(iSort,:)];
+
+
+
+% get the group mapping
+[uGroups,groupIdx,Singular] = unique(groupVec,'rows');
+groupTable = [array2table(uGroups,'VariableNames',idNames),inputTable(groupIdx,:)];
 groupTable.Combined = rowfun( ...
-  @(x)join(x,'::'), ...
-  inputTable(iSort,:), ...
+  @(x)join(string(x),'::'), ...
+  inputTable(groupIdx,:), ...
   'SeparateInputs', false, ...
   'OutputFormat', 'uniform' ...
   );
-
-
-vecLen = size(groupVec,1);
-nGroups = height(groupTable);
-
-Singular = zeros(vecLen,1);
-posMap = containers.Map(1,false(size(groupVec)));
-for row = 1:height(groupTable)
-  % go down each row the table and find where groupVec matches
-  tf = false(size(groupVec));
-  mapCombs = zeros(1,size(groupVec,2));
-  for c = 1:nIDs
-    % loop through table columns and find locations of matches to this row
-    thisRowColVal = groupTable.(idNames{c})(row);
-    tf(:,c) = groupVec(:,c) == thisRowColVal;
-    mapCombs(c) = thisRowColVal;
-  end
-  merged = splitapply(@all,tf,(1:vecLen)');
-  Singular(merged) = row;
-  posMap(row) = mapCombs;
+% get counts
+if any(~uGroups)
+  % ensure 0 if exclusions are present
+  Singular = Singular - 1;
 end
-
-% Get the counts from the singular vector and append to groupsInfo.Table
-groupTable.Counts = zeros(nGroups,1);
-groupTable.SingularMap = zeros(nGroups,1);
+  
 tblt = tabulate(Singular);
-% tblt appears to arrive sorted, so we have to backwards map the counts to the
-% original location in the table. If everything came in sorted alright, then
-% this is a little bit overkill.
-tabComps = groupTable{:,idNames};
-for i = 1:size(tblt,1)
-  matches = splitapply( ...
-    @all, ...
-    tabComps == posMap(tblt(i,1)), ...
-    (1:size(tabComps,1))' ...
-    );
-  groupTable.Counts(matches) = tblt(i,2);
-  groupTable.SingularMap(matches) = tblt(i,1);
-end
+
+% tblt arrives sorted because we let unique(groupVec) sort Singular. So we
+% can map value and counts to rows of the groupTable
+groupTable.Counts = tblt(:,2);
+groupTable.SingularMap = tblt(:,1);
+groupTable.Frequency = tblt(:,3);
+
 %output
 groupInfo = struct();
-groupInfo.Table = groupTable;
 groupInfo.Singular = Singular;
 % Setup group vector for use with grpstats in the Statistics and machine
-% learning toolbox. 
+% learning toolbox.
+
 groupInfo.Vectors = mat2cell(groupVec, ...
   vecLen,...
-  ones(1,size(groupVec,2)) ...
+  ones(1,nIDs) ...
   );
+
 % Reorganize table
 groupInfo.Table = movevars( ...
-  groupInfo.Table, ...
+  groupTable, ...
   {'SingularMap','Counts'}, ...
   'After', ...
   idNames{end} ...

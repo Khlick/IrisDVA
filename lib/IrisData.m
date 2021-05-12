@@ -287,7 +287,7 @@ classdef IrisData
       if isOverride && overrideLength == obj.nDatums
         inclusions = p.Results.inclusionOverride;
       else
-        inclusions = obj.InclusionList();
+        inclusions = obj.InclusionList;
       end
       
       %Determine the grouping vector
@@ -826,7 +826,7 @@ classdef IrisData
       end
       
       % create new IrisData object
-      iData = newObj.UpdateData(data);
+      iData = newObj.UpdateData(data).AppendUserData('FilterParameters',p.Results);
       
     end
     
@@ -3589,11 +3589,19 @@ classdef IrisData
       if istable(cellArray)
         inputTable = cellArray;
         cellArray = table2cell(cellArray);
-      else
+      elseif iscell(cellArray)
         inputTable = cell2table( ...
           cellArray, ...
           'VariableNames', sprintfc('Input%d', 1:size(cellArray,2)) ...
           );
+      elseif ~iscell(cellArray) && ismatrix(cellArray)
+        inputTable = array2table( ...
+          cellArray, ...
+          'VariableNames', sprintfc('Input%d', 1:size(cellArray,2)) ...
+          );
+        cellArray = table2cell(inputTable);
+      else
+        error("IRISDATA:DETERMINEGROUPS:INPUTUNKNOWN","Incorrect input type.");
       end
       
       idNames = matlab.lang.makeValidName(idNames);
@@ -4046,9 +4054,7 @@ classdef IrisData
         
       end %isRef
       
-      % check for an existing parpool but don't create one.
-      nLiveWorkers = getNumWorkers();
-      parfor (d = 1:nData,nLiveWorkers)
+      for d = 1:nData
         this = S(d);
         ndevs = this.nDevices;
         thisX = []; %#ok
@@ -4133,22 +4139,6 @@ classdef IrisData
       if nargout > 1
         varargout{1} = baselineValues;
       end
-      % local function to handle parpool generation
-      % In the future, I may have Iris force open the default pool... for now, only
-      % use a parpool if it already exists
-      function N = getNumWorkers()
-        try
-          p = gcp('nocreate');
-        catch x
-          p = [];
-          fprintf('\nParallel Computing Toolbox not installed!\n');
-        end
-        if isempty(p)
-          N=0;
-        else
-          N=p.NumWorkers;
-        end
-      end
       % local function which detects and throws warning if it hasn't been encountered
       % before
       function checkFitWarn()
@@ -4175,7 +4165,7 @@ classdef IrisData
             inds = [inds,thisLen-ofst-((npts:-1:1)-1)];
           end
         otherwise
-          error('Do not recognize type, "%s".',type);
+          error('Cannot recognize type, "%s".',type);
       end
       % validate inds
       inds(inds <= 0) = [];
@@ -4231,7 +4221,7 @@ classdef IrisData
           yLen = size(thisY,1);
           
           % get column means for reducing the zero offset artifacts from filtering.
-          mu = nanmean(thisY,1);
+          mu = mean(thisY,1,'omitnan');
           
           % find and replace nans with mu
           [rowNans,colNans] = find(isnan(thisY));

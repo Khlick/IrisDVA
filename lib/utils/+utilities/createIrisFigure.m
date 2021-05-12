@@ -1,4 +1,4 @@
-function fig = createIrisFigure(name,width,height,visible,figureParams)
+function fig = createIrisFigure(name,width,height,visible,varargin)
 %CREATEIRISFIGURE Creates a figure with iris theming
 
 arguments
@@ -6,7 +6,9 @@ arguments
   width (1,1) double {mustBeNonnegative} = 1000
   height (1,1) double {mustBeNonnegative} = 650
   visible matlab.lang.OnOffSwitchState = 'off'
-  figureParams.?matlab.ui.Figure
+end
+arguments (Repeating)
+  varargin
 end
 
 import utilities.centerFigPos;
@@ -47,10 +49,18 @@ params = { ...
 params(:,1) = lower(params(:,1));
 params = cell2struct(params(:,2),params(:,1));
 
-fn = fieldnames(figureParams);
-for f = string(fn(:)')
-  params.(lower(f)) = figureParams.(f);
+if numel(varargin) > 1
+  fn = cellfun(@string,varargin(1:2:end),'UniformOutput',true);
+  figureParams = cell2struct( ...
+    varargin(2:2:end)', ...
+    fn ...
+    );
+
+  for f = fn
+    params.(lower(f)) = figureParams.(f);
+  end
 end
+
 
 params.name = name;
 params.position = centerFigPos(width,height);

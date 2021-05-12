@@ -12,5 +12,6 @@ absmax = matx(ind);
 [ind,~] = ind2sub(size(matx),ind);
 
 if nargout > 1, varargout{1} = ind; end
+if nargout > 2, varargout{2} = sign(absmax); end
 end
 
