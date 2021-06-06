@@ -97,7 +97,9 @@ classdef Handler < matlab.mixin.Copyable
       end
       % reevaluate Meta, Notes and Files
       if any(filesToDrop)
-        remove(obj.fileMap,obj.fileList(filesToDrop));
+        fl = obj.fileList;
+        fl = cellstr(fl);
+        remove(obj.fileMap,fl(filesToDrop));
         obj.Meta(filesToDrop) = [];
         noteInds = [obj.membership{filesToDrop}];
         noteInds = [noteInds.notes];

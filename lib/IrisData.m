@@ -164,7 +164,9 @@ classdef IrisData
       %   Usage:
       %     aggs = AGGREGATE(IrisData, Name, Value); Where Name,Value pairs
       %     can be...
-      %   @param 'groupBy': A valid filter name cellstr or 'none'.
+      %   @param 'groupBy': A valid filter name cellstr, string array, 'none',
+      %     or 'all'. Using 'none' will apply 'statistic' to individual datums
+      %     without aggregation. Using 'all' will aggregate all epochs into one.
       %   @param 'customGrouping': Provide a iData.nDatums length grouping
       %     vector for custom grouping.
       %   @param 'devices': A valid device name or 'all' (see property:
@@ -3277,12 +3279,7 @@ classdef IrisData
                 % ignore any more inputs after s(2)
                 switch class(s(2).subs{1}) %look only at first entry
                   case {'string', 'char'}
-                    mb = obj.Membership(s(2).subs{1});
-                    if isfield(mb,'Meta')
-                      inds = mb.Meta;
-                    else
-                      inds = ismember(obj.Files, s(2).subs{1});
-                    end
+                    inds = ismember(obj.Files, s(2).subs{1});
                     varargout = obj.Meta(inds);
                     return
                 end
