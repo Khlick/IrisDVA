@@ -125,7 +125,7 @@ classdef primary < iris.ui.UIContainer
   end
   
   properties (SetAccess= private, GetAccess= ?Iris, SetObservable= true)
-    lastDataPoint = [0,0]
+    lastDataPoint = struct('lastDataCoordinates',[0,0],'datumIndex',0,'datumID','');
   end
   
   properties (Dependent)
@@ -412,7 +412,7 @@ classdef primary < iris.ui.UIContainer
       % Send the index to the ticker validation method
       obj.ValidateTicker('selection', eventData(event.Data) );
       if ~isequal(obj.lastDataPoint, event.Data.lastDataCoordinates)
-        obj.lastDataPoint = event.Data.lastDataCoordinates;
+        obj.lastDataPoint = event.Data;
       end
     end
     

@@ -26,7 +26,7 @@ classdef Info < handle
       if ~nargin
         sub = 'public';
       end
-      status = {2,0,116};
+      status = {2,0,131};
       switch sub
         case 'major'
           v = sprintf('%d', status{1});
@@ -53,7 +53,7 @@ classdef Info < handle
     end
 
     function y = year()
-      y = '2016-2020';
+      y = '2016-2021';
     end
 
     function loc = getResourcePath()
@@ -192,9 +192,14 @@ classdef Info < handle
     function AStruct = getAvailableAnalyses()
       builtinDir = fullfile(iris.app.Info.getResourcePath, 'Analyses');
       extended = iris.pref.analysis.getDefault().AnalysisDirectory;
-
-      builtins = cellstr(ls(builtinDir));
-      extendeds = cellstr(ls(extended));
+      
+      if ispc
+        builtins = cellstr(ls(builtinDir));
+        extendeds = cellstr(ls(extended));
+      else
+        builtins = strtrim(regexp(ls(builtinDir),'(?<!.m)[\w\s]+\.m', 'match')).';
+        extendeds = strtrim(regexp(ls(extended),'(?<!.m)[\w\s]+\.m', 'match')).';
+      end
 
       Analyses = [builtins; extendeds];
       Analyses(ismember(Analyses, {'.', '..'})) = [];

@@ -389,8 +389,6 @@ classdef Iris < iris.app.Container
     function onToggleDatum(app,~,event)
       % sel toggle selection
       app.handler.setInclusion(event.Data.index,event.Data.value);
-      % allow primary to recolor through the axes object
-      %app.draw(event.Data.index);
     end
     %
     function onToggleSwitch(app,~,event)

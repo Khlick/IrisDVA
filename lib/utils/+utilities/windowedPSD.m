@@ -1,19 +1,22 @@
-function [mags,freqs] = windowedPSD(Y,fs,windowParams,fftParams)
+function [mags,freqs,ci] = windowedPSD(Y,fs,windowParams,fftParams,ciParams)
 
 arguments
   Y (:,1) double
   fs (1,1) double
   windowParams.windowDuration (1,1) double = fix(length(Y)/5)/fs;
-  windowParams.windowOverlap (1,1) double  = fix(length(Y)/5)/fs / 3;
+  windowParams.windowOverlap (1,1) double  = fix(length(Y)/5)/fs / 2;
   windowParams.windowFx (1,1) string {isValidWindow(windowParams.windowFx)} = "hann"
   windowParams.deMeanWindows (1,1) logical = false
   fftParams.NFFT (1,1) double = 2^nextpow2(length(Y))
   fftParams.TruncateFrequency (1,1) uint64 = 0
+  ciParams.confidenceType (1,1) string = "BCa"
 end
 
 if windowParams.windowOverlap >= windowParams.windowDuration
   error("Overlap duration must be shorter than the window duration.");
 end
+
+import utilities.bootstrap
 
 % K = (N-ovl) / (L-ovl)
 
@@ -80,6 +83,16 @@ parfor k = 1:K
 end
 
 % average and correct for windowing
+ci = zeros(size(mags,1),2);
+parfor b = 1:size(mags,1)
+  [~,ci(b,:)] = bootstrap.getConfidenceIntervals( ...
+    factor.*mags(b,:), ...
+    @(x)mean(x,'omitnan'), ...
+    0.95, ...
+    10000, ...
+    ciParams.confidenceType ...
+    );
+end
 mags = factor.*mean(mags,2);
 freqs = freqs(1:stopIndex);
 end

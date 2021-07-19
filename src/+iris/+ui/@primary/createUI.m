@@ -164,6 +164,7 @@ obj.containerGrid.ColumnWidth = {'1x', 350};
 obj.containerGrid.RowHeight = {190, '1x'};
 obj.containerGrid.ColumnSpacing = 5;
 obj.containerGrid.RowSpacing = 5;
+obj.containerGrid.BackgroundColor = [1,1,1,0];
 
 % Create PlotControlTools
 obj.PlotControlTools = uipanel(obj.containerGrid);
@@ -499,9 +500,6 @@ obj.AxesPanel.Layout.Column = 1;
 obj.AxesPanel.BorderType = 'none';
 obj.AxesPanel.FontName = Aes.uiFontName;
 
-drawnow('limitrate');
-pause(1);
-
 % Create Axes
 obj.Axes = iris.ui.elements.AxesPanel( ...
   obj.AxesPanel, ...
@@ -536,7 +534,7 @@ obj.ExtendedInfoGrid.Padding = [3 5 3 0];
 % Create CurrentInfoPanel
 obj.CurrentInfoPanel = uipanel(obj.ExtendedInfoGrid);
 obj.CurrentInfoPanel.TitlePosition = 'centertop';
-obj.CurrentInfoPanel.Title = 'Current Selection Info';
+obj.CurrentInfoPanel.Title = 'Selected Info';
 obj.CurrentInfoPanel.FontWeight = 'bold';
 obj.CurrentInfoPanel.BackgroundColor = [1 1 1];
 obj.CurrentInfoPanel.FontName = Aes.uiFontName;

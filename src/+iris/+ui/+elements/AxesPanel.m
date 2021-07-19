@@ -13,7 +13,7 @@ classdef AxesPanel < handle
     YLabel
   end
   
-  properties (Access = private)
+  properties %(Access = private)
     container
     Parent
     Grid
@@ -90,7 +90,7 @@ classdef AxesPanel < handle
       
       % Allow a gridlayout, panel of figure
       % if we've received a handle to a figure or panel, let's create a 1x1 grid
-      % without padding or spacing. If not
+      % without padding or spacing.
       switch parentTypes{parentTypeIndex}
         case {'matlab.ui.Figure','matlab.ui.container.Panel'}
           obj.Parent = pr.Results.Parent;
@@ -138,42 +138,17 @@ classdef AxesPanel < handle
       obj.Axes = axes(obj.container);
       obj.Axes.Units = 'pixels';
       obj.Axes.Color = [1 1 1,0];
-      obj.Axes.Position = obj.getAxesPosition();
+      %obj.Axes.Position = obj.getAxesPosition();
       obj.Axes.FontWeight = 'normal';
-      obj.Axes.HitTest = 'off';
-      obj.Axes.BusyAction = 'cancel';
-      obj.Axes.Toolbar.Visible = 'off';
-      %obj.Axes.Interactions = [dataTipInteraction rulerPanInteraction zoomInteraction];
+      %obj.Axes.HitTest = 'off';
+      %obj.Axes.BusyAction = 'cancel';
+      %obj.Axes.Toolbar.Visible = 'off';
+      obj.Axes.Interactions = [rulerPanInteraction zoomInteraction];
+      
       disableDefaultInteractivity(obj.Axes);
+      pause(0.01);
+      enableDefaultInteractivity(obj.Axes);
       
-      %%% Experimental modification of the HTMLCanvas object.
-      % Combining these hacks appears to have no effect on plotting but highly
-      % increases performance. One caveat is that with serversiderendering = 'on', we
-      % get a slight degradation of highly sampled data. Not a problem considering
-      % the huge amount of speed increase.
-      % Let's hope MW don't see this and disable it, as they are wont to do.
-      
-      
-      % this might break drawnow calls, not sure
-      %try %#ok<TRYNC>
-        % Setting this to 'on' reduces the quality of the lines but increases speed
-        % of drawing them and zooming/panning. So I can't seem to find what exactly
-        % is changed, I would expect that the render is being sent rather than the
-        % data, meaning, possibly, a bmp is displayed rather than a svg.
-        % >=2020a axes() not uiaxes() we find the Canvas at
-        %obj.Axes.NodeParent(1).findCanvas().ServerSideRendering = 'on';
-      %end
-      
-      %try %#ok<TRYNC>
-        % This may not have an effect. It seems a slight increase, maybe, when this
-        % warning is turned off, perhaps only because the function is called or
-        % terminates early?
-        % for uiaxes()
-        %obj.Axes.NodeChildren(1).RenderWarningLevel = 'off';
-        % for 2020a on axes() and not uiaxes()
-      %  obj.Axes.NodeParent(1).findCanvas().RenderWarningLevel = 'off';
-      %end
-      %}
       % set other properties on the axis, or allow override of default
       fields = fieldnames(pr.Unmatched);
       for f = string(fields(:))'

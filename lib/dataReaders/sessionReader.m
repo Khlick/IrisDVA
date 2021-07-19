@@ -30,6 +30,10 @@ catch e
   throw(er);
 end
 % Merge contents and update to single file name
+fileInfo = cell(3,2);
+[fileInfo{:,2}] = fileparts(which(fileName));
+fileInfo(:,1) = {'filePath';'fileName';'fileExtension'};
+
 N = numel(session.Meta);
 if N > 1
   newM = cell(0,2);
@@ -42,6 +46,20 @@ if N > 1
     data = session.Data{d};
     for ii = 1:numel(data)
       data(ii).id = sprintf('%s-%s',f,data(ii).id);
+      % append/update file name to displayProperties
+      fileProps = cellfun( ...
+        @(p) ismember(data(ii).displayProperties(:,1), p), ...
+        fileInfo(:,1), ...
+        'UniformOutput', false ...
+        );
+      fileProps = cat(2,fileProps{:});
+      for ff = 1:3
+        if ~any(fileProps(:,ff))
+          data(ii).displayProperties(end+1,:) = fileInfo(ff,:);
+        else
+          data(ii).displayProperties{fileProps(:,1),2} = fileInfo{ff,2};
+        end
+      end
     end
     newD{d} = data;
     nt = session.Notes{d};

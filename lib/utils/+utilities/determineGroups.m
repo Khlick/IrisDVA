@@ -1,83 +1,55 @@
-function groupInfo = determineGroups(cellArray,inclusions,dropExcluded)
-% DETERMINEGROUPS Create a grouping vector from cell array input.
-%   DETERMINEGROUPS Expects the input table, or 2-D cell array, to contain only
-%   strings (char arrays) in order to determine grouping vectors. 
+function groupInfo = determineGroups(inputArray,inclusions,dropExcluded,isCustom)
+% DETERMINEGROUPS Create a grouping vector from a table or array input.
+% 
 
+if nargin < 4, isCustom = false; end
 if nargin < 3, dropExcluded = true; end %work just as prior to 2021 release
-if nargin < 2, inclusions = true(size(cellArray,1),1); end
-if numel(inclusions) ~= size(cellArray,1)
+if nargin < 2, inclusions = true(size(inputArray,1),1); end
+if numel(inclusions) ~= size(inputArray,1)
   error( ...
     [ ...
     'Inclusion vector must be logical array ', ...
-    'with the same length as the input table.' ...
+    'with the same length as the input array.' ...
     ] ...
     );
 end
-idNames = sprintfc('ID%d', 1:size(cellArray,2));
+idNames = sprintfc('ID%d', 1:size(inputArray,2));
 nIDs = length(idNames);
-if istable(cellArray)
-  inputTable = cellArray;
-  cellArray = table2cell(cellArray);
-elseif iscell(cellArray)
+if istable(inputArray)
+  inputTable = inputArray;
+  inputArray = table2cell(inputArray);
+elseif iscell(inputArray)
   inputTable = cell2table( ...
-    cellArray, ...
-    'VariableNames', sprintfc('Input%d', 1:size(cellArray,2)) ...
+    inputArray, ...
+    'VariableNames', sprintfc('Input%d', 1:size(inputArray,2)) ...
     );
-elseif ismatrix(cellArray)
+elseif ismatrix(inputArray)
   inputTable = array2table( ...
-    cellArray, ...
-    'VariableNames', sprintfc('Input%d', 1:size(cellArray,2)) ...
+    inputArray, ...
+    'VariableNames', sprintfc('Input%d', 1:size(inputArray,2)) ...
     );
-  cellArray = table2cell(inputTable);
+  inputArray = table2cell(inputTable);
 else
   error("IRISDATA:DETERMINEGROUPS:INPUTUNKNOWN","Incorrect input type.");
 end
 
 idNames = matlab.lang.makeValidName(idNames);
 
-theEmpty = cellfun(@isempty, cellArray);
+theEmpty = cellfun(@isempty, inputArray);
 if any(theEmpty)
-  cellArray(theEmpty) = {'empty'};
+  inputArray(theEmpty) = {'empty'};
 end
 
 
-%get classes of each element
-caClass = cellfun(@class, cellArray, 'unif', 0);
-groupVec = zeros(size(cellArray));
-for col = 1:size(cellArray,2)
-  [classes,~,groupVec(:,col)] = unique(caClass(:,col), 'stable');
-  if numel(classes) == 1
-    % this is the simple case where the input was likely a table
-    switch classes{1}
-      case 'char'
-        iterDat = cellArray(:,col);
-      case 'string'
-        iterDat = [cellArray{:,col}]';
-      case { ...
-          'double','single','int8','int16','int32','int64', ...
-          'uint8','uint16','uint32','uint64' ...
-          }
-        iterDat = cat(1,cellArray{:,col});
-      otherwise
-        % TODO: expand to other classes!
-        error('Cannot group on %s type.',classes{1});
-    end
-
-    % get the unique indices for this column
-    [~,~,groupVec(:,col)] = unique(iterDat,'stable');
-    continue
-  end
-  groupVec(theEmpty,col) = 0;
-  for c = classes(:)'
-    cin = ismember(caClass(:,col), c);
-    switch c{1}
-      case 'char'
-        iterDat = cellArray(cin);
-      otherwise
-        iterDat = [cellArray{cin}];
-    end
-    [~,~,g] = unique(iterDat, 'stable');
-    groupVec(cin) = groupVec(cin) + g;
+% loop and create individual grouping vectors
+groupVec = zeros(size(inputArray));
+for col = 1:size(inputArray,2)
+  if isCustom
+    % here we assume inputArray is numeric group numbers
+    % so we unpack the cell array we created above
+    groupVec(:,col) = [inputArray{:,col}];
+  else
+    groupVec(:,col) = createGroupVector(inputArray(:,col));
   end
 end
 
@@ -88,7 +60,7 @@ if dropExcluded
   inputTable(~inclusions,:) = [];
 else
   vecLen = height(inputTable);
-  groupVec(~inclusions) = 0;
+  groupVec(~inclusions,:) = 0;
 end
 
 
@@ -121,7 +93,6 @@ groupInfo = struct();
 groupInfo.Singular = Singular;
 % Setup group vector for use with grpstats in the Statistics and machine
 % learning toolbox.
-
 groupInfo.Vectors = mat2cell(groupVec, ...
   vecLen,...
   ones(1,nIDs) ...
@@ -134,4 +105,66 @@ groupInfo.Table = movevars( ...
   'After', ...
   idNames{end} ...
   );
+end
+
+
+%% Helper Functions
+function vec = createGroupVector(factorInput)
+nFactors = numel(factorInput);
+factorVec = 1:nFactors;
+grpID = 1; %start at group == 1
+vec = zeros(nFactors,1);
+for iter = factorVec
+  thisValue = factorInput(iter);
+  didAsgn = false(nFactors,1);
+  for idx = factorVec
+    if vec(idx), continue; end %already labelled
+    if isequal(thisValue,factorInput(idx))
+      didAsgn(idx) = true;
+      vec(idx) = grpID;
+    end
+  end
+  if ~any(didAsgn), continue; end
+  grpID = grpID + 1;
+end
+
+%{
+% try new algorithm above
+checkPattern = nchoosek(1:nFactors,2);
+tests = false(nFactors);
+for iter = 1:size(checkPattern,1)
+  idx = checkPattern(iter,:);
+  check = isequal(factorInput(idx(1)),factorInput(idx(2)));
+  tests(idx(1),idx(2)) = check;
+  tests(idx(2),idx(1)) = check;
+end
+[r,c] = find(tests);
+inds = zeros(numel(r),2);
+for iter = 1:numel(r)
+  inds(iter,:) = sort([r(iter),c(iter)]);
+end
+
+inds = unique(inds,'rows','stable');
+indVals = unique(inds(:,1),'stable');
+nGrouped = size(indVals,1);
+groupCounter = 1;
+vec = zeros(nFactors,1);
+for iter = 1:nGrouped
+  thisIdx = inds(inds(:,1) == indVals(iter),:);
+  thisIdx = unique(thisIdx(:));
+  skips = false(numel(thisIdx),1);
+  for jter = 1:numel(thisIdx)
+    if vec(thisIdx(jter)) 
+      skips(jter) = true;
+      continue
+    end
+    vec(thisIdx(jter)) = groupCounter;
+  end
+  if all(skips), continue; end
+  groupCounter = groupCounter + 1;
+end
+
+leftOvers = vec == 0;
+vec(leftOvers) = groupCounter + ((1:sum(leftOvers))' - 1);
+%}
 end

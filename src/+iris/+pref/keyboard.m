@@ -19,6 +19,8 @@ classdef keyboard < iris.infra.StoredPrefs
     leftarrow
     uparrow
     downarrow
+    pageup
+    pagedown
   end
   
   methods
@@ -274,6 +276,40 @@ classdef keyboard < iris.infra.StoredPrefs
         iris.pref.keyboard.createKeyCode(0,1,0,'navigateBigDown') ...
         ];
       obj.put('downarrow',v);
+    end
+    
+    % PAGEUP key
+    function a = get.pageup(obj)
+      sc = [ ...
+        iris.pref.keyboard.createKeyCode(0,1,0,'navigateSmallRight'); ...
+        iris.pref.keyboard.createKeyCode(0,0,0,'navigateWithinRight') ...
+        ];
+      a = obj.get('pageup',sc);
+    end
+    function set.pageup(obj,v)%#ok
+      % for now we won't allow overrride
+      v = [ ...
+        iris.pref.keyboard.createKeyCode(0,1,0,'navigateSmallRight'); ...
+        iris.pref.keyboard.createKeyCode(0,0,0,'navigateWithinRight') ...
+        ];
+      obj.put('pageup',v);
+    end
+    
+    % PAGEDOWN key
+    function a = get.pagedown(obj)
+      sc = [ ...
+        iris.pref.keyboard.createKeyCode(0,1,0,'navigateSmallLeft'); ...
+        iris.pref.keyboard.createKeyCode(0,0,0,'navigateWithinLeft') ...
+        ];
+      a = obj.get('pagedown',sc);
+    end
+    function set.pagedown(obj,v)%#ok
+      % for now we won't allow overrride
+      v = [ ...
+        iris.pref.keyboard.createKeyCode(0,1,0,'navigateSmallLeft'); ...
+        iris.pref.keyboard.createKeyCode(0,0,0,'navigateWithinLeft') ...
+        ];
+      obj.put('pagedown',v);
     end
     
     % ESCAPE key

@@ -7,6 +7,7 @@ S = load(fileName,'-mat');
 
 if ~tf, error('File does not contain an IrisData object.'); end
 
+% extract the session data
 session = iData.saveAsIrisSession('');
 
 end

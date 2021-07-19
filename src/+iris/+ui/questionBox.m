@@ -58,15 +58,20 @@ classdef questionBox < iris.ui.JContainer
       
       opts = unique(ip.Results.Options,'stable');
       nButtons = length(opts);
-      %{
-      if (nButtons < 2) || (nButtons > 5)
-        error('Prompt must have between 2 and 5 buttons.');
-      end
-      %}
+      
       obj.response = ip.Results.Default;
       
-      [spaces,tmp] = deal(regexp(ip.Results.Prompt, '\s'));
-      promptLength = length(ip.Results.Prompt);
+      % convert prompt text into a string
+      promptText = ip.Results.Prompt;
+      if iscell(promptText)
+        promptText = strjoin(promptText,' ');
+      end
+      % remove multiline inserts to automatically parse them
+      promptText = regexprep(promptText,'\\n',' ');
+      
+      % parse prompt text to create line breaks at appropriate space characters
+      [spaces,tmp] = deal(regexp(promptText, '\s'));
+      promptLength = length(promptText);
       
       splits = [];
       
@@ -86,27 +91,28 @@ classdef questionBox < iris.ui.JContainer
         nChars = nChars+1;
       end
       
-      splitText = cell(1,nLines);
+      splitText = cell(nLines,1);
       for c = 1:nLines
         splitText{c} = regexprep( ...
-          ip.Results.Prompt((startInds(c)+1):startInds(c+1)), ...
+          promptText((startInds(c)+1):startInds(c+1)), ...
           '^\s* | \s*$', ...
           '' ...
           );
       end
       
+      % center text and format into multiple lines if needed
+      formattedPrompt = strjoin(pad(splitText,nChars,'both'),'\n');
       
-      formattedPrompt = pad(splitText,nChars,'both');
       % window init size
       w = 265;
       h = 115;
       
       % alter height:
-      promptHeight = 15*nLines;
-      promptY = max([2*h/3-7-7*(nLines-1), 2*h/3-15]);
+      promptHeight = 22*nLines;
+      promptY = ceil(max([2*h/3-7-7*(nLines-1), 2*h/3-15]));
       
-      if nLines > 2
-        h = h+(nLines-2)*15;
+      if nLines > 1
+        h = h+(nLines-1)*22;
       end
       
       % calculate buttons
@@ -120,8 +126,8 @@ classdef questionBox < iris.ui.JContainer
       buttonBounds = (0:nButtons).* (w-30)/nButtons + 15;
       buttonSpace = min(diff(buttonBounds));
       buttonCenters = diff(buttonBounds)./2 + buttonBounds(1:end-1);
-      buttonWidth = 0.9*buttonSpace;
-      buttonStarts = buttonCenters - buttonWidth/2;
+      buttonWidth = ceil(0.9*buttonSpace);
+      buttonStarts = ceil(buttonCenters - buttonWidth/2);
       
       
       % always init with the same size
@@ -141,7 +147,8 @@ classdef questionBox < iris.ui.JContainer
         'Position', [15,promptY,(w-30),promptHeight], ...
         'String', formattedPrompt,  ...
         'FontSize', 10, ...
-        'BackgroundColor', [1 1 1] ...
+        'BackgroundColor', [1 1 1], ...
+        'Max', nLines ...
         );
       
       

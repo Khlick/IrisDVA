@@ -1,15 +1,21 @@
 function keyedInput(app,~,evt)
 
-if isempty(evt.Data.Character), return; end
+% disallow key press capture if current object is an edit field of the ui.
+if isa(app.ui.container.CurrentObject,'matlab.ui.control.EditField'), return; end
 
-modifiers = struct( ...
-  'CTRL', ismember('control', evt.Data.Modifier), ...
-  'SHIFT', ismember('shift', evt.Data.Modifier), ...
-  'ALT', ismember('alt', evt.Data.Modifier) ...
-  );
-key = lower(evt.Data.Key);
+% 
+keyDat = evt.Data;
+
+key = lower(keyDat.Key);
 % return if the key is not an action key
 if ~ismember(key,properties(app.keyMap)), return; end
+
+modifiers = struct( ...
+  'CTRL', ismember('control', keyDat.Modifier), ...
+  'SHIFT', ismember('shift', keyDat.Modifier), ...
+  'ALT', ismember('alt', keyDat.Modifier) ...
+  );
+
 if ~app.handler.isready
   % check if the call was to open/load, quit, help, about
   isOK = modifiers.CTRL && ismember(key, {'n','o','q','h'});

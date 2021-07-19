@@ -19,8 +19,8 @@ classdef IrisData
     % Data- A struct array contianing the collected data.
     Data
     
-    % Files- A string vector containing the names of files associated with this
-    % object.
+    % Files- A string vector containing the names of the most recent files
+    % associated with the contained data.
     Files
     
     % Membership- A map containing the file name and associated data and notes
@@ -237,14 +237,14 @@ classdef IrisData
         @(v)validateattributes(v,{'numeric'},{'nonnegative','scalar'}) ...
         );
       
-      p.addParameter('statistic', @(x)nanmean(x,1), ...
+      p.addParameter('statistic', @(x)mean(x,1,'omitnan'), ...
         @(v)validateattributes(v, ...
         {'char','string','function_handle','cell'}, ... %'cell'
         {'nonempty'} ...
         ) ...
         );
       
-      p.addParameter('xAggregator', @(x)nanmean(x,1), ...
+      p.addParameter('xAggregator', @(x)mean(x,1,'omitnan'), ...
         @(v)validateattributes(v, ...
         {'char','string','function_handle','cell'}, ... %'cell'
         {'nonempty'} ...
@@ -315,7 +315,7 @@ classdef IrisData
         filterTable.customGrouping = customGroup;
       elseif any(strcmpi('none',groupBy))
         groupBy = {'none'};
-        filterTable.none = num2str((1:height(filterTable))');
+        filterTable.none = string((1:height(filterTable))');
       elseif any(strcmpi('all',groupBy))
         groupBy = {'all'};
         filterTable.all = num2str(ones(height(filterTable),1));
@@ -323,7 +323,7 @@ classdef IrisData
       
       % determine the grouping
       groupingTable = filterTable(:,groupBy);
-      groups = IrisData.determineGroups(groupingTable,inclusions);
+      groups = IrisData.determineGroups(groupingTable,inclusions,true,true);
       nGroups = height(groups.Table);
       
       % Copy included datums
@@ -1491,6 +1491,82 @@ classdef IrisData
       iData = IrisData( ...
         IrisData.fastrmField(sObj,'UserData'), ...
         sObj.UserData{:} ...
+        );
+    end
+    
+    function iData = CleanInclusions(obj,inclusionOverride)
+      % CleanInclusions Drop datums flagged as excluded.
+      if nargin < 2
+        inclusionOverride = obj.InclusionList;
+      end
+      assert( ...
+        numel(inclusionOverride) == obj.nDatums, ...
+        "Inclusion override must be %d elements in length.", ...
+        obj.nDatums ...
+        );
+      assert( ...
+        ~all(~inclusionOverride), ...
+        "Cannot clear all datums." ...
+        );
+      if all(inclusionOverride)
+        iData = obj;
+        return
+      end
+      s = obj.saveobj();
+      mbr = s.Membership;
+      keys = mbr.keys();
+      for d = 1:mbr.Count
+        this = mbr(keys{d});
+        incs = inclusionOverride(this.data);
+        if ~any(~incs), continue; end
+        if all(~incs)
+          % drop the whole file
+          s.Meta(this.Meta) = [];
+          s.Data(d) = [];
+          s.Notes(d) = [];
+          s.Files(this.File) = [];
+          remove(mbr,keys{d});
+          continue
+        end
+        % only removing a subset of datums
+        % gather the desired data
+        for datidx = 1:numel(s.Data)
+          dat = s.Data{datidx};
+          if isequal(double([dat.index]),this.data)
+            break
+          end
+        end
+        % collect inclusions
+        dat = dat(incs);
+        this.data = this.data(incs);
+        % reorganize indices
+        s.Data{datidx} = dat;
+        mbr(keys{d}) = this;
+      end
+      % loop through data and reorganize datum indices
+      ofst = 0;
+      for d = 1:mbr.Count
+        dat = s.Data{d};
+        n = numel(dat);
+        
+        for keyidx = 1:mbr.Count
+          this = mbr(keys{keyidx});
+          if isequal(double([dat.index]),this.data)
+            break
+          end
+        end
+        newI = ofst + (1:n);
+        newInds = num2cell(uint64(newI));
+        [dat.index] = deal(newInds{:});
+        this.data = newI;
+        mbr(keys{keyidx}) = this;
+        ofst = ofst + n;
+      end
+      
+      % create new idata object
+      iData = IrisData( ...
+        IrisData.fastrmField(s,'UserData'), ...
+        s.UserData{:} ...
         );
     end
     
@@ -3463,7 +3539,17 @@ classdef IrisData
         obj.Membership.values() ...
         );
       fn = fieldnames(obj.UserData);
-      fv = struct2cell(obj.UserData);
+      fcontents = struct2cell(obj.UserData);
+      fv = cell(size(fcontents));
+      for f = 1:numel(fv)
+        % check for container.map so we can break references
+        if isa(fcontents{f},'containers.Map')
+          fv{f} = containers.Map(fcontents{f}.keys(),fcontents{f}.values());
+        else
+          fv{f} = fcontents{f};
+        end
+      end
+      
       C = [fn,fv]';% matrix{
       C = C(:);%single vector
       s.UserData = C;
@@ -3495,8 +3581,11 @@ classdef IrisData
       session = IrisData.fastrmField(obj.saveobj(),{'UserData','Membership','FileHistory'});
       % make modifications for session requirements
       session.Files = string(session.Files);
-      
+      fileLabs = {'filePath','fileName','fileExtension'};
       for F = 1:length(session.Files)
+        pathInfo = cell(1,3);
+        [pathInfo{:}] = fileparts(session.Files{F});
+        % get the data associated with this file
         thisData = session.Data{F};
         nData = numel(thisData);
         thisTemplate = IrisData.fastKeepField( ...
@@ -3518,7 +3607,22 @@ classdef IrisData
           rData(ep).duration = calcDur(rData(ep).y,rData(ep).sampleRate);
           % store in template
           thisTemplate(ep).responses = rData(ep);
+          % append/update file name to displayProperties
+          fileProps = cellfun( ...
+            @(p) ismember(thisTemplate(ep).displayProperties(:,1), p), ...
+            fileLabs, ...
+            'UniformOutput', false ...
+            );
+          fileProps = cat(2,fileProps{:});
+          for ff = 1:3
+            if ~any(fileProps(:,ff))
+              thisTemplate(ep).displayProperties(end+1,:) = [fileLabs(ff),pathInfo(ff)];
+            else
+              thisTemplate(ep).displayProperties{fileProps(:,1),2} = pathInfo{ff};
+            end
+          end
         end
+        
         % store
         session.Data{F} = thisTemplate;
       end
@@ -3567,94 +3671,73 @@ classdef IrisData
     % Methods that don't require object properties but should be included
     % to prevent excessive library additions to the user path.
     
-    function groupInfo = determineGroups(cellArray,inclusions)
-      % DETERMINEGROUPS Create a grouping vector from cell array input.
-      %   DETERMINEGROUPS Expects the input table, or 2-D cell array, to contain only
-      %   strings (char arrays) in order to determine grouping vectors.
+    function groupInfo = determineGroups(inputArray,inclusions,dropExcluded,isCustom)
+      % DETERMINEGROUPS Create a grouping vector from a table or array input.
+      % 
       
-      if nargin < 2, inclusions = true(size(cellArray,1),1); end
-      if numel(inclusions) ~= size(cellArray,1)
+      if nargin < 4, isCustom = false; end % override algorithm if numeric input
+      if nargin < 3, dropExcluded = true; end %work just as prior to 2021 release
+      if nargin < 2, inclusions = true(size(inputArray,1),1); end
+      if numel(inclusions) ~= size(inputArray,1)
         error( ...
           [ ...
           'Inclusion vector must be logical array ', ...
-          'with the same length as the input table.' ...
+          'with the same length as the input array.' ...
           ] ...
           );
       end
-      idNames = sprintfc('ID%d', 1:size(cellArray,2));
+      idNames = sprintfc('ID%d', 1:size(inputArray,2));
       nIDs = length(idNames);
-      if istable(cellArray)
-        inputTable = cellArray;
-        cellArray = table2cell(cellArray);
-      elseif iscell(cellArray)
+      if istable(inputArray)
+        inputTable = inputArray;
+        inputArray = table2cell(inputArray);
+      elseif iscell(inputArray)
         inputTable = cell2table( ...
-          cellArray, ...
-          'VariableNames', sprintfc('Input%d', 1:size(cellArray,2)) ...
+          inputArray, ...
+          'VariableNames', sprintfc('Input%d', 1:size(inputArray,2)) ...
           );
-      elseif ~iscell(cellArray) && ismatrix(cellArray)
+      elseif ismatrix(inputArray)
         inputTable = array2table( ...
-          cellArray, ...
-          'VariableNames', sprintfc('Input%d', 1:size(cellArray,2)) ...
+          inputArray, ...
+          'VariableNames', sprintfc('Input%d', 1:size(inputArray,2)) ...
           );
-        cellArray = table2cell(inputTable);
+        inputArray = table2cell(inputTable);
       else
         error("IRISDATA:DETERMINEGROUPS:INPUTUNKNOWN","Incorrect input type.");
       end
-      
+
       idNames = matlab.lang.makeValidName(idNames);
-      
-      theEmpty = cellfun(@isempty, cellArray);
+
+      theEmpty = cellfun(@isempty, inputArray);
       if any(theEmpty)
-        cellArray(theEmpty) = {'empty'};
+        inputArray(theEmpty) = {'empty'};
       end
-      
-      
-      %get classes of each element
-      caClass = cellfun(@class, cellArray, 'unif', 0);
-      groupVec = zeros(size(cellArray));
-      for col = 1:size(cellArray,2)
-        [classes,~,groupVec(:,col)] = unique(caClass(:,col), 'stable');
-        if numel(classes) == 1
-          % this is the simple case where the input was likely a table
-          switch classes{1}
-            case 'char'
-              iterDat = cellArray(:,col);
-            case 'string'
-              iterDat = [cellArray{:,col}]';
-            case { ...
-                'double','single','int8','int16','int32','int64', ...
-                'uint8','uint16','uint32','uint64' ...
-                }
-              iterDat = cat(1,cellArray{:,col});
-            otherwise
-              % TODO: expand to other classes!
-              error('Cannot group on %s type.',classes{1});
-          end
-          
-          % get the unique indices for this column
-          [~,~,groupVec(:,col)] = unique(iterDat,'stable');
-          continue
-        end
-        groupVec(theEmpty,col) = 0;
-        for c = classes(:)'
-          cin = ismember(caClass(:,col), c);
-          switch c{1}
-            case 'char'
-              iterDat = cellArray(cin);
-            otherwise
-              iterDat = [cellArray{cin}];
-          end
-          [~,~,g] = unique(iterDat, 'stable');
-          groupVec(cin) = groupVec(cin) + g;
+
+
+      % loop and create individual grouping vectors
+      groupVec = zeros(size(inputArray));
+      for col = 1:size(inputArray,2)
+        if isCustom
+          % here we assume inputArray is numeric group numbers
+          % so we unpack the cell array we created above
+          groupVec(:,col) = [inputArray{:,col}];
+        else
+          groupVec(:,col) = createGroupVector(inputArray(:,col));
         end
       end
-      
-      % Now drop the excluded datums
-      vecLen = sum(inclusions);
-      
-      groupVec(~inclusions,:) = [];
-      inputTable(~inclusions,:) = [];
-      
+
+      % Drop exclusions
+      if dropExcluded
+        vecLen = sum(inclusions);
+        groupVec(~inclusions,:) = [];
+        inputTable(~inclusions,:) = [];
+      else
+        vecLen = height(inputTable);
+        groupVec(~inclusions,:) = 0;
+      end
+
+
+
       % get the group mapping
       [uGroups,groupIdx,Singular] = unique(groupVec,'rows');
       groupTable = [array2table(uGroups,'VariableNames',idNames),inputTable(groupIdx,:)];
@@ -3665,25 +3748,29 @@ classdef IrisData
         'OutputFormat', 'uniform' ...
         );
       % get counts
+      if any(~uGroups)
+        % ensure 0 if exclusions are present
+        Singular = Singular - 1;
+      end
+
       tblt = tabulate(Singular);
-      
+
       % tblt arrives sorted because we let unique(groupVec) sort Singular. So we
       % can map value and counts to rows of the groupTable
       groupTable.Counts = tblt(:,2);
       groupTable.SingularMap = tblt(:,1);
       groupTable.Frequency = tblt(:,3);
-      
+
       %output
       groupInfo = struct();
       groupInfo.Singular = Singular;
       % Setup group vector for use with grpstats in the Statistics and machine
       % learning toolbox.
-      
       groupInfo.Vectors = mat2cell(groupVec, ...
         vecLen,...
         ones(1,nIDs) ...
         );
-      
+
       % Reorganize table
       groupInfo.Table = movevars( ...
         groupTable, ...
@@ -3691,6 +3778,28 @@ classdef IrisData
         'After', ...
         idNames{end} ...
         );
+
+
+      %%% Helper Functions
+      function vec = createGroupVector(factorInput)
+        nFactors = numel(factorInput);
+        factorVec = 1:nFactors;
+        grpID = 1; %start at group == 1
+        vec = zeros(nFactors,1);
+        for iter = factorVec
+          thisValue = factorInput(iter);
+          didAsgn = false(nFactors,1);
+          for idx = factorVec
+            if vec(idx), continue; end %already labelled
+            if isequal(thisValue,factorInput(idx))
+              didAsgn(idx) = true;
+              vec(idx) = grpID;
+            end
+          end
+          if ~any(didAsgn), continue; end
+          grpID = grpID + 1;
+        end
+      end
     end
     
     function varargout = ValidStrings(testString,varargin)
@@ -4402,7 +4511,7 @@ classdef IrisData
       for I = 1:min([max([1,nargout]),nIn])
         thisRange = varargin{I};
         % convert nans to mean so as not to disturb the limits
-        thisRange(isnan(thisRange)) = nanmean(thisRange(:));
+        thisRange(isnan(thisRange)) = mean(thisRange(:),'omitnan');
         varargout{I} = quantile(thisRange,[0,1]);
       end
     end

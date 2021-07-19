@@ -1,5 +1,8 @@
 classdef IrisDVAObj < IrisDVAApp
-  
+  % IrisDEVAObj Hijacks the created IrisDVAApp class MATLAB generates at install.
+  % This class has the purpose of preventing multiple instances of Iris from
+  % running, starting the app from unsecure location and allowing input
+  % arguments to be provided during startup.
   properties
     InputArgList = {'-1'};
   end

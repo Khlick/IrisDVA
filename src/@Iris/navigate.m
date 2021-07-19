@@ -15,8 +15,12 @@ switch dr
     stepSize = ((2*strcmpi(dr,'up')-1)*kOpt.(['Overlay',sz]));
     nCur = numel(cSel.selected);
     nNew = nCur + stepSize;
-    if nNew > cSel.total, return; end
+    % handle if we sent request for less than 1
     if nNew < 1, nNew = 1; end
+    % handle if we requested more than possible
+    if (nNew + cSel.selected(1)-1) > (cSel.total - cSel.selected(1) + 1)
+      nNew = (cSel.total - cSel.selected(1) + 1);
+    end
     % just adding or reducing, so take cSel.selected(1) + 1:nNew
     newSel = cSel.selected(1) + (0:1:(nNew-1));
   case {'left', 'right'}
@@ -59,7 +63,7 @@ newSel(newSel > cSel.total) = cSel.total;
 newSel = unique(newSel);
 if isequal(newSel,cSel.selected)
   % check if highlight is different?
-  return;
+  return
 end
 app.handler.currentSelection = newSel;
 end

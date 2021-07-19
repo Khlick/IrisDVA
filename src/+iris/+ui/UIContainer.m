@@ -390,6 +390,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     end
     
     function focus(obj)
+      pause(0.01);
       if obj.hasWindow
         obj.window.bringToFront;
       else

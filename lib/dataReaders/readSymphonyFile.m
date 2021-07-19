@@ -1,6 +1,9 @@
 function DATA = readSymphonyFile(fileName)
 % get h5 info
 info = h5info(fileName);
+fileInfo = cell(3,2);
+[fileInfo{:,2}] = fileparts(which(fileName));
+fileInfo(:,1) = {'filePath';'fileName';'fileExtension'};
 % Check symphony version
 attList = [{info.Attributes.Name}',{info.Attributes.Value}'];
 symphonyVersion = attList{strcmpi(attList(:,1), 'version'),2};
@@ -22,11 +25,13 @@ else
     Notes = {Notes(sortOrder,:)};
   end
   DATA.Notes = Notes;
-  
-  Meta = arrayfun(@getMetaV2, info.Groups, 'UniformOutput', false);
-  % What to do if multiple experiments at once?
+  nGroups = numel(info.Groups);
+  [Data,Meta] = deal(cell(1,nGroups));
+  for gg = 1:nGroups
+    Meta{gg} = getMetaV2(info.Groups(gg));
+    Data{gg} = getDataV2(info.Groups(gg));
+  end
   DATA.Meta = cat(1,Meta{:});
-  Data = arrayfun(@getDataV2, info.Groups, 'UniformOutput', false);
   DATA.Data = {cat(1,Data{:})};
 end
 DATA.Files = {fileName};
@@ -34,6 +39,7 @@ DATA.Files = {fileName};
 %%% FUNCTIONS -------------------------------------------------------->
 
 %% Version 1
+% todo: add displayProperties to V1
 function Notes = getNotesV1()
   %load the xml file
   [root,name,~] = fileparts(fileName);
@@ -148,7 +154,7 @@ function Data = getDataV1()
       Data(epNum,1).protocols( ...
         contains(Data(epNum,1).protocols(:,1), 'gitHash'), ...
         : ...
-        ) = []; %drop gitHas if it's there.
+        ) = []; %drop gitHash if it's there.
     catch
     end
     dt = strsplit(Data(epNum,1).protocols{ ...
@@ -893,10 +899,12 @@ function Data = getDataV2(grp)
     Data(rGroup,1).displayProperties = [ ...
       [ ...
         displayName(:); ...
-        fieldnames(blockProps{rGroup}) ...
+        fieldnames(blockProps{rGroup}); ...
+        fileInfo(:,1) ...
       ],[ ...
         displayValues(:); ...
-        struct2cell(blockProps{rGroup}) ...
+        struct2cell(blockProps{rGroup}); ...
+        fileInfo(:,2) ...
       ] ...
       ];
   end %end of data collection loop
@@ -927,30 +935,11 @@ function [ tString,varargout ] = sec2str( secs, ofst )
   end
 end
 
-function tsec = str2sec(str)%#ok
+function tsec = str2sec(str)
   spt = strsplit(str,':');
   nums = str2double(flipud(spt(:))); %s,m,h now
   tsec = 0;
   for nn = 1:length(nums)
     tsec = nums(nn)*60^(nn-1) + tsec;
   end
-end
-
-function deviceArray = extractDevicesFromResponse(fname,blk)
-  if numel(blk) > 1
-    deviceArray = arrayfun( ...
-      @(b)extractDevicesFromResponse(fname,b), ...
-      blk, ...
-      'UniformOutput', true ...
-      );
-    return
-  end
-  
-  disp(blk);
-  addr = '';
-  i = 0;
-  contents = struct();
-  tmp = struct();
-  deviceName = '';
-  deviceLocation = true;
 end
