@@ -294,7 +294,7 @@ classdef IrisData
       
       %Determine the grouping vector
       filterTable = obj.Specs.Table;
-      
+      isCustom = false;
       if ~isempty(p.Results.customGrouping)
         customGroup = p.Results.customGrouping;
         groupBy = {'customGrouping'};
@@ -311,6 +311,8 @@ classdef IrisData
           customGroup = customTab.Var1(:);%string array
         else
           customGroup = customGroup(:); %column vector
+          % expect something like [1;2;3;1;2;3] numeric
+          isCustom = true;
         end
         filterTable.customGrouping = customGroup;
       elseif any(strcmpi('none',groupBy))
@@ -323,7 +325,7 @@ classdef IrisData
       
       % determine the grouping
       groupingTable = filterTable(:,groupBy);
-      groups = IrisData.determineGroups(groupingTable,inclusions,true,true);
+      groups = IrisData.determineGroups(groupingTable,inclusions,true,isCustom);
       nGroups = height(groups.Table);
       
       % Copy included datums

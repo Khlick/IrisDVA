@@ -30,11 +30,16 @@ MATLAB app installer (from the toolstrip or by
   Current Folder and run `runIris()` to start the app.
   * *Using this approach will prevent usage of the command line tools described above.*
 
-## How To Use
-\<Overview of usage coming soon\>
+## Get Started
+Iris DVA is a user-interface tool designed to facilitate offline analysis of physiological
+data. Iris functions as a window into your data, a wrangler of metadata and a
+pathway to reproducible analyses and results. Iris is extensible and provides an avenue for
+scientists to quickly analyze data with their own custom MATLAB functions or
+through custom user interfaces. Because Iris uses a cache approach, your original
+data files remain unchanged. To get started, see the [documentation](https://sampathlab.gitbook.io/iris-dva).
 
 ## Command Line Interface
-The CLI is a MATLAB command toolkit enables interaction with Iris and utilities within
+The CLI is a MATLAB command toolkit that enables interaction with Iris and utilities within
 from the MATLAB command window. Installing the CLI enables access the `IrisDVA`
 Abstract class.
 
@@ -82,18 +87,19 @@ in place, which seems to help a bit.
 
 ### Performance
 Iris was originally written to view, manage and analyze data acquired using
-[Symphony DAS](https://symphony-das.github.io/) which is stored if hdf5 format.
+[Symphony DAS](https://symphony-das.github.io/) which utilizes the hdf5 format.
 A main goal was to prevent needing Symphony installed on the analysis machines,
-primarily because Symphony is written specifically for a Windows environment and
+primarily because Symphony was written for a Windows environment and
 we had a lot of Mac users in the lab. For this reason, I opted for taking a
 page-cache approach of caching data directly in volatile memory. I never got
 around to optimizing the hdf5 reading method (for either Symphony 1 or Symphony
-2 files), it takes a while to load a single experiment. In my experience, the
-typical Symphony2 file from an experiment is roughly 100-200Mb on disk. This
+2 files), so it may take some time to load a single experiment. In my experience, the
+typical Symphony2 file from an experiment is ~100-200Mb on disk. This
 results in a ~3 minute load time on my i7 pc and <30 seconds on my Xeon E5
 workstation. In 2020b, MATLAB has a new way of parsing mat-files which has
-caused a significant hit to reading/writing performance in my experience. I'm
-working on optimizing this, but have no target date.
+caused a significant hit to reading/writing performance in my experience, and as
+of 2021a, this does not seem resolved. In 2021b, MATLAB hints at some new
+low-level hdf5 methods that will make optimizing this process easier. 
 
 ## Acknowledgements
 
