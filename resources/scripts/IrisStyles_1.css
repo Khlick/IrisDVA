@@ -11,7 +11,7 @@
   linear-gradient(45deg, transparent 49.5%, #aac6d4 49.5%, #b3d0de 50%, #aac6d4 50.5%, transparent 50.5%) 0 0, /* line */
   linear-gradient(135deg, transparent 75%, #adcad8 75%) 100px 0, /* triangle */
   linear-gradient(135deg, transparent 75%, #adcad8 75%) 0 100px, /* triangle */
-  linear-gradient(225deg, transparent 75%, #adcad8 75%) 0 100px, /* triangle */
+  linear-gradient(225deg, transparent 75%, #adcad8 75%) 0 100px, /* triangle */646
   linear-gradient(225deg, transparent 75%, #adcad8 75%) 100px 0, /* triangle */
   linear-gradient(to bottom, #adcad8 0%, #aac6d4 90%) 0 0 !important;
   /* background gradient */
@@ -230,6 +230,11 @@ background-size: 20px 20px !important;
 }
 
 .iris-grad {
-  height: 100%;
-  background: radial-gradient(ellipse at top left, #aacced 0%, #111318 100%);
+  height: 100% !important;
+  background: radial-gradient(ellipse at top left, #aacced 0%, #111318 100%) !important;
+}
+
+.transparent {
+  background: transparent !important;
+  background-color: transparent !important;
 }

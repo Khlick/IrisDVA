@@ -2994,6 +2994,7 @@ classdef IrisData
       end
       
       createAxes = isempty(p.Results.axes);
+
       if createAxes
         %%% axes constants
         MIN_AX_WIDTH = 350;
@@ -3226,8 +3227,8 @@ classdef IrisData
         end
         
         % set a soft limit (padded) for y
-        if isfield(doms,'x')
-          axs(a).YLim = doms.y + 0.025*diff(doms.y)*[-1,1];
+        if isfield(doms,'y')
+          axs(a).YLim = sort(doms.y + 0.025*diff(doms.y).*[-1;1]);
         end
         
         if p.Results.axesLabels
@@ -3754,7 +3755,8 @@ classdef IrisData
         % ensure 0 if exclusions are present
         Singular = Singular - 1;
       end
-
+      
+      % TODO: Remove tabulate (Stats) dependancy (implement histcounts)
       tblt = tabulate(Singular);
 
       % tblt arrives sorted because we let unique(groupVec) sort Singular. So we
@@ -4148,9 +4150,6 @@ classdef IrisData
             % compute baseline parameters
             if doFit
               % fit a line to the <x(inds),y(inds)> and store the parameters
-              for i = 1:size(rY,2)
-                rY(:,i) = smooth(rY(:,i),80);
-              end
               refBaselines(device) = [ones(length(rInds),1),rX(rInds,:)]\rY(rInds,:);
             else
               vals = mean(rY(rInds,:),1,'omitnan');
@@ -4221,8 +4220,7 @@ classdef IrisData
               xfit = [ones(length(inds),1), thisX(inds,i)];
               yfit = thisY(inds,i);
               % fit to a smoothed data vector to prevent the line from being wierd
-              %betas = xfit\smooth(yfit,0.9,'rlowess'); %smooth is super slow here
-              betas = xfit\smooth(yfit,50);
+              betas = xfit\yfit;
               % y = b0 + b1*x;
               bVal(:,i) = betas(1) + betas(2).*thisX(:,i);
             end
@@ -4511,10 +4509,10 @@ classdef IrisData
       nIn = length(varargin);
       varargout = cell(1,min([nargout,nIn]));
       for I = 1:min([max([1,nargout]),nIn])
-        thisRange = varargin{I};
-        % convert nans to mean so as not to disturb the limits
-        thisRange(isnan(thisRange)) = mean(thisRange(:),'omitnan');
-        varargout{I} = quantile(thisRange,[0,1]);
+        thisRange = sort(varargin{I});
+        % drop nans
+        thisRange(isnan(thisRange)) = [];
+        varargout{I} = thisRange([1,end]);
       end
     end
     
@@ -4880,5 +4878,7 @@ classdef IrisData
     
   end
   
+  methods (Static=true,Hidden=true)
+  end
 end
 

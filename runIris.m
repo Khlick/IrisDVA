@@ -89,7 +89,6 @@ end
 % cleanup fuction
   function onLoaded(S)
     S.shutdown();
-    delete(S);
   end
 
 end

@@ -1,4 +1,4 @@
-function [values,densities,boundaryLine] = data2Dots(data,type,histArgs,kdeArgs,options)
+function [values,densities,boundaryLine,sortOrder] = data2Dots(data,type,histArgs,kdeArgs,options)
 % data2Dots Create dot strip values for univariate data.
 % Histogram arguments are used for both discrete and continuous type. Setting
 % type to continuous will use the histogram to create bins and then fit the
@@ -10,12 +10,21 @@ arguments
   type (1,1) string {mustBeMember(type,["discrete","continuous"])} = "discrete"
   histArgs.nbins {isValidBinCount} = []
   histArgs.BinMethod (1,1) string {isValidBinMethod} = "fd"
+  histArgs.BinWidth (1,:) double = []
+  histArgs.BinLimits (1,2) double = nan(1,2)
   kdeArgs.Bandwidth {isValidBandwidth} = 0.5
   kdeArgs.Kernel {isValidKernel} = "epanechnikov"
   kdeArgs.NumPoints (1,1) double = 200
   options.DensityRange {isValidRange} = []
   options.DensityOffset (1,1) double = 0.5
+  options.RandomOffsets (1,1) logical = false
+  options.BaselineOffset (1,1) double = 0.5
+  options.Stack (1,1) double = true
 end
+
+import utilities.fastrmField
+import utilities.rep
+import utilities.domain
 
 [isValidEnv,miss] = checkPoductAvailable();
 if ~isValidEnv
@@ -25,27 +34,47 @@ if ~isValidEnv
     );
 end
 
+hArgs = histArgs;
+hArgs.Normalization = 'count';
+
+nbins = hArgs.nbins;
+if ~isempty(nbins)
+  hArgs = fastrmField(hArgs,["BinWidth","BinMethod","nbins"]);
+else
+  if isempty(hArgs.BinWidth)
+    hArgs = fastrmField(hArgs,["BinWidth","nbins"]);
+  else
+    hArgs = fastrmField(hArgs,["BinMethod","nbins"]);
+  end
+end  
+
+if any(isnan(hArgs.BinLimits))
+  hArgs = rmfield(hArgs,'BinLimits');
+end
+
+hArgCell = namedargs2cell(hArgs);
+
+
 %% Calculate Densities
-import utilities.fastrmField
-import utilities.rep
-import utilities.domain
 
 % sort incoming data
-sortedData = sort(data(:));
+[sortedData,sortOrder] = sort(data(:));
 N = numel(sortedData);
 
 % Determine the best histogram
-nbins = histArgs.nbins;
-hArgCell = namedargs2cell(fastrmField(histArgs,'nbins'));
+
 if isempty(nbins)
-  [counts,edges,bins] = histcounts(sortedData,'Normalization','count',hArgCell{:});
+  [counts,edges,bins] = histcounts(sortedData,hArgCell{:});
 else
-  [counts,edges,bins] = histcounts(sortedData,nbins,'Normalization','count',hArgCell{:});
+  [counts,edges,bins] = histcounts(sortedData,nbins,hArgCell{:});
 end
 nBins = numel(counts);
 % get bin centers
 binCenters = diff(edges)/2 + edges(1:(end-1));
-% 
+if ~options.Stack
+  binHalf = mean(diff(edges))/2.0;
+end
+% perform counts/densities
 switch type
   case "discrete"
     values = rep(binCenters,1,counts);
@@ -57,8 +86,16 @@ switch type
       c = counts(b);
       if ~c, continue; end
       locs = bins == b;
-      offsets = linspace(options.DensityOffset,c-options.DensityOffset,c);
+      if options.RandomOffsets
+        offsets = rescale(rand(1,c),options.BaselineOffset,c-options.DensityOffset);
+      else
+        offsets = linspace(options.BaselineOffset,c-options.DensityOffset,c);
+      end
       densities(locs) = offsets;
+      % stack or stagger values
+      if ~options.Stack
+        values(locs) = rescale(rand(1,c),binCenters(b)-binHalf*0.95,binCenters(b)+binHalf*0.95);
+      end
     end
     % create the boundary
     boundaryLine.values = rep(edges,1,2);
@@ -88,7 +125,7 @@ switch type
       if ~c, continue; end
       locs = bins == b;
       offsets = linspace( ...
-        options.DensityOffset, ...
+        options.BaselineOffset, ...
         max([pd_i(b) - options.DensityOffset,pd_i(b)]), ...
         c ...
         );

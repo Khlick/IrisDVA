@@ -118,7 +118,7 @@ classdef primary < iris.ui.UIContainer
   end
   
   properties (SetAccess= ?Iris, GetAccess= public, SetObservable = true)
-    LUT %lookup for html to matlab elements
+    LUT %lookup for html to matlab elements (not impl.)
     selection
     previousSelction
     layout

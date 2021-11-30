@@ -1,5 +1,6 @@
-function pp = drawArrow(ax, arrowAtX, forceDir, color,width_p,height_p)
-  
+function pp = drawArrow(ax, arrowAtX, forceDir, color,width_p,height_p,forceYAt)
+
+if nargin < 7, forceYAt = []; end
 if nargin < 6 || isempty(height_p), height_p = 0.02; end
 if nargin < 5 || isempty(width_p), width_p = 0.0075; end
 if nargin < 4, color = [0 0 0]; end
@@ -35,23 +36,27 @@ for ch = 1:numel(ax.Children)
   end
 end
 if ~forceDir
-  isArrowUp = yMean >= y_mid_d;
-  arrowDir = 2*(isArrowUp)-1; % + is up, - is down
+  isArrowOnTop = yMean >= y_mid_d;
+  arrowDir = 2*(isArrowOnTop)-1; % + is up, - is down
 else
   arrowDir = forceDir;
   if arrowDir >= 0
-    isArrowUp = true;
+    isArrowOnTop = true;
   else
-    isArrowUp = false;
+    isArrowOnTop = false;
   end
 end
-if isArrowUp
+
+if ~isempty(forceYAt)
+  yStart = forceYAt - v_offset_d * arrowDir;
+elseif isArrowOnTop
   yStart = yDom(2);
 else
   yStart = yDom(1);
 end
 % build counter clockwise from the point closest to the data
 arrowAtY = yStart + v_offset_d * arrowDir;
+
 verts = [ ...
   arrowAtX, arrowAtY; ...
   xSearch(1), arrowAtY + height_d * arrowDir; ...

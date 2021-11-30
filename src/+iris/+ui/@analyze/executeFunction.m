@@ -52,11 +52,11 @@ S = struct();
 S.Call = struct();
 S.Call.TimeStamp = datestr(now,'YYYYmmmDD-HH:MM:SS.FFF');
 
-S.Call.ArgsIn = ArgIn;
-S.Call.ArgsOut = ArgOut;
+S.Call.ArgsIn = obj.Args.Input;
+S.Call.ArgsOut = obj.Args.Output;
 ArgOut = strcat('S.', ArgOut);
 
-
+ 
 callString = obj.Args.Call(ArgOut, Fx, ArgIn);
 S.Call.String = callString;
 

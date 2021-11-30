@@ -21,7 +21,6 @@ orthoFit = colMeans + scores(:,1)*directionVector';
 % this fit should be perfect because of how the pca performs the linearization
 orthoParams = polyfit(orthoFit(:,1),orthoFit(:,2),1);
 
-
 % compute the orthogonal error pairs
 xPairs = [data(:,1),orthoFit(:,1)]';
 yPairs = [data(:,2),orthoFit(:,2)]';

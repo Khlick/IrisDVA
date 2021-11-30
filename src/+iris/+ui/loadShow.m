@@ -37,15 +37,15 @@ classdef loadShow < iris.ui.UIContainer
           obj.LoadingText.Text = sprintf('%s (%d%%)',preText,fix(frac*100));
           if frac < 1
             drawnow('update');
-            return;
+            return
           else
             obj.LoadingText.Text = 'Done!';
             drawnow('update');
             pause(1.3);
           end
         case {'char','string'}
-          obj.focus();
           obj.LoadingText.Text = frac;
+          obj.focus();
           drawnow('update');
           return
       end

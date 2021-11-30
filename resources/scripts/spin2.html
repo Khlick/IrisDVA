@@ -1,0 +1,163 @@
+<html>
+  <head>
+    <!-- <link rel="stylesheet" type="text/css" href="./inputStyles.css"> -->
+    <style>
+      body {
+        margin: 0px;
+        padding: 0px;
+        overflow: hidden;
+      }
+      .container {
+        padding: 0;
+        margin: 0;
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+      }
+
+      .fa-cog {
+        width: 60px;
+        height: 60px;
+        margin: 0;
+        padding: 0;
+      }
+
+      #gear {
+        width: 60px;
+        height: 60px;
+        padding: 2px;
+        flex: 0 0 auto;
+        animation-name: spinner;
+        animation-duration: 4.6s;
+        animation-iteration-count: infinite;
+        animation-timing-function: linear;
+      }
+
+      #gear svg {
+        display: block;
+        margin: auto;
+      }
+
+      @keyframes spinner {
+        0% {
+          transform: rotate(0.1deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .textbox {
+        flex: 1 1 auto;
+        overflow-wrap: break-word;
+        background-color: blueviolet;
+        font-family: "Times New Roman", Times, serif;
+        font-weight: bold;
+        text-align: justify;
+        flex: 1 1 auto;
+        padding: 0px;
+        margin: 0px;
+        overflow-y:hidden;
+      }
+
+      .funtext {
+        animation:
+          fadein 1s ease 0s 1 normal forwards,
+          arrive 5s ease 0s 1 normal forwards;
+      }
+      
+      @keyframes fadein {
+        0% {opacity:0;}
+        8% {opacity:1;}
+        100% {opacity:1;}
+      }
+      
+      @keyframes arrive {
+        0%   { margin-left:-800px; }
+        3%   { margin-left:-800px; }
+        12%  { margin-left:40px;  }
+        15%  { margin-left:-30px;  }
+        17%  { margin-left:5px;   }
+        18%  { margin-left:-2px;   }
+        19%  { margin-left:0px;    }
+        100% { margin-left:0px;    }
+      }
+    </style>
+    <!-- Javascript for interacting with MATLAB -->
+    <script type="text/javascript">
+      var evt = new Event("DataChanged");
+      const remConversion = 16;
+      
+      var htmlComponent = {
+        Data: JSON.parse('{"String":"some char array.","Dims":[350,125]}')
+      };
+      const trigger = (txt) => {
+        htmlComponent.Data.String = txt;
+        document.dispatchEvent(evt);
+      }
+      
+      function setup(htmlComponent) {
+        let initialData = htmlComponent.Data;
+        let txt = document.getElementById("target");
+        txt.textContent = initialData.String;
+        document.addEventListener("DataChanged", function (event) {
+          event.preventDefault;
+          
+          let txt = document.getElementById("target");
+          var changedData = htmlComponent.Data;
+          
+          console.log("New Data from MATLAB: ", changedData.String);
+          
+          // Update your HTML or JavaScript with the new data
+          txt.classList.remove("funtext");
+          void txt.offsetWidth;
+          txt.textContent = changedData.String;
+          txt.classList.add("funtext");
+        });
+      }
+      // Custom function for generating text resize based on window dims
+      // Takes the viewport widths in pixels and the font sizes in rem
+      function clampBuilder( minWidthPx, maxWidthPx, minFontSize, maxFontSize ) {
+        const root = document.querySelector( "html" );
+        const pixelsPerRem = Number( getComputedStyle( root ).fontSize.slice( 0,-2 ) );
+
+        const minWidth = minWidthPx / pixelsPerRem;
+        const maxWidth = maxWidthPx / pixelsPerRem;
+
+        const slope = ( maxFontSize - minFontSize ) / ( maxWidth - minWidth );
+        const yAxisIntersection = -minWidth * slope + minFontSize
+
+        return `clamp( ${ minFontSize }rem, ${ yAxisIntersection }rem + ${ slope * 100 }vw, ${ maxFontSize }rem )`;
+      }
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <div id="gear">
+        <svg
+          aria-hidden="true"
+          data-prefix="fas"
+          data-icon="cog"
+          class="svg-inline--fa fa-cog fa-w-16"
+          role="img"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 512 512"
+        >
+          <path
+            fill="rgba(0,0,0,0.6)"
+            d="M444.788 291.1l42.616 24.599c4.867 2.809 7.126 8.618 5.459 13.985-11.07 35.642-29.97 67.842-54.689 94.586a12.016 12.016 0 0 1-14.832 2.254l-42.584-24.595a191.577 191.577 0 0 1-60.759 35.13v49.182a12.01 12.01 0 0 1-9.377 11.718c-34.956 7.85-72.499 8.256-109.219.007-5.49-1.233-9.403-6.096-9.403-11.723v-49.184a191.555 191.555 0 0 1-60.759-35.13l-42.584 24.595a12.016 12.016 0 0 1-14.832-2.254c-24.718-26.744-43.619-58.944-54.689-94.586-1.667-5.366.592-11.175 5.459-13.985L67.212 291.1a193.48 193.48 0 0 1 0-70.199l-42.616-24.599c-4.867-2.809-7.126-8.618-5.459-13.985 11.07-35.642 29.97-67.842 54.689-94.586a12.016 12.016 0 0 1 14.832-2.254l42.584 24.595a191.577 191.577 0 0 1 60.759-35.13V25.759a12.01 12.01 0 0 1 9.377-11.718c34.956-7.85 72.499-8.256 109.219-.007 5.49 1.233 9.403 6.096 9.403 11.723v49.184a191.555 191.555 0 0 1 60.759 35.13l42.584-24.595a12.016 12.016 0 0 1 14.832 2.254c24.718 26.744 43.619 58.944 54.689 94.586 1.667 5.366-.592 11.175-5.459 13.985L444.788 220.9a193.485 193.485 0 0 1 0 70.2zM336 256c0-44.112-35.888-80-80-80s-80 35.888-80 80 35.888 80 80 80 80-35.888 80-80z"
+          ></path>
+        </svg>
+      </div>
+      <div id="target" class="textbox">Loading... Some very long text goes here without any break indication. Will also make it super duper long.</div>
+    </div>
+    <script type="text/javascript">
+      let txt = document.getElementById("target");
+      let dims = htmlComponent.Data.Dims;
+      txt.style.fontSize = clampBuilder((dims[0]-64)/4,(dims[0]-64)*4,0.3,4);
+      setup(htmlComponent);
+    </script>
+  </body>
+</html>

@@ -11,7 +11,7 @@ aFile = fullfile(avails{idx,:});
 
 
 %read the text from the file to determine input and output names
-fid= fopen(aFile); %either full path or on matlab path
+fid= fopen(aFile,'r'); %either full path or on matlab path
 if fid == -1
   error('Cannot open file %s.', fxString);
 end

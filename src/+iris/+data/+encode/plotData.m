@@ -270,7 +270,7 @@ classdef plotData
             xfit = [ones(length(inds),1), Xs(inds,i)];
             yfit = yvals(inds,i);
             % fit to a smoothed data vector to prevent the line from being wierd
-            betas = xfit\smooth(yfit,50);
+            betas = xfit\yfit;
             % y = b0 + b1*x;
             baselineValue(:,i) = betas(1) + betas(2).*Xs(:,i);
           end

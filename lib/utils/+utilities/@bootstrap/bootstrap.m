@@ -7,7 +7,7 @@ classdef (Abstract) bootstrap
   
   methods (Access = public, Static = true)
     
-    function [boots,ci] = getConfidenceIntervals(data,stat,level,B,method)
+    function [boots,ci,actual] = getConfidenceIntervals(data,stat,level,B,method,bounds)
       % GETCONFIDENCEINTERVALS Univariate Data Only, data in column vector
       arguments
         data (:,1) double
@@ -15,39 +15,17 @@ classdef (Abstract) bootstrap
         level (1,1) double {mustBeInRange(level,0,1,"exclude-lower","exclude-upper")} = 0.95
         B (1,1) double = utilities.bootstrap.B
         method (1,1) string {mustBeMember(method,["Percentile","BCa"])} = "BCa"
+        bounds (1,2) double = [-Inf,Inf]
       end
-      
-      boots = utilities.bootstrap.boot(data,stat,B);
-      probs = sort((1-level)/2 + [level,0]);
-      
-      if strcmp(method,"Percentile")
-        ci = quantile(boots,probs);
-        return
-      end
-      % default to BCa
-      normalDist = makedist('Normal');
       
       actual = stat(data);
-      biasCorProbability = (1+sum(boots < actual))/(B+1); % in case outside
-      biasCorrection = normalDist.icdf(biasCorProbability);
-      
-      % acceleration from jackknife
-      knives = utilities.bootstrap.jackknife(data,stat);
-      jackEstimate = stat(knives);
-      accelEstimate = ...
-        sum((jackEstimate - knives).^3) / ...
-        ( ...
-          6 * sum((jackEstimate - knives).^2)^(3/2) ...
-        );
-      if isnan(accelEstimate)
-        accelEstimate = 0;
+      boots = utilities.bootstrap.boot(data,stat,B,bounds);
+      if method == "BCa"
+        knives = utilities.bootstrap.jackknife(data,stat);
+      else
+        knives = [];
       end
-      % adjust by alpha
-      corBounds = biasCorrection + normalDist.icdf(probs); %[L,U]
-      BCaInterval = normalDist.cdf( ...
-        corBounds ./ (1-accelEstimate*corBounds) + biasCorrection ...
-        );
-      ci = quantile(boots,BCaInterval);  
+      ci = utilities.bootstrap.genCiFromBoots(boots,level,method,'actual',actual,'knives',knives);
     end
     
     function boots = getBootstraps(data,stat,B)
@@ -57,6 +35,14 @@ classdef (Abstract) bootstrap
         B (1,1) double = 10000
       end
       boots = utilities.bootstrap.boot(data,stat,B);
+    end
+    
+    function knives = getJackknife(data,stat)
+      arguments
+        data (:,1) double
+        stat (1,1) function_handle = @mean
+      end
+      knives = utilities.bootstrap.jackknife(data,stat);
     end
     
     function varargout = getFitConfidenceIntervals(X,Y,fxString,estimate,spacing,level,B,method,npts)
@@ -143,25 +129,96 @@ classdef (Abstract) bootstrap
   
   methods (Access = private, Static = true)
     
-    function boots = boot(data,stat,B)
+    function boots = boot(data,stat,B,bounds)
+      if nargin < 4, bounds = [-Inf,Inf]; end
+      bounds = sort(bounds);
       N = length(data);
-      samps = data(randi(N,N,B));
-      if (N < 5) && (length(unique(data)) > 1)
-        samps = samps + randn(N,B)/1000;
+      if (N < 3) && (length(unique(data)) > 1)
+        samps = data(randi(N,5,B));
+        epsilon = randn(5,B);
+        sampStd = std(samps,0,1)*0.95;
+        epsStd = std(epsilon,0,1);
+        
+        samps = samps + epsilon ./ epsStd .* sampStd;
+        samps(samps < bounds(1)) = bounds(1);
+        samps(samps > bounds(2)) = bounds(2);
+      else
+        samps = data(randi(N,N,B));
       end
       boots = stat(samps);
     end
     
     function knives = jackknife(data,stat)
-      N = length(data) - 1;
-      inds = (1:(N+1))' * ones(1,N+1);
-      for n = (0:N)+1
-        inds(:,n) = circshift(inds(:,n),n);
+      N = length(data);
+      inds = (1:N)';
+      knives = nan(size(data(:)));
+      for n = 1:N
+        inds = circshift(inds,1);
+        % drop one and perform stat
+        knives(n) = stat(data(inds(1:(end-1))));
       end
-      % remove 1
-      inds(end,:) = [];
-      knives = stat(data(inds));
     end
+    
+  end
+  
+  methods (Access = public, Static = true, Hidden = true)
+    
+    function ci = genCiFromBoots(boots,level,method,extras)
+      
+      arguments
+        boots (:,1) double
+        level (1,1) double {mustBeInRange(level,0,1,"exclude-lower","exclude-upper")} = 0.95
+        method (1,1) string {mustBeMember(method,["Percentile","BCa","BC"])} = "BC"
+        extras.knives (:,1) double = []
+        extras.actual (1,1) double = []
+      end
+      
+      probs = sort((1-level)/2 + [level,0]);
+      B = numel(boots);
+      
+      if contains(method,"BC")
+        if isempty(extras.actual)
+          error("Methods 'BC' and 'BCa' require statistic 'actual'.");
+        end
+        isAccel = contains(method,"a");
+        if isempty(extras.knives) && isAccel
+          error("Method 'BCa' requires jacknife estimates.");
+        end
+        
+        
+        normalDist = makedist('Normal');      
+        % calculate bias correction
+        biasCorProbability = (1+sum(boots < extras.actual))/(B+1); % in case outside
+        biasCorrection = normalDist.icdf(biasCorProbability);
+        
+        if isAccel
+          jackEstimate = mean(extras.knives,'omitnan');
+          accelEstimate = ...
+            sum((jackEstimate - extras.knives).^3) / ...
+            ( ...
+              6 * sum((jackEstimate - extras.knives).^2)^(3/2) ...
+            );
+        else
+          accelEstimate = nan;
+        end
+        
+        % correct the acceleration estimate
+        if isnan(accelEstimate)
+          accelEstimate = 0;
+        end
+        
+        % adjust by alpha level
+        corBounds = biasCorrection + normalDist.icdf(probs); %[L,U]
+        interval = normalDist.cdf( ...
+          corBounds ./ (1-accelEstimate*corBounds) + biasCorrection ...
+          );
+      else
+        interval = probs;
+      end
+      % gather the ci bounds
+      ci = quantile(boots,interval); %return
+    end
+    
   end
   
 end

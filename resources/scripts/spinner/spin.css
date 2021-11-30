@@ -3,35 +3,31 @@ body {
   padding: 0px;
   overflow: hidden;
 }
-
 .container {
   padding: 0;
   margin: 0;
   height: 100vh;
   width: 100vw;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 }
 
 .fa-cog {
-  width:60px;
-  height:60px;
+  width: 60px;
+  height: 60px;
   margin: 0;
   padding: 0;
 }
 
 #gear {
-  width: 60px;
-  height: 60px;
-  padding: 2px;
-  overflow: visible;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 auto;
   animation-name: spinner;
   animation-duration: 4.6s;
   animation-iteration-count: infinite;
   animation-timing-function: linear;
-  display: inline-block;
-  transform-origin: 50% 50%;
-  position: absolute;
-  transform: translateY(-50%);
-  top: 50%;
 }
 
 #gear svg {
@@ -48,15 +44,16 @@ body {
   }
 }
 
-.reflow {
-  display: inline-block;
-  left: 0;
-  right: 0;
-  max-height: 100%;
+.textbox {
+  flex: 1 1 auto;
   overflow-wrap: break-word;
-  word-wrap: break-word;
-  width: 50%;
-  height: auto;
+  font-family: "Times New Roman", Times, serif;
+  font-weight: bold;
+  text-align: justify;
+  flex: 1 1 auto;
+  padding: 0px;
+  margin: 0px;
+  line-height: 0.95;
 }
 
 .funtext {

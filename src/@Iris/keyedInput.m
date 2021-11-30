@@ -38,7 +38,7 @@ try
   end
 catch
   iris.app.Info.showWarning('No stored keypress action.');
-  return;
+  return
 end
 
 if isempty(action), return; end

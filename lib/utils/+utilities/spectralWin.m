@@ -1,5 +1,5 @@
 function coefs = spectralWin(winType,L)
-%SPECTRALWIN Compute a windowing vector, returned as a column vector.
+%SPECTRALWIN Compute a windowing vector, returned as a column vector.(NOT WORKING)
 
 arguments
   winType (1,1) string {validWindow(winType)} = "rect"
@@ -12,7 +12,7 @@ winType = string(winType);
 
 N = double(L-1);
 
-if 
+
 x = 0:N;
 
 switch winType

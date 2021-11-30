@@ -18,7 +18,7 @@ switch dr
     % handle if we sent request for less than 1
     if nNew < 1, nNew = 1; end
     % handle if we requested more than possible
-    if (nNew + cSel.selected(1)-1) > (cSel.total - cSel.selected(1) + 1)
+    if (nNew + cSel.selected(1)-1) > cSel.total
       nNew = (cSel.total - cSel.selected(1) + 1);
     end
     % just adding or reducing, so take cSel.selected(1) + 1:nNew
