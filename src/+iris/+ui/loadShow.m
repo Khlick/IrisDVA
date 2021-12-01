@@ -5,19 +5,34 @@ classdef loadShow < iris.ui.UIContainer
     shuttingDown
   end
   
-  properties (Access = public)
-    Spinner      matlab.ui.container.Panel
-    LoadingText  matlab.ui.control.Label
+  properties (Constant=true)
+    WIDTH = 360
+    HEIGHT = 125
+    SCRIPT_ID = "spinner"
   end
-  
+
+  properties (Access = private)
+    Spinner      matlab.ui.control.HTML
+    textListen % listener for text setting
+    Animate (1,1) logical = false
+  end
+
+  properties (SetObservable=true,AbortSet=true,Access=private)
+    Text (1,1) string = "Loading..."
+  end
+
   properties (Dependent)
     isHidden
+    HTMLSource
+    TextData
   end
   
   %% Public Functions
   methods
-    function updatePercent(obj,frac,preText)
+    function updatePercent(obj,frac,preText,doAnimation)
+      if nargin < 4, doAnimation = false; end
       if nargin < 3, preText = 'Loading...'; end
+      obj.Animate = doAnimation;
       if obj.isClosed
         obj.rebuild;
         pause(0.01);
@@ -34,25 +49,25 @@ classdef loadShow < iris.ui.UIContainer
             frac = 1;
           end
           
-          obj.LoadingText.Text = sprintf('%s (%d%%)',preText,fix(frac*100));
+          obj.Text = sprintf("%s (%d%%)",preText,fix(frac*100));
           if frac < 1
-            drawnow('update');
+            drawnow;
             return
-          else
-            obj.LoadingText.Text = 'Done!';
-            drawnow('update');
-            pause(1.3);
           end
+          pause(0.8);
+          obj.Text = "Done!";
+          pause(1.5);
         case {'char','string'}
-          obj.LoadingText.Text = frac;
+          obj.Text = string(frac);
           obj.focus();
-          drawnow('update');
+          drawnow;
           return
       end
+      % shutdown after completion
       obj.shutdown;
     end
     
-    %override shutdown
+    % override shutdown to notify shutdown event. This should be a common feature
     function shutdown(obj)
       if obj.isClosed, return; end
       obj.reset; % always show in the center of the screen
@@ -65,6 +80,22 @@ classdef loadShow < iris.ui.UIContainer
       tf = strcmpi(obj.container.Visible,'off') && ~obj.window.isVisible;
     end
     
+    function src = get.HTMLSource(obj)
+      src = fullfile(iris.app.Info.getResourcePath(),"scripts",obj.SCRIPT_ID,"spin.html");
+    end
+
+    function txt = get.Text(obj)
+      txt = obj.Text;
+    end
+
+    function set.Text(obj,str)
+      obj.Text = str;
+    end
+
+    function d = get.TextData(obj)
+      d = struct("String",obj.Text,"Dims",[obj.WIDTH,obj.HEIGHT],"Animate",obj.Animate);
+    end
+
     function selfDestruct(obj)
       % required for integration with menuservices
       obj.shutdown;
@@ -75,129 +106,33 @@ classdef loadShow < iris.ui.UIContainer
   methods (Access = protected)
     % Startup
     function startupFcn(obj,varargin)
-      % check version
-      v = ver('matlab');
-      v = strsplit(v.Version,'.');
       
-      % add css to figure
-      cssFile = utilities.scriptRead(...
-        fullfile( ...
-          iris.app.Info.getResourcePath, ...
-          'scripts', ...
-          {'IrisStyles_0.css','spinner.css'} ...
-          ), ...
-        false, false, '''');
-      cssFile = strjoin(cssFile,' ');
-      obj.window.executeJS('var css,spinner,panelNode,panel,pChilds,text;',1);
-      iter = 0;
-      while true
-        try
-          
-          obj.window.executeJS( ...
-            [ ...
-            'if (typeof css === ''undefined'') {',...
-            'css = document.createElement("style");', ...
-            'document.head.appendChild(css);', ...
-            '}' ...
-            ]);
-          obj.window.executeJS(['css.innerHTML = `',cssFile,'`;']);
-          
-          % add the spinner
-          obj.window.executeJS(...
-            sprintf(...
-            [ ...
-            'spinner = document.createElement("div");', ...
-            'spinner.id = "gear";', ...
-            'spinner.innerHTML = `%s`;' ...
-            ], ...
-            fileread( ...
-            fullfile( ...
-            iris.app.Info.getResourcePath, 'icn', 'cog-solid.svg' ...
-            ) ...
-            )) ...
-            );
-          [~,id] = mlapptools.getWebElements(obj.Spinner);
-          if str2double(v{1}) >= 9 && str2double(v{2}) == 8
-            obj.window.executeJS( ...
-              sprintf( ...
-              [ ...
-              'panelNode = dojo.query("[%s = ''%s'']");', ...
-              'panelNode.forEach((n,i,a)=>{dojo.style(n,{display: "flex"});});', ...
-              'pChilds = dojo.query("> *",panelNode[0]);', ...
-              'pChilds.forEach((n,i,a)=>{dojo.style(n,{display: "flex"});});', ...
-              '[panel] = pChilds.slice(-1);', ...
-              'panel.appendChild(spinner);' ...
-              ], ...
-              id.ID_attr, id.ID_val ...
-              ));
-          elseif str2double(v{1}) >= 9 && str2double(v{2}) < 8
-            % worked before v2020a
-            obj.window.executeJS( ...
-              sprintf( ...
-              [ ...
-              'panel = dojo.query("[%s = ''%s'']")[0].lastChild;', ...
-              'panel.appendChild(spinner);' ...
-              ], ...
-              id.ID_attr, id.ID_val ...
-              ));
-          else
-            obj.window.executeJS( ...
-              sprintf( ...
-              [ ...
-              'panelNode = dojo.query("[%s = ''%s'']");', ...
-              'panel = dojo.query(".gbtPanelContent",panelNode[0]);', ...
-              'panel[0].appendChild(spinner);' ...
-              ], ...
-              id.ID_attr, id.ID_val ...
-              ) ...
-              );
-          end
-        catch x
-          %log this
-          iter = iter+1;
-          if iter > 20, rethrow(x); end
-          pause(0.2);
-          continue
-        end
-        break;
-      end
-      % setup the typing animation
-      try
-        [~,labID] = mlapptools.getWebElements(obj.LoadingText);
-      catch x
-        disp(x.message);
-      end
-      textQuery = sprintf( ...
-        'text = dojo.query("[%s = ''%s'']")[0];', ...
-        labID.ID_attr, labID.ID_val ...
-        );
-      iter = 0;
-      while true
-        try
-          obj.window.executeJS(textQuery);
-          obj.window.executeJS('text.classList.add("funtext","reflow");');
-        catch x
-          %log x?
-          iter = iter+1;
-          if iter > 20, iris.app.Info.throwError(x.message); end
-          pause(0.25);
-          continue
-        end
-        %success
-        break
+      % define listener
+      obj.textListen = addlistener(obj,'Text','PostSet',@obj.updateText);
+      % update text
+      if nargin > 1
+        obj.updatePercent(varargin{:});
       end
     end
+    
+    % callback
+    function updateText(obj,~,~)
+      obj.Spinner.Data = obj.TextData;
+      drawnow;
+    end
+    
     % Construct view
     function createUI(obj)
       import iris.app.Info;
       %% Initialize
-      initW = 350;
-      initH = 125;
+      initW = obj.WIDTH;
+      initH = obj.HEIGHT;
       pos = obj.position;
       if isempty(pos)
         pos = utilities.centerFigPos(initW,initH);
       end
       
+      % force specific size regardless of if the window was resized previously
       pos(3:4) = [initW,initH];
       
       obj.position = pos; %sets container too
@@ -205,28 +140,18 @@ classdef loadShow < iris.ui.UIContainer
       % Setup container
       obj.container.Name = sprintf('%s v%s',Info.name,Info.version('short'));
       
-      gridLayout = uigridlayout(obj.container,[5,4]);
-      gridLayout.RowHeight = {'1x','1x',64,'1x','1x'};
-      % 2x padding on right than on left
-      gridLayout.ColumnWidth = {15,64,'fit',15};
+      gridLayout = uigridlayout(obj.container,[1,1]);
+      gridLayout.RowHeight = {'1x'};
+      gridLayout.ColumnWidth = {'1x'};
+      gridLayout.BackgroundColor = [1,1,1,0];
+      gridLayout.Padding = [10 5 10 5];
       
       % Create Spinner
-      obj.Spinner = uipanel(gridLayout);
-      obj.Spinner.Layout.Row = 3;
-      obj.Spinner.Layout.Column = 2;
-      obj.Spinner.AutoResizeChildren = 'off';
-      obj.Spinner.BorderType = 'none';
-      obj.Spinner.BackgroundColor = [1 1 1];
+      obj.Spinner = uihtml(gridLayout);
+      obj.Spinner.Data = obj.TextData;
+      obj.Spinner.HTMLSource = obj.HTMLSource;
       
-      % Create LoadingText
-      obj.LoadingText = uilabel(gridLayout);
-      obj.LoadingText.Layout.Row = [2,4];
-      obj.LoadingText.Layout.Column = 3;
-      obj.LoadingText.FontName = iris.app.Aes.uiFontName;
-      obj.LoadingText.FontSize = 28;
-      obj.LoadingText.Text = 'Loading...';
-      
-      drawnow('limitrate');
+      drawnow;
     end
     
   end

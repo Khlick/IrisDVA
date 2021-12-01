@@ -3,19 +3,24 @@ function setup(htmlComponent) {
   let dims = initialData.Dims;
   let txt = document.getElementById("target");
   txt.textContent = initialData.String;
-  txt.style.fontSize = clampBuilder((dims[0] - 64)/2, (dims[0] - 64) * 3, 1.1, 3.5);
+  txt.style.fontSize = clampBuilder((dims[0] - 64)/3, (dims[0] - 64) * 3, 1, 3.5);
   
   htmlComponent.addEventListener("DataChanged", function (event) {
     event.preventDefault;
     
     let txt = document.getElementById("target");
     var changedData = htmlComponent.Data;
+    let dims = changedData.Dims;
     
     // Update your HTML or JavaScript with the new data
-    txt.classList.remove("funtext");
-    void txt.offsetWidth;
     txt.textContent = changedData.String;
-    txt.classList.add("funtext");
+    txt.style.fontSize = clampBuilder((dims[0] - 64)/3, (dims[0] - 64) * 3, 1, 3.5);
+    if (changedData.Animate) {
+      txt.classList.remove("funtext");
+      void txt.offsetWidth;
+      txt.classList.add("funtext");
+    }
+    
   });
 }
 

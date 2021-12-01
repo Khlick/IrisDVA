@@ -146,8 +146,8 @@ obj.FixLayoutMenu.Text = 'Fix Layout!';
 %% MAIN UI
 
 % set the position
-initW = 1610;
-initH = 931;
+initW = obj.WIDTH;
+initH = obj.HEIGHT;
 
 pos = utilities.centerFigPos(initW,initH);
 
@@ -600,8 +600,7 @@ obj.DevicesSelection.Value = {'Device 1', 'Device 2'};
 
 
 % draw
-drawnow('limitrate');
-pause(0.05);
+drawnow;
 
 % now that we've drawn the figure, let's reposition it by first getting the
 % stored value

@@ -21,8 +21,9 @@ body {
 }
 
 #gear {
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
+  padding: 2px;
   flex: 0 0 auto;
   animation-name: spinner;
   animation-duration: 4.6s;
