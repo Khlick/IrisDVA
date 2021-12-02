@@ -64,7 +64,7 @@ classdef loadShow < iris.ui.UIContainer
           return
       end
       % shutdown after completion
-      obj.shutdown;
+      %obj.shutdown;
     end
     
     % override shutdown to notify shutdown event. This should be a common feature
@@ -81,7 +81,12 @@ classdef loadShow < iris.ui.UIContainer
     end
     
     function src = get.HTMLSource(obj)
-      src = fullfile(iris.app.Info.getResourcePath(),"scripts",obj.SCRIPT_ID,"spin.html");
+      src = fullfile( ...
+        iris.app.Info.getResourcePath(), ...
+        "scripts", ...
+        obj.SCRIPT_ID, ...
+        sprintf("%s.html",obj.SCRIPT_ID) ...
+        );
     end
 
     function txt = get.Text(obj)

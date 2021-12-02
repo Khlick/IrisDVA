@@ -1,0 +1,40 @@
+body {
+  margin: 0px;
+  padding: 0px;
+  overflow: hidden;
+}
+:root{
+  --VW: 100vw;
+  --VH: 100vh;
+  --labelOffset: 0.12;
+}
+
+.container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0;
+  margin: 0;
+  height: var(--VH,100vh);
+  width: var(--VW,100vw);
+}
+
+.textbox {
+  display: flex;
+  width: var(--VW,100%);
+  height: var(--VH,100%);
+  overflow-wrap: break-word;
+  font-family: "Times New Roman", Times, serif;
+  font-weight: bold;
+  text-align: left;
+  padding: 5px 0 0 calc(var(--VW,100%)*var(--labelOffset,0.15));
+  margin: 0;
+}
+
+.vertical {
+  height: var(--VW);
+  width: var(--VH);
+  padding: 5px 0 0 calc(var(--VH,100vh)*var(--labelOffset,0.15));
+  transform-origin: top left;
+  transform: translate(var(--VW),0) rotate(90deg);
+}

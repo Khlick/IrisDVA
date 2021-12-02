@@ -494,7 +494,7 @@ obj.SelectionNavigatorSlider.Tag = 'Slider';
 
 % Create AxesPanel
 obj.AxesPanel = uipanel(obj.containerGrid);
-obj.AxesPanel.BackgroundColor = [1 1 1];
+obj.AxesPanel.BackgroundColor = [1 1 1 0];
 obj.AxesPanel.Layout.Row = 2;
 obj.AxesPanel.Layout.Column = 1;
 obj.AxesPanel.BorderType = 'none';
