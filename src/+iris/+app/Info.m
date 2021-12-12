@@ -26,7 +26,7 @@ classdef Info < handle
       if ~nargin
         sub = 'public';
       end
-      status = {2,0,141};
+      status = {2,0,145};
       switch sub
         case 'major'
           v = sprintf('%d', status{1});
@@ -263,6 +263,28 @@ classdef Info < handle
 
     end
 
+    function validity = isValidFilename(file)
+      arguments
+        file (1,1) string
+      end
+      forbidden = '''";?|!@#$%^&*[]{}`~';
+      % assume / and \ are allowed as path strings
+      tf = logical.empty(numel(forbidden),0);
+      for i = 1:numel(forbidden)
+        tf(i,1) = contains(file,forbidden(i));
+      end
+      tf = any(tf); % any forbidden?
+      % check trailing spaces and file sep (can't start with it)
+      tf = tf || ~isempty(regexp(file,"^\s|\s$",'once')) || startsWith(file,filesep);
+      % finally test with java method
+      try
+        java.io.File(file).toPath;
+      catch
+        tf = true; % is true that it failed the test       
+      end
+      validity = ~tf; % is valid if it didn't fail all tests
+    end
+  
   end
 
 end

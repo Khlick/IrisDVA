@@ -1,15 +1,18 @@
 classdef (ConstructOnLoad) eventData < event.EventData
 
-    properties
-        Data
+  properties
+    Data
+    EventInfo
+  end
+
+  methods
+
+    function obj = eventData(data,evt)
+      if nargin < 2, evt = []; end
+      obj.Data = data;
+      obj.EventInfo = evt;
     end
 
-    methods
-
-        function obj = eventData(data)
-            obj.Data = data;
-        end
-
-    end
+  end
 
 end

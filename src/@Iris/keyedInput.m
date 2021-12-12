@@ -1,7 +1,7 @@
 function keyedInput(app,~,evt)
 
 % disallow key press capture if current object is an edit field of the ui.
-if isa(app.ui.container.CurrentObject,'matlab.ui.control.EditField'), return; end
+if isa(app.ui.CurrentObject,'matlab.ui.control.EditField'), return; end
 
 % 
 keyDat = evt.Data;

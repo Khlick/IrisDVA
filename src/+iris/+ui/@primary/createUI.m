@@ -164,6 +164,7 @@ obj.containerGrid.ColumnWidth = {'1x', 350};
 obj.containerGrid.RowHeight = {190, '1x'};
 obj.containerGrid.ColumnSpacing = 5;
 obj.containerGrid.RowSpacing = 5;
+obj.containerGrid.Padding = [10 5 10 5];
 obj.containerGrid.BackgroundColor = [1,1,1,0];
 
 % Create PlotControlTools

@@ -1,0 +1,119 @@
+:root {
+  --grey: rgb(230,230,230);
+  --dark-grey: rgb(80,80,80);
+  --label-min: 22px;
+}
+
+@font-face {
+  font-family: 'bitstream_vera_sans_monoroman';
+  src: url('fonts/VeraMono-webfont.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+html, body {
+  display: block;
+  margin: 0px;
+  padding: 0px;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12pt;
+}
+
+.container {
+  width: 100%;
+  height: 100%;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  height: fit-content;
+}
+
+tbody#dedbox {
+  margin: 0px;
+  height: 100%;
+  min-height: var(--label-min);
+}
+
+#label-container {
+  width: 100%;
+  height: var(--label-min);
+  /* default colors */
+  background-color: var(--grey);
+  color: rgb(0,0,0);
+}
+
+.static {
+  cursor: default;
+  /* max-height: 100%; */
+  /* default colors */
+  /* background-color: var(--grey);
+  border: 1px solid var(--grey);
+  color: rgb(0,0,0); */
+}
+
+.hide {
+  display: none;
+}
+
+.category {
+  padding: 2px;
+}
+
+.category:hover::before {
+  filter: contrast(50%);
+}
+
+/* .category.open {
+  
+} */
+
+.category.open::before {
+  content: "\2BC6\a0";
+}
+
+/* .category.closed {
+  min-height: 15px;
+} */
+
+.category.closed::before {
+  content: "\2BC8\a0";
+}
+
+#text-container {
+  width: 100%;
+  padding: 3px 0 5px 0;
+  height: fit-content;
+}
+
+.dynamic {
+  overflow-y: auto;
+  margin: 0;
+  width: 100%;
+  height: fit-content;
+  word-wrap: break-word;
+  line-height: 1.3em;
+  background-color: transparent;
+  padding: 0 0 2 0;
+}
+
+.mono {
+  font-family: 'bitstream_vera_sans_monoroman', 'Courier New';
+}
+
+.red {
+  color: red;
+}
+
+.bold {
+  font-weight: bold;
+}
+
+.italic {
+  font-style: italic;
+}

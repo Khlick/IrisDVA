@@ -6,24 +6,24 @@ classdef Handler < matlab.mixin.Copyable
     onSelectionUpdated
     handlerModified
   end
-  
+
   properties (SetAccess = private)
-    Meta      cell
-    Data      
-    Notes     cell
-    Tracker   iris.data.Tracker
+    Meta cell
+    Data
+    Notes cell
+    Tracker iris.data.Tracker
   end
-  
-  properties (Hidden=true,Access=private)
-    fileList  string
-    rootList  string
+
+  properties (Hidden = true, Access = private)
+    fileList string
+    rootList string
   end
-  
+
   properties (Hidden = true, SetAccess = private)
     membership cell
     fileMap containers.Map
   end
-  
+
   properties (Dependent)
     currentSelection
     FileNames
@@ -31,59 +31,63 @@ classdef Handler < matlab.mixin.Copyable
     nDatum
     isready
   end
-  
+
   methods
-    
-    function obj = Handler(files,reader)
+
+    function obj = Handler(files, reader)
       if nargin < 1, return; end
       if nargin < 2, reader = ''; end
-      obj.import(files,reader);
+      obj.import(files, reader);
     end
-    
+
   end
+
   %% Manipulation of datafiles
   methods (Access = public)
-    
-    function new(obj,files,reader)
+
+    function new(obj, files, reader)
       % NEW Flush currently open files and load data from new file(s).
       if nargin < 3, reader = ''; end
-      if all(ismember(files,obj.fileList)), return; end
+      if all(ismember(files, obj.fileList)), return; end
       obj.destroy();
-      obj.import(files,reader);
+      obj.import(files, reader);
     end
-    
-    function import(obj,files,reader)
+
+    function import(obj, files, reader)
       % IMPORT Read new files and append them onto the current data object.
       if nargin < 2, reader = ''; end
-      [d,f,m,n] = obj.readData(files,reader);
-      obj.append(d,f,m,n);
+      [d, f, m, n] = obj.readData(files, reader);
+      obj.append(d, f, m, n);
+
       if obj.Tracker.currentIndex == 0
         obj.Tracker.currentIndex = 1;
       end
+
       notify(obj, 'onCompletedLoad');
     end
-    
+
     function cleanup(obj)
       % CLEANUP Remove any datums marked as "not included".
       drop = obj.Tracker.cleanup();
       obj.Data(drop) = [];
-      
+
       filesToDrop = cellfun( ...
-        @(m) all(ismember(m.data,drop)), ...
+        @(m) all(ismember(m.data, drop)), ...
         obj.membership, ...
         'UniformOutput', 1 ...
-        );
-      
+      );
+
       % reevaluate indices
       for d = 1:length(obj.Data)
         obj.Data(d).index = d;
       end
-      
+
       % reevaluate membership
-      ofst=0;
+      ofst = 0;
       nOfst = 0;
+
       for m = 1:obj.nFiles
-        nKept = sum(~ismember(obj.membership{m}.data,drop));
+        nKept = sum(~ismember(obj.membership{m}.data, drop));
         obj.membership{m}.data = ofst + (1:nKept);
         ofst = nKept;
         % if keeping any datums, reassign notes based on offset
@@ -93,130 +97,138 @@ classdef Handler < matlab.mixin.Copyable
           obj.membership{m}.notes = nOfst + (1:nNotes);
           nOfst = nOfst + nNotes;
         end
+
         obj.fileMap(obj.fileList{obj.membership{m}.File}) = obj.membership{m};
       end
+
       % reevaluate Meta, Notes and Files
       if any(filesToDrop)
         fl = obj.fileList;
         fl = cellstr(fl);
-        remove(obj.fileMap,fl(filesToDrop));
+        remove(obj.fileMap, fl(filesToDrop));
         obj.Meta(filesToDrop) = [];
         noteInds = [obj.membership{filesToDrop}];
         noteInds = [noteInds.notes];
-        obj.Notes(noteInds,:) = [];
+        obj.Notes(noteInds, :) = [];
         obj.membership(filesToDrop) = [];
         obj.fileList(filesToDrop) = [];
       end
-      
+
     end
-    
-    function append(obj,data,files,meta,notes)
+
+    function append(obj, data, files, meta, notes)
       % APPEND Append parsed data onto existing object.
       assert( ...
-        iscell(data) && iscell(meta) && iscell(notes) && (iscell(files)||isstring(files)), ...
+      iscell(data) && iscell(meta) && iscell(notes) && (iscell(files) || isstring(files)), ...
         'data, meta and notes arguments must be cells or cell arrays.' ...
-        );
+      );
       assert( ...
         (length(data) == length(meta)) && ...
-          (length(meta) == length(notes)) && ...
-          (length(notes) == length(files)), ...
+        (length(meta) == length(notes)) && ...
+        (length(notes) == length(files)), ...
         'All inputs must be equal length.' ...
-        );
-      
+      );
+
       % once we are good, begin parsing contents
       import utilities.*; % utility library
-      
+
       % setup memberships
-      fmap = containers.Map('KeyType','char','ValueType','any');
-      
+      fmap = containers.Map('KeyType', 'char', 'ValueType', 'any');
+
       for f = 1:length(files)
         IDX = obj.nFiles + 1;
-        
+
         thisMembership = struct();
-        
+
         % Metainformation
         thisMeta = meta{f}; %first unpack in case nested
+
         if iscell(thisMeta)
           %unpack
           thisMeta = [thisMeta{:}];
         end
-        
+
         if isempty(obj.Meta)
           combinedMeta = {uniqueContents({thisMeta})};
         else
-          combinedMeta = uniqueContents([obj.Meta,thisMeta]);
-          if ~iscell(combinedMeta),combinedMeta = {combinedMeta}; end
+          combinedMeta = uniqueContents([obj.Meta, thisMeta]);
+          if ~iscell(combinedMeta), combinedMeta = {combinedMeta}; end
         end
-        
+
         obj.Meta = combinedMeta;
         thisMembership.Meta = numel(obj.Meta);
-        
+
         % Data
         ofst = length(obj.Data);
         newDataLength = length(data{f});
+
         if isempty(obj.Data)
-          obj.Data = iris.data.Datum(data{f},ofst);
+          obj.Data = iris.data.Datum(data{f}, ofst);
         else
-          obj.Data(ofst+(1:newDataLength)) = iris.data.Datum(data{f},ofst);
+          obj.Data(ofst + (1:newDataLength)) = iris.data.Datum(data{f}, ofst);
         end
-        thisMembership.data = ofst+(1:newDataLength);
-        
+
+        thisMembership.data = ofst + (1:newDataLength);
+
         % Notes
         thisNote = notes{f};
         % make sure we didn't get some nested note (possibley sv1 reader issue)
-        if size(thisNote,2) ~= 2
-          thisNote = cat(1,thisNote{:});
+        if size(thisNote, 2) ~= 2
+          thisNote = cat(1, thisNote{:});
         end
-        
+
         % clear empty rows
-        thisNote(cellfun(@isempty,thisNote(:,1),'unif',1),:) = [];
+        thisNote(cellfun(@isempty, thisNote(:, 1), 'unif', 1), :) = [];
         % replace file contents
-        if ~any(contains(thisNote(:,2), files(f)))
-          hasFile = contains(thisNote(:,1),'File:');
-          thisNote(hasFile,:) = [];
-          thisNote = [[{'File:'},files(f)];thisNote];%#ok
+        if ~any(contains(thisNote(:, 2), files(f)))
+          hasFile = contains(thisNote(:, 1), 'File:');
+          thisNote(hasFile, :) = [];
+          thisNote = [[{'File:'}, files(f)]; thisNote]; %#ok
         end
-          
+
         if isempty(obj.Notes)
           obj.Notes = thisNote;
-          thisMembership.notes = 1:size(thisNote,1);
+          thisMembership.notes = 1:size(thisNote, 1);
         else
           existingNotes = obj.Notes;
-          newNoteFileIdx = contains(thisNote(:,1),'File:');
-          newNoteContent = thisNote(~newNoteFileIdx,:);
+          newNoteFileIdx = contains(thisNote(:, 1), 'File:');
+          newNoteContent = thisNote(~newNoteFileIdx, :);
           % intersect the notes
-          [a,b] = ismember(existingNotes(:,1), newNoteContent(:,1));
-          newNoteContent(b(b ~= 0),:) = [];
+          [a, b] = ismember(existingNotes(:, 1), newNoteContent(:, 1));
+          newNoteContent(b(b ~= 0), :) = [];
+
           if isempty(newNoteContent)
-            fileLoc = find(a,1,'first')-1;
-            existingNotes{fileLoc,2} = strjoin([existingNotes(fileLoc,2),files{f}],';');
-            thisMembership.notes = [fileLoc,find(a)'];
+            fileLoc = find(a, 1, 'first') - 1;
+            existingNotes{fileLoc, 2} = strjoin([existingNotes(fileLoc, 2), files{f}], ';');
+            thisMembership.notes = [fileLoc, find(a)'];
             obj.Notes = existingNotes;
           else
-            newNote = [thisNote(newNoteFileIdx,:);newNoteContent];
-            newNoteLen = size(newNote,1);
-            obj.Notes = [existingNotes;newNote];
-            thisMembership.notes = (1:newNoteLen) + size(existingNotes,1);
+            newNote = [thisNote(newNoteFileIdx, :); newNoteContent];
+            newNoteLen = size(newNote, 1);
+            obj.Notes = [existingNotes; newNote];
+            thisMembership.notes = (1:newNoteLen) + size(existingNotes, 1);
           end
+
         end
-        
+
         % append file to list, which will update obj.nFiles
-        [thisRoot,thisFile,thisExt] = fileparts(char(files(f)));
-        
-        obj.fileList{IDX} = [thisFile,thisExt];
+        [thisRoot, thisFile, thisExt] = fileparts(char(files(f)));
+
+        obj.fileList{IDX} = [thisFile, thisExt];
         obj.rootList{IDX} = thisRoot;
         thisMembership.File = IDX;
-        
+
         % Membership
         obj.membership{IDX} = thisMembership;
-        fmap([thisFile,thisExt]) = thisMembership;
+        fmap([thisFile, thisExt]) = thisMembership;
         pause(0.001);
       end
+
       obj.Tracker = iris.data.Tracker(obj.Data.getInclusion);
-      obj.fileMap = [obj.fileMap;fmap];
+      obj.fileMap = [obj.fileMap; fmap];
     end
-    
-    function obj = subset(obj,subs)
+
+    function obj = subset(obj, subs)
       % SUBSET Reduce the current data object to desired subset indices.
       currentInclusions = obj.Tracker.getStatus().inclusions;
       obj.Tracker(:) = 0;
@@ -224,128 +236,135 @@ classdef Handler < matlab.mixin.Copyable
       obj.cleanup();
       obj.Tracker(:) = currentInclusions(subs);
       obj.Tracker.currentIndex = 1;
-      notify(obj,'handlerModified');
+      notify(obj, 'handlerModified');
     end
-    
+
     function popped = pop(obj)
       % POP Remove and return a struct of the end-most file on record.
       if ~obj.isready, popped = []; return; end
       %pops an entire file
       popped = struct( ...
-        'file', obj.fileList{end}, ...
+      'file', obj.fileList{end}, ...
         'Meta', obj.Meta{end}, ...
         'dataIndex', obj.membership{end}.data, ...
         'noteIndex', obj.membership{end}.Notes ...
-        );
+      );
       popped.data = obj(poppped.dataIndex);
-      popped.notes = obj.Notes(popped.noteIndex,:);
+      popped.notes = obj.Notes(popped.noteIndex, :);
       popped.tracker = obj.Tracker.getStatus().inclusions(popped.dataIndex);
       % now drop
       obj.fileList(end) = [];
       obj.Meta(end) = [];
-      obj.Notes(popped.noteIndex,:) = [];
+      obj.Notes(popped.noteIndex, :) = [];
       obj.membership(end) = [];
     end
-    
+
     function shutdown(obj)
+
       if obj.isready
         obj.destroy();
       end
+
       delete(obj);
     end
-    
+
   end
+
   %% Collect meta for current selections
   methods (Access = public)
     % each method here has an All counterpart in the next section
-    
+
     function cur = getCurrentData(obj)
       selection = obj.currentSelection;
       cur = obj.Data(selection.selected);
     end
-    
+
     function devs = getCurrentDevices(obj)
       d = obj.getCurrentData();
       devs = d.getDeviceNames();
     end
-    
+
     function sts = status(obj)
       % STATUS Return the current datum tracker status.
       sts = obj.Tracker.getStatus;
     end
-    
+
     function fields = getCurrentGroupingFields(obj)
       dat = obj.getCurrentData();
       pCell = dat.getPropsAsCell;
-      fields = [{'DataFile'};pCell(:,1)];
+      fields = [{'DataFile'}; pCell(:, 1)];
     end
-    
+
     function tab = getCurrentPropTable(obj)
       dat = obj.getCurrentData();
       tab = dat.getPropTable();
     end
-    
-    function fileName = getParentFile(obj,index)
-      loc = cellfun(@(dd)any(ismember(index,dd.data)),obj.membership,'UniformOutput',1);
+
+    function fileName = getParentFile(obj, index)
+      loc = cellfun(@(dd)any(ismember(index, dd.data)), obj.membership, 'UniformOutput', 1);
       fileName = string(obj.fileList(loc));
     end
-    
-    function map = getParentMap(obj,indices)
+
+    function map = getParentMap(obj, indices)
+
       if nargin < 2
         indices = 1:obj.nDatum;
       end
+
       subsParents = obj.getParentFile(indices);
       map = containers.Map();
+
       for i = 1:length(subsParents)
         pos = ismember(obj.fileList, subsParents(i));
         mbr = obj.membership{pos};
-        mbr.data = intersect(mbr.data,indices);
+        mbr.data = intersect(mbr.data, indices);
         map(subsParents(i)) = mbr;
       end
+
     end
-    
-    function props = getCurrentDisplayProps(obj,collapse)
+
+    function props = getCurrentDisplayProps(obj, collapse)
       if nargin < 2, collapse = true; end
       d = obj.getCurrentData();
       props = d.getDisplayProps(collapse);
     end
-    
+
   end
-  
+
   %% Collect meta for all data
   methods (Access = public)
-    
+
     function devs = getAllDevices(obj)
       d = obj.Data;
-      devs = unique(cat(2,d.devices));%sorted
+      devs = unique(cat(2, d.devices)); %sorted
     end
-    
+
     function fields = getAllGroupingFields(obj)
       dat = obj.Data;
       pCell = dat.getPropsAsCell;
-      fields = [{'DataFile'};pCell(:,1)];
+      fields = [{'DataFile'}; pCell(:, 1)];
     end
-    
+
     function tab = getAllPropTable(obj)
       dat = obj.Data;
       tab = dat.getPropTable();
     end
-    
+
   end
-  
+
   %% Summary of Datums
   methods (Access = public)
-    
-    function v = getScale(obj,scaleType,device)
+
+    function v = getScale(obj, scaleType, device)
       if nargin < 3, device = ''; end
       % create function to compute scalar scale
       switch scaleType
         case 'Absolute Max'
-          func = @(matx)utilities.AbsMax(matx,'all');
+          func = @(matx)utilities.AbsMax(matx, 'all');
         case 'Max'
-          func = @(matx)max(matx,[],'all','omitnan');
+          func = @(matx)max(matx, [], 'all', 'omitnan');
         case 'Min'
-          func = @(matx)min(matx,[],'all','omitnan');
+          func = @(matx)min(matx, [], 'all', 'omitnan');
         case 'Select'
           disp('Select feature coming soon');
           v = [];
@@ -354,6 +373,7 @@ classdef Handler < matlab.mixin.Copyable
           v = [];
           return;
       end
+
       % devices
       if isempty(device)
         device = obj.getCurrentDevices();
@@ -361,23 +381,26 @@ classdef Handler < matlab.mixin.Copyable
       else
         device = string(validatestring(device, obj.getCurrentDevices));
       end
+
       % data
       dat = obj.getCurrentData();
       sizes = dat.getDataLengths(device);
-      dataMat = nan(max(cat(2,sizes{:})),numel(sizes));
+      dataMat = nan(max(cat(2, sizes{:})), numel(sizes));
       ds = dat.getDataByDeviceName(device);
+
       for I = 1:numel(sizes)
-        dataMat(1:sizes{I},I) = ds(I).y(:);
+        dataMat(1:sizes{I}, I) = ds(I).y(:);
       end
+
       v = func(dataMat);
     end
-    
+
     %%% Methods for exporting data to IrisData objects
     function iData = export(obj)
       subs = 1:obj.nDatum;
       iData = obj.exportSubs(subs);
     end
-    
+
     function iData = exportCurrent(obj)
       % EXPORTCURRENT Export IrisData of the currently selected Datums.
       % This method returns an irisData class object
@@ -385,8 +408,8 @@ classdef Handler < matlab.mixin.Copyable
       subs = obj.currentSelection.selected;
       iData = obj.exportSubs(subs);
     end
-    
-    function iData = exportSubs(obj,subs)
+
+    function iData = exportSubs(obj, subs)
       % exportSubs Export IrisData object of input subscripts.
       %   Though similar to the saveobj, the Data field here is not designed
       %   for import with session reader. The data field here is more like the Datum
@@ -395,182 +418,200 @@ classdef Handler < matlab.mixin.Copyable
       %   then subset the copy
       h = obj.copySubs(subs);
       d = h.Data.getDatumsAsStructs();
+
       for i = 1:length(subs)
         % reassign id, we are keeping original inds elsewhere
-        d(i).id = sprintf('Epoch%04d',i);
+        d(i).id = sprintf('Epoch%04d', i);
       end
+
       % create a struct from the handler copy
       s = struct();
-      s.Meta = cell(1,h.nFiles);
-      s.Data = cell(1,h.nFiles); %empty
-      s.Notes = cell(1,h.nFiles);%empty
+      s.Meta = cell(1, h.nFiles);
+      s.Data = cell(1, h.nFiles); %empty
+      s.Notes = cell(1, h.nFiles); %empty
+
       for F = 1:h.nFiles
         mbrs = h.membership{F};
         s.Meta{F} = obj.Meta{mbrs.Meta};
         s.Data{F} = h.Data(mbrs.data).getDatumsAsStructs();
-        s.Notes{F} = h.Notes(mbrs.notes,:);
+        s.Notes{F} = h.Notes(mbrs.notes, :);
       end
+
       s.Files = h.fileList;
       s.Membership = h.getParentMap();
       s.OrignalIndices = obj.getParentMap(subs);
-            
+
       % create the IrisData Object
       iData = IrisData(s);
     end
-    
+
   end
-  
+
   %% GET/SET
   methods
-    
+
     function tf = get.isready(obj)
       tf = ~isempty(obj.Data) && ~isempty(obj.fileList) && obj.Tracker.isready;
     end
-    
+
     function n = get.nFiles(obj)
       n = length(obj.fileList);
     end
-    
+
     function list = get.FileNames(obj)
       list = string(obj.fileList);
     end
-    
+
     function n = get.nDatum(obj)
       n = length(obj.Data);
     end
-    
+
     function sel = get.currentSelection(obj)
       sel = obj.Tracker.currentDatum;
     end
-    
-    function set.currentSelection(obj,inds)
-      if isequal(obj.Tracker.currentIndex(:),inds(:))
+
+    function set.currentSelection(obj, inds)
+
+      if isequal(obj.Tracker.currentIndex(:), inds(:))
         return
       end
+
       obj.Tracker.currentIndex = inds;
-      notify(obj,'onSelectionUpdated');
+      notify(obj, 'onSelectionUpdated');
     end
-    
-    function toggleInclusion(obj,inds)
+
+    function toggleInclusion(obj, inds)
+
       if nargin < 2
         inds = obj.currentSelection.selected(1);
       end
+
       status = obj.Tracker.getStatus;
       obj.Tracker.setInclusion( ...
-        struct('selected', inds, 'inclusion',~status.inclusions(inds)) ...
-        );
+        struct('selected', inds, 'inclusion', ~status.inclusions(inds)) ...
+      );
       obj.Data(inds).setInclusion(~status.inclusions(inds));
-      notify(obj,'onSelectionUpdated');
+      notify(obj, 'onSelectionUpdated');
     end
-    
+
     function setInclusion(obj, inds, vals)
       obj.Tracker.setInclusion( ...
         struct('selected', inds, 'inclusion', logical(vals)) ...
-        );
+      );
       obj.Data(inds).setInclusion(logical(vals));
-      notify(obj,'onSelectionUpdated');
+      notify(obj, 'onSelectionUpdated');
     end
-    
+
     function revertToLastView(obj)
       obj.Tracker.revert();
     end
-    
+
   end
-  
+
   %% Handle operations
   methods
-    
-    function varargout = subsref(obj,s)
+
+    function varargout = subsref(obj, s)
+
       switch s(1).type
         case '()'
+
           if length(s) == 1
             % Implement obj(indices)
-            [varargout{1:nargout}] = builtin('subsref',obj.Data,s);
-          elseif length(s) == 2 && strcmp(s(2).type,'.')
+            [varargout{1:nargout}] = builtin('subsref', obj.Data, s);
+          elseif length(s) == 2 && strcmp(s(2).type, '.')
             % Implement obj(ind).PropertyName
-            
+
             inds = s(1).subs{1};
+
             if strcmpi(inds, ':')
               inds = 1:obj.nDatum;
             end
-            
+
             n = length(inds);
-            
-            vals = cell(1,n);
+
+            vals = cell(1, n);
+
             for k = 1:n
               vals{k} = obj.Data(inds(k)).(s(2).subs);
             end
+
             [varargout{1:n}] = vals{:};
           else
             %implement obj(inds1).PropertyName(inds2)
             % this could fail if obj.Data(inds).Prop aren't all arrays of >= inds1
             % length.
             % get data
-            d = cell(length(s(1).subs{1}),1);
+            d = cell(length(s(1).subs{1}), 1);
             [d{:}] = obj.subsref(s(1:2));
             varargout = cell(size(d));
+
             for i = 1:length(d)
               varargout{i} = builtin('subsref', d{i}, s(end));
             end
+
           end
+
         otherwise
           % Use built-in for any other expression
-          [varargout{1:nargout}] = builtin('subsref',obj,s);
+          [varargout{1:nargout}] = builtin('subsref', obj, s);
       end
-      % spit out all the values
-      if length(varargout) >= nargout+1
-        varargout{(nargout+1):end} %#ok
-      end
+
     end
-    
+
     function s = saveobj(obj)
       % implementing a save process to create session files
       % no loadobj method will be implemented as we want to import the
       % saved objects through a separate reader.
       s = struct();
-      s.Meta = cell(1,obj.nFiles);
-      s.Data = cell(1,obj.nFiles); 
-      s.Notes = cell(1,obj.nFiles);
+      s.Meta = cell(1, obj.nFiles);
+      s.Data = cell(1, obj.nFiles);
+      s.Notes = cell(1, obj.nFiles);
+
       for F = 1:obj.nFiles
         mbrs = obj.fileMap(obj.fileList{F});
         s.Data{F} = obj.Data(mbrs.data).saveobj();
-        s.Notes{F} = obj.Notes(mbrs.notes,:);
+        s.Notes{F} = obj.Notes(mbrs.notes, :);
         s.Meta{F} = obj.Meta{mbrs.Meta};
       end
+
       s.Files = obj.fileList;
     end
-    
-    function h = copySubs(obj,subs)
+
+    function h = copySubs(obj, subs)
       % make a direct copy of the handler
       h = copy(obj);
       % use subset method to reduce the new handler
       h.subset(subs);
     end
-    
+
   end
-  
+
   methods (Access = protected)
-    
+
     function d = copyElement(obj)
       % copy handler using blank datum
       S = obj.saveobj();
       d = iris.data.Handler();
-      d.append(S.Data,S.Files,S.Meta,S.Notes);
+      d.append(S.Data, S.Files, S.Meta, S.Notes);
+
       if d.Tracker.currentIndex == 0
         d.Tracker.currentIndex = 1;
       end
+
     end
-    
+
   end
-  
-  
+
   %% Private methods
   methods (Access = private)
-    
+
     function destroy(obj)
+
       try %#ok
         obj.Data.delete();
       end
+
       obj.Data = [];
       obj.Meta = {};
       obj.fileList = {};
@@ -579,65 +620,77 @@ classdef Handler < matlab.mixin.Copyable
       obj.membership = {};
       obj.fileMap = containers.Map();
     end
-    
-    function [d,fl,m,n] = readData(obj,files,reader)
+
+    function [d, fl, m, n] = readData(obj, files, reader)
+
       if ~iscell(files)
         files = cellstr(files);
       end
+
       if ~iscell(reader)
         reader = cellstr(reader);
       end
+
       if length(reader) ~= length(files)
         % assume reader was a scalar string or cellstr
-        reader = utilities.rep(reader,length(files));
+        reader = utilities.rep(reader, length(files));
       end
-      
+
       validFiles = iris.data.validFiles;
       %
       nf = length(files);
-      m = cell(nf,1);
-      n = cell(nf,1);
-      d = cell(nf,1);
-      fl = cell(nf,1);
+      m = cell(nf, 1);
+      n = cell(nf, 1);
+      d = cell(nf, 1);
+      fl = cell(nf, 1);
       % track skipped
-      [totalDataSize,eachFileSize] = iris.app.Info.getBytes(files);
+      [totalDataSize, eachFileSize] = iris.app.Info.getBytes(files);
       accDataRead = 0;
-      skipped = cell(nf,2);
+      skipped = cell(nf, 2);
       cu = onCleanup(@()cleanupFx(obj));
+
       for f = 1:nf
         notify( ...
           obj, 'fileLoadStatus', ...
-          iris.infra.eventData(accDataRead/totalDataSize) ...
-          );
+          iris.infra.eventData(accDataRead / totalDataSize) ...
+        );
+
         if isempty(reader{f})
           reader{f} = validFiles.getReadFxnFromFile(files{f});
         end
-        try 
-          contents = feval(reader{f},files{f});
-          d{f}= contents.Data; % should be cell array of struct array
-          m{f}= contents.Meta;
-          n{f}= contents.Notes;
+
+        try
+          contents = feval(reader{f}, files{f});
+          d{f} = contents.Data; % should be cell array of struct array
+          m{f} = contents.Meta;
+          n{f} = contents.Notes;
           fl{f} = files(f);
         catch er
-          skipped{f,1} = files{f};
-          skipped{f,2} = er.message;
+          skipped{f, 1} = files{f};
+          skipped{f, 2} = er.message;
         end
+
         % accumulate data size, even if skipped
         accDataRead = accDataRead + eachFileSize(f);
       end
+
       notify( ...
         obj, 'fileLoadStatus', ...
-        iris.infra.eventData(accDataRead/totalDataSize) ...
-        );
-        
-      emptySlots = cellfun(@isempty,d,'unif',1);
-      skipped = skipped(emptySlots,:);
+        iris.infra.eventData(accDataRead / totalDataSize) ...
+      );
+
+      emptySlots = cellfun(@isempty, d, 'unif', 1);
+      skipped = skipped(emptySlots, :);
+
       if ~isempty(skipped)
         fprintf('\nThe Following files were skipped:\n');
-        for ss = 1:size(skipped,1)
-          fprintf('  File: "%s"\n    For reason: "%s".\n', skipped{ss,:});
+
+        for ss = 1:size(skipped, 1)
+          fprintf('  File: "%s"\n    For reason: "%s".\n', skipped{ss, :});
         end
+
       end
+
       % drop skips
       d = d(~emptySlots);
       m = m(~emptySlots);
@@ -650,19 +703,20 @@ classdef Handler < matlab.mixin.Copyable
       fl = [fl{:}];
       % cleanup function
       function cleanupFx(par)
-        notify(par,'fileLoadStatus',iris.infra.eventData('!'));
+        notify(par, 'fileLoadStatus', iris.infra.eventData('!'));
       end
+
     end
-    
+
   end
-  
+
   methods (Static = true)
-    
-    function obj = loadobj(s)%#ok
+
+    function obj = loadobj(s) %#ok
       e = MException('Iris:Data:Handler:Load', 'Use ISF reader.');
       throw(e);
     end
-    
-  end
-end%eoc
 
+  end
+
+  end %eoc

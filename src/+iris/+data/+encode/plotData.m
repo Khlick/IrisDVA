@@ -53,7 +53,7 @@ classdef plotData
       
       % generate array based on the number of response devices (length(d.y))
       N = length(d.y);
-      
+      if ~N, return; end
       % parse colors
       if isempty(p.Results.color)
         colorMap = iris.app.Aes.appColor(N,'contrast');

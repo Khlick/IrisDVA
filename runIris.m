@@ -11,10 +11,7 @@ end
 % Show the busy presenter and app splash while the rest of the app loads
 %splash = iris.ui.busyShow();
 splash = iris.ui.about();
-while ~splash.isready
-  pause(0.001);
-end
-splash.container.Name = "Starting...";
+while ~splash.isready, end
 
 cu = onCleanup(@()onLoaded(splash));
 
@@ -70,9 +67,6 @@ catch runError
 end
 
 splash.show();
-splash.container.Name = "Loaded!";
-pause(1);
-
 app.show();
 
 

@@ -1,5 +1,6 @@
 classdef (Abstract) StoredPrefs < handle
-%% STOREDPREFS Modified from Settings class at:
+%% STOREDPREFS
+% Modified from Settings class at:
 % https://github.com/cafarm/appbox/tree/017bb417e6519db79434fd004904a9cee8264303
 % TODO: write a way to check if the prefs exist.
   properties (Hidden)
@@ -61,6 +62,9 @@ classdef (Abstract) StoredPrefs < handle
       if obj.instanceMap.isKey(key)
         v = obj.instanceMap(key);
       else
+        v = [];
+      end
+      if isempty(v)
         v = default;
         obj.put(key,v);
       end

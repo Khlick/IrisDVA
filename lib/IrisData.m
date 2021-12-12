@@ -3246,7 +3246,9 @@ classdef IrisData
       end
       
       if p.Results.legend
-        legend(axs,'location','southeast');
+        for a = 1:numel(axs)
+          legend(axs(a),'location','southeast');
+        end
       end
       
       % if this method created the axes, then turn the figure visible, otherwise

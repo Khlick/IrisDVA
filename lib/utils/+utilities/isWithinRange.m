@@ -4,28 +4,21 @@ function tf = isWithinRange(values,extents,inclusive)
 %  matching provided extents. Inclusive argument may be a length 2 boolean to
 %  indicate if [start,end] should be inclusive. Default behavior is [true,true].
 
-if nargin < 3, inclusive = [true,true]; end
-if numel(inclusive) < 2, inclusive = inclusive([end,end]); end
-inclusive = logical(inclusive);
+arguments
+  values (:,1) double
+  extents (1,2) double = [0,1]
+  inclusive (1,2) logical = [true,true]
+end
 
-if inclusive(1)
-  lComparitor = @ge;
-else
-  lComparitor = @gt;
-end
-if inclusive(2)
-  rComparitor = @le;
-else
-  rComparitor = @lt;
-end
+comps = utilities.ternary(inclusive,{@ge,@le},{@gt,@lt});
 
 nVal= numel(values);
-
 tf = false(nVal,2);
 
-for i = 1:nVal
-  tf(i,1) = lComparitor(values(i), extents(1));
-  tf(i,2) = rComparitor(values(i), extents(2));
+for v = 1:nVal
+  for t = 1:2
+    tf(v,t) = comps{t}(values(v),extents(t));
+  end  
 end
 
 tf = all(tf,2);

@@ -1,19 +1,17 @@
 classdef (Abstract) UIContainer < iris.infra.UIWindow
   
-  properties
+  properties (SetObservable=true)
     position
     isBound = false
   end
   
   properties (Dependent)
     isClosed
-    isready
+    isVisible
     hasWindow
   end
   
-  properties (SetAccess = protected)
-    container
-    window
+  properties (Access = protected)
     synchronizer
   end
   
@@ -31,7 +29,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       
       SJO = warning('off','MATLAB:ui:javaframe:PropertyToBeRemoved');
       SOO = warning('off','MATLAB:structOnObject');
-      
+      greys = Aes.appColor(6,'greys','matrix');
       %build figure base
       params = { ...
         'DefaultAxesInterruptible', 'off', ...
@@ -45,9 +43,10 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
         'DefaultTextBackgroundColor', [1,1,1,0], ...
         'DefaultUitableFontname', Aes.uiFontName, ...
         'DefaultUipanelUnits', 'pixels', ...
-        'DefaultUipanelPosition', [20,20, 260, 221],...
+        'DefaultUipanelPosition', [20, 20, 260, 221],...
         'DefaultUipanelBackgroundColor', [1,1,1], ...
         'DefaultUipanelBorderType', 'line', ...
+        'DefaultUipanelHightlightColor', greys(end,:), ...
         'DefaultUipanelFontname', Aes.uiFontName,...
         'DefaultUipanelFontunits', 'pixels', ...
         'DefaultUipanelFontsize', Aes.uiFontSize('label'),...
@@ -77,8 +76,9 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
         'DefaultUicontainerBackgroundColor', [1,1,1], ...
         'DefaultUicontrolFontName', Aes.uiFontName, ...
         'DefaultUicontrolInterruptible', 'off', ...
-        'DefaultUicontrolBackgroundColor', [1,1,1,0], ...
-        'DefaultUigridcontainerBackgroundColor', [1,1,1], ...
+        'defaultUicontrolBackgroundColor', [1,1,1,0], ...
+        'defaultUigridcontainerBackgroundColor', [1,1,1], ...
+        'defaultUiflowcontainerBackgroundColor', [1,1,1], ...
         'DefaultHgjavacomponentBackgroundColor', [1,1,1], ...
         'defaultAnimatedlineInterruptible', 'off', ...
         'defaultAreaInterruptible', 'off', ...
@@ -163,7 +163,12 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
         obj.container.WindowKeyPressFcn = ...
             @(src,evnt)notify(obj, 'KeyPress', eventData(evnt));
       catch x
-        fprintf('Keyboard functionality is not available.\n');
+        iris.app.Info.showWarning( ...
+          sprintf( ...
+            'Keyboard functionality is not available because: "%s"', ...
+            x.message ...
+            ) ...
+          );
       end
       
       for p = 1:size(params,2)
@@ -176,34 +181,36 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       try
         obj.createUI(varargin{:});
       catch
-        obj.destroy();
+        obj.destroy(); %deletes children
         try
           obj.createUI();
         catch x
-          delete(obj.container);
+          delete(obj.container); %remove container
           warning(SOO);
           warning(SJO);
           rethrow(x);
         end
       end
-      drawnow();
-      pause(0.2);
-      % This overcomes some "infinite" loop in MATLAB, which appears to be a workaround for "g1658467".
-      % The consequences of doing this are unclear.
-      % See also MATLAB\R20###\toolbox\matlab\uitools\uicomponents\components\...
-      %            +matlab\+ui\+internal\+controller\FigureController.m\flushCoalescer()
-      % See  https://gist.github.com/Dev-iL/398a38ae03c6ef9ebf935d46884ce74d
+      
       v = version('-release');
       v = str2double(regexprep(v,'[^\d]*',''));
+
       if v < 2021
+        % This overcomes some "infinite" loop in MATLAB, which appears to be a workaround for "g1658467".
+        % The consequences of doing this are unclear.
+        % See also MATLAB\R20###\toolbox\matlab\uitools\uicomponents\components\...
+        %            +matlab\+ui\+internal\+controller\FigureController.m\flushCoalescer()
+        % See  https://gist.github.com/Dev-iL/398a38ae03c6ef9ebf935d46884ce74d
         obj.synchronizer = struct(struct(struct(obj.container).Controller).PeerModelInfo).Synchronizer;
         obj.synchronizer.setCoalescerMinDelay(0);
         obj.synchronizer.setCoalescerMaxDelay(5);
       end
             
       % now gather the web window for the container
-      drawnow('limitrate');
+      drawnow();
+      pause(0.01);
       
+      % Move away from mlapptools for release 2.1
       while true
         try
           obj.window = mlapptools.getWebWindow(obj.container);
@@ -213,30 +220,30 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
         end
         break
       end
-      % make modifications
+      
+      % invoke the startup function
       obj.startup(varargin{:});
       
       %return warning status
       warning(SOO);
       warning(SJO);
     end
-    
-    
+        
     %% set
     
     function set.position(obj, p)
       validateattributes(p, {'numeric'}, {'2d', 'numel', 4});
-      obj.container.Position = p; %#ok<MCSUP>
       obj.put('position', p);
       obj.position = p;
+      obj.container.Position = p;
     end
     
     function setUI(obj, uiObjName, propName, newVal)
       % sets a single gui property value for any number of ui objects.
       if ischar(uiObjName), uiObjName = cellstr(uiObjName); end
       if ~ischar(propName), propName = propName{1}; end
-      
-      uiObjName = uiObjName(contains(uiObjName,properties(obj)));
+      % skip prop check and let error occur on setting
+      %uiObjName = uiObjName(contains(uiObjName,properties(obj)));
       
       if isempty(uiObjName), error('Requires valid UI property.'); end
       for i = 1:length(uiObjName)
@@ -249,19 +256,19 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       end
     end
     
-    
+    function set.isVisible(obj,status)
+      arguments
+        obj
+        status (1,1) matlab.lang.OnOffSwitchState
+      end
+      if obj.isClosed, return; end
+      obj.container.Visible = status;
+    end
+
     %% get
 
     function f = get.position(obj)
       f = obj.get('position', []);
-      if isempty(f), return; end
-      rootMonitors = get(groot,'MonitorPositions');
-      if f(1) > (max(rootMonitors(:,3)) - f(3))
-        f(1) = max(rootMonitors(:,3)) - f(3);
-      end
-      if f(2) > (max(rootMonitors(:,4))-f(4))
-        f(2) = max(rootMonitors(:,4)) - f(4);
-      end
     end
     
     function tf = get.isClosed(obj)
@@ -273,14 +280,6 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       end
     end
     
-    function tf = get.isready(obj)
-      try
-        tf = obj.window.isWindowValid || obj.container.isvalid;
-      catch
-        tf = false;
-      end
-    end
-    
     function tf = get.hasWindow(obj)
       tf = ~isempty(obj.window);
     end
@@ -289,8 +288,8 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       uiObj = validatestring(uiObj,properties(obj));
       v = obj.(uiObj).(propName);
     end
-      
-    function tf = isVisible(obj)
+          
+    function tf = get.isVisible(obj)
       tf = ~obj.isClosed && logical(obj.container.Visible);
     end
  
@@ -302,10 +301,11 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       import iris.app.Info
       
       obj.getContainerPrefs;
+
       try
         obj.startupFcn(varargin{:}); %abstract
       catch x
-        delete(obj);
+        obj.close();
         rethrow(x)
       end
       
@@ -320,15 +320,17 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     end
     
     function shutdown(obj)
+      if obj.isClosed, return; end
       obj.setContainerPrefs();
       obj.save();
       obj.hide();
       obj.close();
     end
     
-    function rebuild(obj)
+    function rebuild(obj,varargin)
       if ~obj.isClosed, return; end
-      obj.constructContainer();
+      obj.isBound = false;
+      obj.constructContainer(varargin{:});
     end
     
     function show(obj)
@@ -342,7 +344,6 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
       if strcmpi(obj.container.Visible, 'on')
         obj.container.Visible = 'off';
       end
-      obj.window.hide;
       obj.resume();
     end
     
@@ -390,7 +391,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     end
     
     function focus(obj)
-      pause(0.01);
+      if obj.isClosed, return; end
       if obj.hasWindow
         obj.window.bringToFront;
       else
@@ -404,9 +405,8 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
   methods (Access = private)  
     %% base routines
     function close(obj)
-      if ~obj.isClosed
-        delete(obj.container);
-      end
+      if obj.isClosed, return; end
+      delete(obj.container);
     end
     
     function destroy(obj)
@@ -428,10 +428,11 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     end
     
     function getContainerPrefs(obj)
-      if ~isempty(obj.position)
-        pos = obj.position;
-      else
-        pos = obj.get('position', obj.container.Position);
+      pos = obj.position;
+      if isempty(pos)
+        % collect current container position
+        pos = obj.container.Position;
+        obj.position = pos; % save it for next session
       end
       obj.container.Position = pos;
       % call this super first.

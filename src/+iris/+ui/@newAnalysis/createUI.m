@@ -24,6 +24,13 @@ set(obj.container,...
   'resize', 'off' ...
   );
 
+
+% Create the context menu
+obj.argumentContext = uicontextmenu(obj.container);
+cxMenu = uimenu(obj.argumentContext,'Text','Clear Arguments');
+cxMenu.MenuSelectedFcn = @obj.onClearArguments;
+cxMenu.I
+
 % Create nameLabel
 obj.nameLabel = uilabel(obj.container);
 obj.nameLabel.VerticalAlignment = 'bottom';
@@ -57,7 +64,7 @@ obj.cancelButton.FontName = 'Times New Roman';
 obj.cancelButton.FontSize = 14;
 obj.cancelButton.Position = [195 266 100 24];
 obj.cancelButton.Text = 'Cancel';
-obj.cancelButton.ButtonPushedFcn = @(s,e)obj.onCloseRequest;
+obj.cancelButton.ButtonPushedFcn = @(s,e)notify(obj,'Close');
 
 % Create argPanel
 obj.argPanel = uipanel(obj.container);
@@ -68,21 +75,25 @@ obj.argPanel.Position = [10 5 360 250];
 
 % Create inputArgs
 obj.inputArgs = uitable(obj.argPanel);
+obj.inputArgs.Tag = 'input';
 obj.inputArgs.ColumnName = {'Name'; 'Default Value'};
 obj.inputArgs.RowName = {};
 obj.inputArgs.ColumnEditable = true;
 obj.inputArgs.CellEditCallback = @obj.validateInput;
 obj.inputArgs.FontName = 'Times New Roman';
 obj.inputArgs.Position = [125 10 230 206];
+obj.inputArgs.ContextMenu = obj.argumentContext;
 
 % Create outputArgs
 obj.outputArgs = uitable(obj.argPanel);
+obj.outputArgs.Tag = 'output';
 obj.outputArgs.ColumnName = {'Name'};
 obj.outputArgs.RowName = {};
 obj.outputArgs.ColumnEditable = true;
 obj.outputArgs.CellEditCallback = @obj.validateArgName;
 obj.outputArgs.FontName = 'Times New Roman';
 obj.outputArgs.Position = [5 10 110 206];
+obj.outputArgs.ContextMenu = obj.argumentContext;
 
 % Create outputsLabel
 obj.outputsLabel = uilabel(obj.argPanel);

@@ -6,6 +6,8 @@ classdef analysis < iris.infra.StoredPrefs
     AnalysisPrefix
     ExternalReadersDirectory
     ExternalModulesDirectory
+    AppendAnalysis
+    SendToCommandWindow
   end
 
   methods
@@ -80,6 +82,32 @@ classdef analysis < iris.infra.StoredPrefs
       obj.put('ExternalModulesDirectory',v);
     end
     
+    % AppendAnalysis
+    function v = get.AppendAnalysis(obj)
+      v = obj.get('AppendAnalysis', "ask");
+    end
+
+    function set.AppendAnalysis(obj,v)
+      arguments
+        obj
+        v (1,1) string {mustBeMember(v,["yes","no","ask"])} = "ask"
+      end
+      obj.put('AppendAnalysis',v);
+    end
+    
+    % AppendAnalysis
+    function v = get.SendToCommandWindow(obj)
+      v = obj.get('SendToCommandWindow', false);
+    end
+
+    function set.SendToCommandWindow(obj,v)
+      arguments
+        obj
+        v (1,1) logical = false
+      end
+      obj.put('SendToCommandWindow',v);
+    end
+
   end
   
   methods (Static)

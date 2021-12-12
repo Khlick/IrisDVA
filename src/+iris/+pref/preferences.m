@@ -1,10 +1,7 @@
 classdef preferences < handle
   %PREFERENCES These preferences can be overwritten from here.
   %   Preferences here will serve as a default override for the preferences
-  %   located in the stored prefs from iris.ui.preferences. Also, some
-  %   preference changes cannot be applied until restart (like setting
-  %   colormap and color order of the main axes), this will be the unifying
-  %   location for any of those preferences.
+  %   located in the stored prefs from iris.ui.preferences.
   properties (Access = private)
     c
     a
@@ -148,7 +145,7 @@ methods (Static)
   end
   
   function d = getDefault()
-    % force init of each default if class doesn't exist.
+    % Load default on first instance, otherwise use persisted instance
     persistent default;
     if isempty(default) || ~isvalid(default)
       default = iris.pref.preferences();

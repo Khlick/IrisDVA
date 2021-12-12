@@ -32,7 +32,7 @@ classdef primary < iris.ui.UIContainer
     HEIGHT = 931
   end
 
-  properties (Access = public) %private)
+  properties (SetAccess = {?iris.ui.UIContainer})
     % Menus
     FileMenu matlab.ui.container.Menu
     NewMenu matlab.ui.container.Menu
@@ -116,7 +116,8 @@ classdef primary < iris.ui.UIContainer
     BaselineSwitch matlab.ui.control.ToggleSwitch
     StatsSwitch matlab.ui.control.ToggleSwitch
     ScaleSwitch matlab.ui.control.ToggleSwitch
-
+  end
+  properties (Hidden)
     % Containers
     ModulesContainer cell
   end
@@ -138,13 +139,31 @@ classdef primary < iris.ui.UIContainer
     isBaselined
     isAggregated
     viewStatus
+    CurrentObject
+    UiObjList
   end
 
   %% Public Functions
-  methods (Access = public)
+methods
     % External Methods
-    % UI update
-
+    %
+    function list = get.UiObjList(obj)
+      % uiobj property names are found by looking for private access to set and get
+      props = metaclass(obj);
+      props = props.PropertyList;
+      list = string({props.Name}');
+      %propNames = string({props.Name}');
+      %propSet = {props.SetAccess}';
+      %propGet = {props.GetAccess}';
+      %idx = all( ...
+      %  [ ...
+      %    cellfun(@(s)isequal(s,'private'),propSet), ...
+      %    cellfun(@(s)isequal(s,'private'),propGet) ...
+      %  ], ...
+      %  2 ...
+      %  );
+      %list = propNames(idx);
+    end
     %updateView(obj,handler)
     updateView(obj, newSelection, newDisplay, newData, newUnits)
 
@@ -169,7 +188,8 @@ classdef primary < iris.ui.UIContainer
       %data dependent menu items
       status = validatestring(status, {'off', 'on'});
       invStatus = strcmp(status, 'on');
-      uiObjs = properties(obj);
+      uiObjs = obj.UiObjList;
+
       % Toggle Menus
       dMenus = uiObjs(contains(uiObjs, 'MenuD'));
       obj.setUI(dMenus, 'Enable', status);
@@ -278,6 +298,8 @@ classdef primary < iris.ui.UIContainer
     bindUI(obj)
     % resize components
     windowResized(obj, source, event)
+    % fix layout called
+    resetContainerView(obj, source, event)
 
     % Validate datum ticker and overlay ticker values
     function ValidateTicker(obj, tag, event)
@@ -487,52 +509,6 @@ classdef primary < iris.ui.UIContainer
       notify(obj, 'PlotCompletedUpdate');
     end
 
-    function resetContainerView(obj, ~, ~)
-      % resetContainerView Returns all off-screen windows to center of main monitor
-      % move the main figure to the center of the main monitor
-      p = utilities.centerFigPos(obj.WIDTH, obj.HEIGHT);
-      obj.position = p;
-      
-      % find all visible figure windows
-      figs = findall(groot,'Type','Figure','Visible', 'on');
-      if isempty(figs)
-        return
-      end
-
-      screenSize = get(groot, 'ScreenSize');
-      
-      % extents of screen
-      % pad 5 pixels
-      pixelPadding = 5;
-      sLeft = screenSize(1) + pixelPadding;
-      sRight = sum(screenSize([1,3])) - pixelPadding;
-      sTop = sum(screenSize([2,4])) - pixelPadding;
-      sBottom = screenSize(2) + pixelPadding;
-      
-      figPositions = get(figs, {'Position'});
-      figPositions = cat(1, figPositions{:});
-      
-      % extents of open figures
-      fRight = figPositions(:,1)+figPositions(:,3);
-      fLeft = figPositions(:,1);
-      fTop = figPositions(:,2)+figPositions(:,4);
-      fBottom = figPositions(:,2);
-      
-      % find figures whos bounds are beyond limits
-      targets = find( ...
-        fLeft < sLeft | ...
-        fRight > sRight | ...
-        fTop > sTop | ...
-        fBottom < sBottom ...
-        );
-      nTargets = numel(targets);
-      for f = 1:nTargets
-        fig = figs(targets(f));
-        p = figPositions(targets(f),3:4);
-        fig.Position = utilities.centerFigPos(p(1),p(2));
-      end
-    end
-
     % copy cell contents callback
     function doCopyUITableCell(obj, source, event) %#ok<INUSL>
 
@@ -622,6 +598,10 @@ classdef primary < iris.ui.UIContainer
       s.selection = obj.selection;
     end
 
+    function h = get.CurrentObject(obj)
+      h = obj.container.CurrentObject;
+    end
+
     function toggleSwitches(obj, status) %#ok
 
       if nargin < 2
@@ -650,7 +630,7 @@ classdef primary < iris.ui.UIContainer
 
     function manualSwitchThrow(obj, switchName)
       % get the source and create event data to toggle it.
-      prps = properties(obj);
+      prps = obj.UiObjList;
       pName = prps(endsWith(prps, 'Switch') & contains(prps, switchName, 'IgnoreCase', true));
       prop = obj.(pName{1});
       % get current value:

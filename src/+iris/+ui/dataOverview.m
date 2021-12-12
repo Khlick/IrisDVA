@@ -5,9 +5,11 @@ classdef dataOverview < iris.ui.UIContainer
     FileTree            matlab.ui.container.Tree
     FileNodes
     PropNodes
+    GridLayout          matlab.ui.container.GridLayout
     PropTable           matlab.ui.control.Table
-    SelectSubsetPanel   matlab.ui.container.Panel
-    SelectSubsetLabel   matlab.ui.control.Label
+    ActionsGrid    matlab.ui.container.GridLayout
+    ActionsPanel   matlab.ui.container.Panel
+    NotifierLabel   matlab.ui.control.Label
     DatumList           matlab.ui.control.ListBox
     Actions             matlab.ui.control.DropDown
     Apply               matlab.ui.control.Button
@@ -54,7 +56,7 @@ classdef dataOverview < iris.ui.UIContainer
       
       obj.FileNodes = cell(handler.nFiles,1);
       obj.PropNodes = {};
-      obj.SelectSubsetLabel.Text = ...
+      obj.NotifierLabel.Text = ...
         { ...
         'Loading...'; ...
         'Selected Datums will show when completed.' ...
@@ -64,7 +66,7 @@ classdef dataOverview < iris.ui.UIContainer
       
       obj.recurseNodes();
       
-      obj.SelectSubsetLabel.Text = 'Select File Subset';
+      obj.NotifierLabel.Text = 'Select File Subset';
       
       % set selected from handler
       obj.setSelectionFromHandler();
@@ -103,8 +105,6 @@ classdef dataOverview < iris.ui.UIContainer
           'File_Icon.png' ...
           );
         
-        %obj.drawnow('limitrate');
-        
         thisNode.NodeData = [];
         % create childNode for each datum
         for i = 1:length(d)
@@ -121,8 +121,6 @@ classdef dataOverview < iris.ui.UIContainer
             thisNode.expand;
           end
           
-          %TODO: recurse structs in d.<type>Configurations
-          
           if ~mod(i,10)
             drawnow('limitrate');
           end
@@ -136,15 +134,7 @@ classdef dataOverview < iris.ui.UIContainer
     
     function selfDestruct(obj)
       % required for integration with menuservices
-      % detect handler condition and then hide or shutdown
-      
-      if obj.Handler.isready
-        % just hide rather than kill
-        obj.update();
-        obj.hide();
-      else
-        obj.shutdown();
-      end
+      obj.shutdown();
     end
     
     function shutdown(obj)
@@ -159,9 +149,9 @@ classdef dataOverview < iris.ui.UIContainer
     
     % Startup
     function startupFcn(obj,handler)
-      obj.container.SizeChangedFcn = @obj.containerResized;
       if nargin < 2, return; end
-      pause(0.05);
+      obj.GridLayout.ColumnWidth{2} = 0;
+      drawnow();
       obj.buildUI(handler);
     end
     
@@ -186,7 +176,6 @@ classdef dataOverview < iris.ui.UIContainer
     % Set Table Data
     function setData(obj,d)
       % flatten table to unique first column
-      firstColWidth = max([120,obj.PropTable.ColumnWidth{1}]);
       keyNames = unique(d(:,1),'stable');
       keyData = cellfun( ...
         @(x)d(ismember(d(:,1),x),2), ...
@@ -205,16 +194,13 @@ classdef dataOverview < iris.ui.UIContainer
       tableDat(:,2) = arrayfun(@utilities.unknownCell2Str,tableDat(:,2),'unif',0);
       %set
       obj.PropTable.Data = tableDat;
-      lens = cellfun(@length,tableDat(:,2),'UniformOutput',true);
-      remainderWidth = obj.PropTable.Position(3) - firstColWidth-20;
-      obj.PropTable.ColumnWidth = {firstColWidth, max([lens*6.55;remainderWidth])};
     end
-    
+
     % Construct view
     function createUI(obj)
-      % TODO: Update to uigridlayout
       
       import iris.app.*;
+      import matlab.ui.layout.GridLayoutOptions;
       
       finalPos = obj.position;
       
@@ -226,49 +212,56 @@ classdef dataOverview < iris.ui.UIContainer
       % Create container
       obj.container.Name = 'Data Overview';
       obj.container.Resize = 'on';
-      
+
+      % Create the Grid Layout
+      obj.GridLayout = uigridlayout(obj.container);
+      obj.GridLayout.BackgroundColor = obj.container.Color;
+      obj.GridLayout.Padding = [10 10 10 10];
+      obj.GridLayout.RowSpacing = 3;
+      obj.GridLayout.ColumnSpacing = 3;
+      obj.GridLayout.RowHeight = {'1x',36};
+      obj.GridLayout.ColumnWidth = {250,'1x','1x'};
       
       % Create FileTree
-      obj.FileTree = uitree(obj.container);
+      obj.FileTree = uitree(obj.GridLayout,'Layout',GridLayoutOptions('Row',1,'Column',1));
       obj.FileTree.FontName = 'Times New Roman';
       obj.FileTree.FontSize = 16;
-      obj.FileTree.Position = [15 52 230 304];
       obj.FileTree.Multiselect = 'on';
       obj.FileTree.SelectionChangedFcn = @obj.nodeChanged;
       
       % Create PropTable
-      obj.PropTable = uitable(obj.container);
+      obj.PropTable = uitable(obj.GridLayout,'Layout',GridLayoutOptions('Row',[1,2],'Column',2));
       obj.PropTable.ColumnName = {'Property '; 'Value'};
-      obj.PropTable.ColumnWidth = {125, 'auto'};
+      obj.PropTable.ColumnWidth = {'fit', '1x'};
       obj.PropTable.RowName = {};
       obj.PropTable.FontName = 'Times New Roman';
-      obj.PropTable.Position = [255 15 546 341];
       obj.PropTable.Visible = 'off';
       obj.PropTable.CellSelectionCallback = @obj.doCopyUITableCell;
       
-      % Create SelectSubsetPanel
-      obj.SelectSubsetPanel = uipanel(obj.container);
-      obj.SelectSubsetPanel.AutoResizeChildren = 'off';
-      obj.SelectSubsetPanel.BackgroundColor = [1 1 1];
-      obj.SelectSubsetPanel.FontName = iris.app.Aes.uiFontName;
-      obj.SelectSubsetPanel.Position = [255 15 546 341];
+      % Create NotifierLabel
+      obj.NotifierLabel = uilabel(obj.GridLayout,'Layout',GridLayoutOptions('Row',[1,2],'Column',3));
+      obj.NotifierLabel.HorizontalAlignment = 'center';
+      obj.NotifierLabel.FontName = iris.app.Aes.uiFontName;
+      obj.NotifierLabel.FontSize = 20;
+      obj.NotifierLabel.Text = 'Building...';
       
-      % Create SelectSubsetLabel
-      obj.SelectSubsetLabel = uilabel(obj.SelectSubsetPanel);
-      obj.SelectSubsetLabel.HorizontalAlignment = 'center';
-      obj.SelectSubsetLabel.FontName = iris.app.Aes.uiFontName;
-      obj.SelectSubsetLabel.FontSize = 20;
-      obj.SelectSubsetLabel.Position = [ ...
-        546/2 - 546*0.8/2, ...
-        341/2 - 341*0.9/2, ...
-        546*0.8, ...
-        341*0.9 ...
-        ];
-      %(546-174)/2 158 174 25];
-      obj.SelectSubsetLabel.Text = 'Building...';
+      % Create ActionsPanel
+      obj.ActionsPanel = uipanel(obj.GridLayout,'Layout',GridLayoutOptions('Row',2,'Column',1));
+      obj.ActionsPanel.BackgroundColor = obj.container.Color;
+      obj.ActionsPanel.FontName = iris.app.Aes.uiFontName;
       
+      % Create ActionsGrid
+      obj.ActionsGrid = uigridlayout(obj.ActionsPanel);
+      obj.ActionsGrid.BackgroundColor = obj.container.Color;
+      obj.ActionsGrid.RowSpacing = 3;
+      obj.ActionsGrid.ColumnSpacing = 3;
+      obj.ActionsGrid.Padding = [2,5,2,5];
+      obj.ActionsGrid.ColumnWidth = {'1x',63};
+      obj.ActionsGrid.RowHeight = {'1x'};
+      
+      obj.show;
       % Create Actions
-      obj.Actions = uidropdown(obj.container);
+      obj.Actions = uidropdown(obj.ActionsGrid,'Layout',GridLayoutOptions('Row',1,'Column',1));
       obj.Actions.Items = { ...
         'Actions', ...
         'Exclude Selected', ...
@@ -279,14 +272,12 @@ classdef dataOverview < iris.ui.UIContainer
         };
       obj.Actions.FontName = 'Times New Roman';
       obj.Actions.FontSize = 14;
-      obj.Actions.Position = [15 15 156 22];
       obj.Actions.Value = 'Actions';
       obj.Actions.ValueChangedFcn = @obj.SelectActions;
       
       % Create Apply
-      obj.Apply = uibutton(obj.container, 'push');
+      obj.Apply = uibutton(obj.ActionsGrid,'Layout',GridLayoutOptions('Row',1,'Column',2));
       obj.Apply.FontName = 'Times New Roman';
-      obj.Apply.Position = [182 15 63 23];
       obj.Apply.Text = 'Apply';
       obj.Apply.Enable = 'off';
       obj.Apply.ButtonPushedFcn = @obj.ApplyAction;
@@ -294,7 +285,7 @@ classdef dataOverview < iris.ui.UIContainer
       
       % update position
       obj.position = finalPos;
-      drawnow('nocallbacks');
+      drawnow;
       pause(0.01);
     end
     
@@ -310,6 +301,7 @@ classdef dataOverview < iris.ui.UIContainer
         obj.Apply.Enable = 'on';
       end
     end
+
     % set Selection based on handler.currentSelection
     function setSelectionFromHandler(obj)
       if ~isequal( ...
@@ -324,8 +316,7 @@ classdef dataOverview < iris.ui.UIContainer
       obj.getSelectedInfo();
       
       if strcmp(obj.PropTable.Visible,'off')
-        obj.PropTable.Visible = 'on';
-        obj.SelectSubsetPanel.Visible = 'off';
+        obj.togglePropTable('on');
       end
       
       % update inclusion
@@ -334,11 +325,18 @@ classdef dataOverview < iris.ui.UIContainer
     end
     
     function updateDatumIcons(obj)
+      % updates the icons
+      currentSelectedNode = {obj.FileTree.SelectedNodes.Text};
+      % dont set icons for file entry
+      iconableMember = ~ismember( ...
+        currentSelectedNode, ...
+        cellfun(@(x)x.Text,obj.FileNodes,'UniformOutput',false) ...
+        );
       % handler and ui selections should be the same at this point
       incs = obj.Handler.currentSelection.inclusion;
-      
       for i = 1:numel(incs)
-        if incs(i)
+        if ~iconableMember(i), continue; end
+        if incs(i) 
           thisIcon = obj.InclusionIcon;
         else
           thisIcon = obj.ExclusionIcon;
@@ -346,7 +344,6 @@ classdef dataOverview < iris.ui.UIContainer
         % set the icon
         obj.FileTree.SelectedNodes(i).Icon = thisIcon;
       end
-      % draw?
     end
     
     % Apply action button pressed
@@ -355,8 +352,7 @@ classdef dataOverview < iris.ui.UIContainer
         [~,inds] = obj.getSelectedInfo();
       catch x
         %log
-        warndlg('Cannot process this selection.','Processing Failure');
-        return;
+        iris.app.Info.throwError(sprintf('Cannot process selection for reason: "%s"',x.message));
       end
       switch obj.Actions.Value
         case 'Exclude Selected'
@@ -369,7 +365,7 @@ classdef dataOverview < iris.ui.UIContainer
             struct('type', '{}', 'subs', {{2}}) ...
             );
           
-          keepInds = ismember(1:numel(obj.PropNodes),inds);
+          keepInds = ismember(1:obj.Handler.nDatum,inds);
           if strcmp(deleteType,'Selected')
             keepInds = ~keepInds;
           end
@@ -384,9 +380,11 @@ classdef dataOverview < iris.ui.UIContainer
           return
       end
     end
+    
     % Selection Node changed.
     function nodeChanged(obj,~,evt)
       if ~isempty(evt.SelectedNodes)
+        if isequal(evt.SelectedNodes,evt.PreviousSelectedNodes), return; end
         selectedNames = {evt.SelectedNodes.Text};
         if any( ...
             ismember( ...
@@ -436,45 +434,21 @@ classdef dataOverview < iris.ui.UIContainer
     
     function togglePropTable(obj,newStatus)
       if nargin < 2
-        if strcmp(obj.PropTable.Visible, 'on')
-          newStatus = 'off';
-        else
-          newStatus = 'on';
-        end
+        newStatus = ~strcmp(obj.PropTable.Visible, 'on');
       end
+      newStatus = matlab.lang.OnOffSwitchState(newStatus);
+      
+      % disallow calling toggle ON when file node selected.
+      [tf,~] = obj.isFileNodeSelected();
+      if tf && newStatus, return; end
       obj.PropTable.Visible = newStatus;
-      if strcmp(newStatus,'on')
-        obj.SelectSubsetPanel.Visible = 'off';
+      obj.NotifierLabel.Visible = ~newStatus;
+      if ~~newStatus
+        widths = {'1x',0};
       else
-        obj.SelectSubsetPanel.Visible = 'on';
+        widths = {0,'1x'};
       end
-    end
-    
-    function containerResized(obj,src,~)
-      
-      obj.position = src.Position;%set ui
-      
-      obj.FileTree.Position(4) = obj.position(4) - 62;
-      pW = obj.position(3) - 265;
-      pH = obj.position(4) - 25;
-      obj.PropTable.Position(3:4) = [pW,pH];
-      obj.SelectSubsetPanel.Position(3:4) = [pW,pH];
-      obj.SelectSubsetLabel.Position = [...
-        0.2*pW/2, ...
-        0.1*pH/2, ...
-        pW*0.8, ...
-        pH*0.9 ...
-        ];
-      % set the table width
-      firstColWidth = max([120,obj.PropTable.ColumnWidth{1}]);
-      tableDat = obj.PropTable.Data;
-      if size(tableDat,2) < 2
-        % no data in table, simply return
-        return
-      end
-      lens = cellfun(@length,tableDat(:,2),'UniformOutput',true);
-      remainderWidth = obj.PropTable.Position(3) - firstColWidth-20;
-      obj.PropTable.ColumnWidth = {firstColWidth, max([lens*6.55;remainderWidth])};
+      obj.GridLayout.ColumnWidth(2:3) = widths;
     end
     
     function clearView(obj)
@@ -488,8 +462,15 @@ classdef dataOverview < iris.ui.UIContainer
     end
     
     function destroyListeners(obj)
+      hasALs = isprop(obj.Handler,'AutoListeners__');
       for i = 1:length(obj.handlerListeners)
-        delete(obj.handlerListeners{i});
+        lsn = obj.handlerListeners{i};
+        if hasALs
+          idx = cellfun(@(AL) isequal(AL,lsn), obj.Handler.AutoListeners__,'unif',1);
+          cellfun(@delete,obj.Handler.AutoListeners__(idx));
+          obj.Handler.AutoListeners__(idx) = [];
+        end
+        delete(lsn);
       end
       obj.handlerListeners = {};
     end
@@ -510,7 +491,7 @@ classdef dataOverview < iris.ui.UIContainer
     end
     
   end
-  %% Preferences
+  %% Utilities
   methods (Access = protected)
     
     function setContainerPrefs(obj)
@@ -519,6 +500,18 @@ classdef dataOverview < iris.ui.UIContainer
     
     function getContainerPrefs(obj)
       getContainerPrefs@iris.ui.UIContainer(obj);
+
+    end
+
+    function [tf,vec] = isFileNodeSelected(obj)
+      currentSelections = obj.FileTree.SelectedNodes;
+      if isempty(currentSelections),tf = false; vec = false(0,1); return; end
+      currentSelectedNode = {currentSelections.Text};
+      vec = ismember( ...
+        currentSelectedNode, ...
+        cellfun(@(x)x.Text,obj.FileNodes,'UniformOutput',false) ...
+        );
+      tf = any(vec);
     end
     
   end

@@ -39,9 +39,9 @@ function setup(htmlComponent) {
   );
 }
 
-var hComp = {
-  "Data": { "String": "Response", "FontSize": 14, "Vertical": false, "isValid": true },
-  "addEventListener": function () { console.log("addEventListener called with: ", arguments) }
-};
+// var hComp = {
+//   "Data": { "String": "Response", "FontSize": 14, "Vertical": false, "isValid": true },
+//   "addEventListener": function () { console.log("addEventListener called with: ", arguments) }
+// };
 
 //

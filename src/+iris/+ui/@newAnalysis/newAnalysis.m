@@ -20,6 +20,7 @@ classdef newAnalysis < iris.ui.UIContainer
     addOutput            matlab.ui.control.Button
     addInput             matlab.ui.control.Button
     showArgs             matlab.ui.control.StateButton
+    argumentContext      matlab.ui.container.ContextMenu
   end
   
   % properties for validation
@@ -42,7 +43,13 @@ classdef newAnalysis < iris.ui.UIContainer
     function selfDestruct(obj)
       obj.onCloseRequest;
     end
-    
+    %% Superclass overrides
+
+    function shutdown(obj)
+      if obj.isClosed, return; end
+      shutdown@iris.ui.UIContainer(obj);
+    end
+
   end
   
   %% Protected
@@ -71,11 +78,11 @@ classdef newAnalysis < iris.ui.UIContainer
               % remove the indicated row.
               src.Data(idx(1),:) = [];
             end
-            return;
+            return
           end
           % validate using the argname method
           obj.validateArgName(src,evt);
-          return;
+          return
       end
       % The following will handle the default value being set.
       if idx(1) == 1
@@ -99,7 +106,8 @@ classdef newAnalysis < iris.ui.UIContainer
       if istable(oldData)
         oldData = oldData{:,1};
       end
-      argName = utilities.camelizer(evt.NewData);
+      argName = matlab.lang.makeValidName(evt.NewData); % now produces camelCase
+      %argName = utilities.camelizer(evt.NewData);
       % test if the new argument name exists in the previous data
       if ismember(argName,oldData)
         argName = evt.PreviousData;
@@ -110,9 +118,9 @@ classdef newAnalysis < iris.ui.UIContainer
     
     %validate function name
     function validateFxName(obj,src,evt) 
-       value = utilities.camelizer(evt.Value);
+       %value = utilities.camelizer(evt.Value);
+       value = matlab.lang.makeValidName(evt.Value);
        src.Value = value;
-       %drawnow('limitrate')
        % check for existing functions and throw error message
        if ~obj.isValidFx
          warndlg( ...
@@ -196,13 +204,22 @@ classdef newAnalysis < iris.ui.UIContainer
       % shutdown view
       obj.onCloseRequest;
     end
+  
+    function onClearArguments(obj,~,~)
+      src = obj.container.CurrentObject;
+      if ~isa(src,'matlab.ui.control.Table'), return; end
+      if height(src.Data) == 1, return; end
+      try
+        src.Data(2:end,:) = [];
+      end
+    end
   end
   
   %% Preferences
   methods (Access = protected)
     
     function onCloseRequest(obj)
-      obj.shutdown;
+      obj.shutdown();
     end
 
     function setContainerPrefs(obj)

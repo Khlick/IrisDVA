@@ -10,7 +10,7 @@ classdef menuServices < handle
   end
   
   properties
-    Analyze         iris.ui.analyze
+    Analysis         iris.ui.analysis
     NewAnalysis     iris.ui.newAnalysis
     Preferences     iris.ui.preferences
     FileInfo        iris.ui.fileInfo
@@ -36,7 +36,7 @@ classdef menuServices < handle
     
     function tf = isOpen(obj,menuName)
       mName = validatestring(menuName,properties(obj));
-      tf = ~isempty(obj.(mName)) && ~(~obj.(mName).isvalid || ~obj.(mName).isready);
+      tf = ~isempty(obj.(mName)) && ~obj.(mName).isClosed;
     end
     
     function openList = getOpenMenus(obj)
@@ -131,9 +131,10 @@ classdef menuServices < handle
       menuName = validatestring(lower(menuName),properties(obj));
       if obj.(menuName).isBound, return; end
       switch menuName
-        case 'Analyze'
-          az = obj.Analyze;
+        case 'Analysis'
+          az = obj.Analysis;
           obj.addListener(az, 'Close', @obj.destroyWindow);
+          obj.addListener(az, 'createNewAnalysis',@(s,e)obj.build('NewAnalysis'));
         case 'NewAnalysis'
           na = obj.NewAnalysis;
           obj.addListener(na, 'Close', @obj.destroyWindow);
@@ -203,15 +204,12 @@ classdef menuServices < handle
       % TODO: move isClosed check to use the rebuild method
       % Once rebuild() is implemented on all objects
       switch menuName
-        case 'Analyze'
-          if isempty(obj.Analyze) || ~obj.isOpen('Analyze')
-            obj.Analyze = iris.ui.analyze();
+        case 'Analysis'
+          if isempty(obj.Analysis) || ~obj.isOpen('Analysis')
+            obj.Analysis = iris.ui.analysis(varargin{:}); % new release
+          else
+            obj.Analysis.buildUI(varargin{:});
           end
-          if nargin < 3
-            error('Analysis Requires Handler object as input.');
-          end
-          % varargin should contain data Handler
-          obj.Analyze.buildUI(varargin{:});
         case 'NewAnalysis'
           if isempty(obj.NewAnalysis) || ~obj.isOpen('NewAnalysis')
             obj.NewAnalysis = iris.ui.newAnalysis;
@@ -291,7 +289,6 @@ classdef menuServices < handle
           continue;
         end
         obj.(uis{p}).shutdown();
-        delete(obj.(uis{p}));
       end
     end
     
@@ -362,9 +359,9 @@ classdef menuServices < handle
     end
     
     function updateAnalysesList(obj)
-      % if obj.Analyze is open, update the dropdown list.
-      if obj.isOpen('Analyze')
-        obj.Analyze.refresh();
+      % if obj.Analysis is open, update the dropdown list.
+      if obj.isOpen('Analysis')
+        obj.Analysis.refresh();
       end
     end
     

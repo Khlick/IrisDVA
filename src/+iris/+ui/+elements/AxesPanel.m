@@ -4,6 +4,7 @@ classdef AxesPanel < handle
     DataSelected
     PlotUpdated
   end
+  
   properties (Constant=true)
     SCRIPT_ID = "axisLabel"
   end

@@ -586,7 +586,7 @@ classdef Datum < matlab.mixin.Copyable
     end
     
     function [aggregates,varargout] = Aggregate(obj,varargin)
-      %AGGREGATE Allows input from other methods for aggreation.
+      %AGGREGATE Allows input from other methods for aggregation.
       % Typical usage will be based on iris.pref.Statistics.
       
       propTable = obj.getPropTable();
@@ -605,7 +605,7 @@ classdef Datum < matlab.mixin.Copyable
           ) ...
         );
       p.addParameter('interactive',true, ...
-        @(v)validateattributes(v,{'logical','numeric'},{'scalar','binary'}) ...
+        @(v)isscalar(v) && islogical(v) ...
         );
       
       p.PartialMatching = true;

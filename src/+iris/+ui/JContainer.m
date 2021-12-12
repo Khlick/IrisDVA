@@ -7,12 +7,6 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
   
   properties (Dependent)
     isClosed
-    isready
-  end
-  
-  properties (SetAccess = protected)
-    container
-    window
   end
   
   methods
@@ -171,10 +165,6 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
       end
     end
     
-    function tf = get.isready(obj)
-      tf = obj.container.isvalid;
-    end
-    
     function v = getUI(obj, uiObj, propName)
       uiObj = validatestring(uiObj,properties(obj));
       v = obj.(uiObj).(propName);
@@ -224,6 +214,7 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
     
     function rebuild(obj)
       if ~obj.isClosed, return; end
+      obj.isBound = false;
       obj.constructContainer();
     end
     

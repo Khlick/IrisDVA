@@ -8,8 +8,10 @@ strRepresentation = cell(length(caClass),1);
 for I = 1:length(caClass)
   % convert each element to a string
   switch caClass{I}
-    case {'char','string'}
-      strNow = char(cellAr{I});%strjoin(cellAr{I}, ', ');
+    case 'char'
+      strNow = char(cellAr{I});
+    case 'string'
+      strNow = strjoin(cellAr{I}, ', ');
     case {'numeric','int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', ...
         'int64', 'uint64', 'double', 'single'}
       uAr = num2cell(cellAr{I});
