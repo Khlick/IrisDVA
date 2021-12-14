@@ -90,6 +90,7 @@ classdef Ticker < iris.ui.UIContainer
       % set the text and animations
       obj.Animate = opts.animate;
       obj.Text = txt;
+      drawnow();
       if ~~opts.forceDelay
         pause(opts.forceDelay);
       end
@@ -120,6 +121,7 @@ classdef Ticker < iris.ui.UIContainer
         obj.shutdown();
         return
       end
+      drawnow();
       % allow forced delay if not terminating object
       if ~~opts.forceDelay
         pause(opts.forceDelay);

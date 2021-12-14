@@ -201,8 +201,8 @@ classdef Iris < iris.app.Container
       cT = now;
       app.sessionInfo.sessionEnd = cT;
       % reset stored prefs for toggles to false
-      for tID = {'Filter', 'Scale', 'Baseline'}
-        Iris.setTogglePref(eventData(struct('source', tID{1}, 'value', false)));
+      for tID = ["Filter", "Scale", "Baseline"]
+        Iris.setTogglePref(eventData(struct('source', tID, 'value', false)));
       end
 
       try %#ok<TRYNC>
@@ -231,26 +231,19 @@ classdef Iris < iris.app.Container
       catch x
         % log x
         fprintf('postStop caught\n');
-        h = findall(groot, 'HandleVisibility', 'off');
+        h = findall(groot, 'HandleVisibility', 'off','Type','Figure');
 
         if ~isempty(h)
-
           for i = 1:length(h)
-
             try
-
               if contains(h(i).Name, 'Iris')
                 delete(h(i));
               end
-
             catch
               continue
             end
-
           end
-
         end
-
       end
 
       % clean modules
@@ -335,16 +328,12 @@ classdef Iris < iris.app.Container
     %
     function updateLoadPercent(app, ~, event)
 
-      if ~app.loadShow.isvalid || app.loadShow.isClosed
-        app.loadShow = iris.ui.Ticker();
-      end
-
-      if strcmp(event.Data, '!')
+      if strcmp(event.Data, '!') && ~app.loadShow.isClosed
         app.loadShow.shutdown();
         return
       end
 
-      if ~isnumeric(event.Data)
+      if isstring(event.Data) || ischar(event.Data)
         app.loadShow.update(event.Data);
       else
         app.loadShow.updateAsPercent(event.Data);
@@ -416,9 +405,11 @@ classdef Iris < iris.app.Container
       end
 
       app.draw();
-      app.updateLoadPercent([], struct('Data', 'Updating Menus...'));
+      t = tic();
+      app.updateLoadPercent([],iris.infra.eventData("Updating Menus..."));
       CU = onCleanup(@()killload(app.loadShow));
       app.updateMenus();
+      while(toc(t)<1.2), end
       app.services.setGroups(app.handler.getAllGroupingFields);
       app.ui.toggleDataDependentUI('on');
 

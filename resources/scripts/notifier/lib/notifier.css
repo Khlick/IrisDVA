@@ -103,6 +103,7 @@ body {
   border-radius: 50%;
   position: absolute;
   background: var(--rainbow);
+  animation: spinner 31.4s linear infinite;
   transform: rotate(-30deg);
   z-index: 91;
 }
@@ -114,8 +115,20 @@ body {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: var(--edge), var(--pupil);
+  background: var(--edge);
   z-index: 92;
+}
+
+#pupil {
+  display: block;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--pupil);
+  transform: translateZ(1px) scale(1,1);
+  animation: dilate 5s ease infinite;
+  z-index: 93;
 }
 
 #ball {
@@ -169,7 +182,22 @@ div#target {
 /* Animations */
 @keyframes spinner {
   100% {
-    transform: rotate(360deg);
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes dilate {
+  6% {
+    transform: scale(1,1);
+  }
+  15%,18% {
+    transform: scale(0.9,0.9);
+  }
+  20%,35% {
+    transform: scale(0.8,0.8);
+  }
+  48%,100% {
+    transform: scale(1.2,1.2);
   }
 }
 
@@ -180,7 +208,7 @@ div#target {
 
   6%,
   15% {
-    transform: rotate3d(0, 1, 0, 208deg) translateZ(30px);
+    transform: rotate3d(0, 1, 0, 200deg) translateZ(30px);
   }
 
   18%,

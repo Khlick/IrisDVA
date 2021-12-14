@@ -152,17 +152,9 @@ methods
       props = metaclass(obj);
       props = props.PropertyList;
       list = string({props.Name}');
-      %propNames = string({props.Name}');
-      %propSet = {props.SetAccess}';
-      %propGet = {props.GetAccess}';
-      %idx = all( ...
-      %  [ ...
-      %    cellfun(@(s)isequal(s,'private'),propSet), ...
-      %    cellfun(@(s)isequal(s,'private'),propGet) ...
-      %  ], ...
-      %  2 ...
-      %  );
-      %list = propNames(idx);
+      mc = {?iris.ui.UIContainer};
+      propAccess = {props.SetAccess}';
+      list(~cellfun(@(c)isequal(mc,c),propAccess)) = [];
     end
     %updateView(obj,handler)
     updateView(obj, newSelection, newDisplay, newData, newUnits)

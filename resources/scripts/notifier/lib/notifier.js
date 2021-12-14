@@ -84,43 +84,43 @@ function resizeText() {
   }
 }
 
-// DEVELOPMENT DATA (Comment out for production)
-// var data1 = {
-//   "Text": "Text",
-//   "TextColor": "rgb(0,0,0)",
-//   "BackgroundColor": "rgba(100,255,155,1)",
-//   "TextHeight": 100,
-//   "Monospaced": false,
-//   "Animate": false
-// };
+//DEVELOPMENT DATA (Comment out for production)
+var data1 = {
+  "Text": "Text",
+  "TextColor": "rgb(0,0,0)",
+  "BackgroundColor": "rgba(100,255,155,1)",
+  "TextHeight": 100,
+  "Monospaced": false,
+  "Animate": false
+};
 
-// var data2 = {
-//   "Text": "$\\frac{1}{2}$",
-//   "TextColor": "rgb(0,0,0)",
-//   "BackgroundColor": "rgba(255,255,255,1)",
-//   "TextHeight": 100,
-//   "Monospaced": false,
-//   "Animate": false
-// };
+var data2 = {
+  "Text": "$\\frac{1}{2}$",
+  "TextColor": "rgb(0,0,0)",
+  "BackgroundColor": "rgba(255,255,255,1)",
+  "TextHeight": 100,
+  "Monospaced": false,
+  "Animate": false
+};
 
-// var data3 = {
-//   "Text": "$$\\frac{1}{3}$$",
-//   "TextColor": "rgb(0,0,0)",
-//   "BackgroundColor": "rgba(255,255,255,1)",
-//   "TextHeight": 100,
-//   "Monospaced": false,
-//   "Animate": true
-// };
-// var data4 = {
-//   "Text": "Loading monospaced text with multiple lines!",
-//   "TextColor": "rgb(0,0,0)",
-//   "BackgroundColor": "rgba(255,255,255,1)",
-//   "TextHeight": 100,
-//   "Monospaced": true,
-//   "Animate": false
-// };
+var data3 = {
+  "Text": "$$\\frac{1}{3}$$",
+  "TextColor": "rgb(0,0,0)",
+  "BackgroundColor": "rgba(255,255,255,1)",
+  "TextHeight": 100,
+  "Monospaced": false,
+  "Animate": true
+};
+var data4 = {
+  "Text": "Loading monospaced text with multiple lines!",
+  "TextColor": "rgb(0,0,0)",
+  "BackgroundColor": "rgba(255,255,255,1)",
+  "TextHeight": 100,
+  "Monospaced": true,
+  "Animate": false
+};
 
-// htmlComponent = {
-//   "Data": data1,
-//   "addEventListener": (...args) => console.log("addEventListener called :", args)
-// };
+htmlComponent = {
+  "Data": data1,
+  "addEventListener": (...args) => console.log("addEventListener called :", args)
+};

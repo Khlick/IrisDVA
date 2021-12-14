@@ -54,6 +54,7 @@ function executeAnalysis(obj)
   %% Run Analysis
   while toc(timer) < 1.2, end
   announcer.update("Analyzing...");
+  timer = tic();
 
   try
     T = evalc(S.Call.String);
@@ -75,7 +76,7 @@ function executeAnalysis(obj)
   end
 
   if ~isempty(T)
-    fprintf('Anaalysis output:\n"%s"\n', T);
+    fprintf('Analysis output:\n"%s"\n', T);
   end
 
   %% Determine append status
@@ -98,9 +99,11 @@ function executeAnalysis(obj)
           return
         end
 
-        if strcmp(appendQuestion.response, 'New')
+        resp = appendQuestion.response;
 
-          while strcmp(appendQuestion.response, 'New')
+        if strcmp(resp, 'New')
+
+          while strcmp(resp, 'New')
             % Do no want to overwrite after all, prompt for new path
             outFile = iris.app.Info.putFile( ...
             'Analysis Output File', ...
@@ -127,6 +130,7 @@ function executeAnalysis(obj)
 
             end
 
+            resp = "GOOD";
           end
 
           [obj.workingDirectory, obj.outputFile.Value, ~] = fileparts(outFile);
@@ -141,13 +145,14 @@ function executeAnalysis(obj)
     otherwise
       doAppend = strcmp(obj.AppendMethod, "yes");
   end
-
+  
+  while toc(timer) < 1.2, end
+  timer = tic;
   %% Send data to workspace
   % If sending analysis to workspace, prompt to save in file as well
   % This process will not append values, will instead create a new struct
   if ~ ~obj.options.SendToCommandWindow
     announcer.update("Sending to workspace...");
-    timer = tic;
     vName = matlab.lang.makeValidName(rsInfo.Name);
 
     if doAppend
@@ -164,6 +169,7 @@ function executeAnalysis(obj)
 
     % finally, assign in the base workspace
     assignin('base', vName, S);
+    fprintf("Analysis results can be found in variable: %s\n",vName);
     while toc(timer) < 2, end
     % check if we should proceed
     proceedQuestion = iris.ui.questionBox( ...
@@ -176,7 +182,7 @@ function executeAnalysis(obj)
   end
 
   %% Save Data to File
-
+  
   announcer.update("Saving...");
 
   % save results to file

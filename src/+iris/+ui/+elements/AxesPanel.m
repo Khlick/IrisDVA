@@ -389,7 +389,7 @@ classdef AxesPanel < handle
 
   %% Plotting/Updating
   methods (Access = public)
-
+    
     function update(obj, hD, hL)
       nExist = numel(obj.currentLines);
 

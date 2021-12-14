@@ -48,12 +48,12 @@ classdef keyboard < iris.infra.StoredPrefs
     
     % D key
     function a = get.d(obj)
-      sc = iris.pref.keyboard.createKeyCode(1,0,0,'menuAnalyze');
+      sc = iris.pref.keyboard.createKeyCode(1,0,0,'menuAnalysis');
       a = obj.get('d',sc);
     end
     function set.d(obj,v)%#ok
       % for now we won't allow overrride
-      v = iris.pref.keyboard.createKeyCode(1,0,0,'menuAnalyze'); 
+      v = iris.pref.keyboard.createKeyCode(1,0,0,'menuAnalysis'); 
       obj.put('d',v);
     end
     
