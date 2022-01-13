@@ -208,7 +208,16 @@ classdef Iris < iris.app.Container
       try %#ok<TRYNC>
         app.options.save();
       end
-
+      try %#ok<TRYNC>
+        app.loadShow.shutdown();
+      end
+      try %#ok<TRYNC>
+        % clean modules
+        Iris.cleanModules();
+      end
+      if app.isAppData("AppCleanupCode")
+        delete(app.getappdata("AppCleanupCode"));
+      end
     end
 
     function postStop(app)
@@ -225,29 +234,9 @@ classdef Iris < iris.app.Container
       fprintf('Exiting Iris DVA:\n');
       disp(displayStruct);
       fprintf('%%%s%%\n\n', repmat('-', 1, 40));
-
-      try
-        app.loadShow.shutdown();
-      catch x
-        % log x
-        fprintf('postStop caught\n');
-        h = findall(groot, 'HandleVisibility', 'off','Type','Figure');
-
-        if ~isempty(h)
-          for i = 1:length(h)
-            try
-              if contains(h(i).Name, 'Iris')
-                delete(h(i));
-              end
-            catch
-              continue
-            end
-          end
-        end
-      end
-
-      % clean modules
-      Iris.cleanModules();
+      % verify we didn't leave any windows open
+      leftovers = findall(groot,'Type','Figure','Tag','iris_ui');
+      if ~isempty(leftovers), delete(leftovers); end
     end
 
     function bind(app)

@@ -18,10 +18,11 @@ classdef IrisDVAObj < IrisDVAApp
     % override application startup
     function startApp(obj)
       if numel(obj.InputArgList) && strcmpi(obj.InputArgList{1},'-1')
-        return
-      else
         obj.startApp_catch();
+      else
+        startApp@IrisDVAApp(obj);
       end
+      
     end
     
     function startApp_catch(obj)

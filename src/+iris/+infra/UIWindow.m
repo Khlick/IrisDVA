@@ -39,10 +39,13 @@ classdef (Abstract) UIWindow < iris.infra.StoredPrefs
 
       obj.options = options;
       w = warning('off', 'MATLAB:ui:javaframe:PropertyToBeRemoved');
-      pause(0.001);
+      
       obj.constructContainer(varargin{:});
-
-      pause(0.001);
+      
+      while ~obj.isready, end
+      
+      obj.container.Tag = iris.app.Info.Tag;
+      
       warning(w);
     end
 

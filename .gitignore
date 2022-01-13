@@ -24,6 +24,7 @@ _*
 *.mlappinstall
 *.bak
 TODO*
+clearIrisPreferences.m
 
 
 # OS generated files 

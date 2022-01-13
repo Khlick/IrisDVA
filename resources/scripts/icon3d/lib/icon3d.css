@@ -1,0 +1,254 @@
+/* Initialize gradients for Iris */
+:root {
+  --rainbow: linear-gradient(-13deg, #ff8000 3.343%, #008fde 30.942999999999998%, #4377a5 38.576%, #7f6172 46.201%, #ae504b 53.135%, #cf442f 59.245999999999995%, #e43d1d 64.301%, #eb3a17 67.675%, #e04116 71.063%, #c25312 77.078%, #91710c 85.018%, #4d9a04 94.476%, #29b000 99.24%);
+  --edge: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 32%, rgba(0, 0, 0, 0.17) 58%, rgba(0, 0, 0, 1) 80%);
+  --pupil: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 1) 30%, rgba(0, 0, 0, 0.19) 31%, rgba(0, 0, 0, 0) 36%);
+}
+
+/*  BODY AND CONTAINER */
+
+html,
+body {
+  display: block;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 14px;
+  cursor: default;
+  background: black;
+}
+
+#container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 345px 1fr;
+  grid-template-rows: 345px 20px 1fr;
+  grid-template-areas:
+    ". icon ."
+    ". hline ."
+    "content content content";
+  padding: 5px;
+  transform-style: preserve-3d;
+}
+
+/* EYEBALL */
+#socket{
+  grid-area: icon;
+  perspective: 1200px;
+  perspective-origin: 50% 50%;
+  background-color: transparent;
+}
+
+#ball {
+  top:0;
+  left:0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  background:radial-gradient(circle at 50% 40%,#f9f9f9ff,#e4e3e9f6 58%,#4d2d2dff 100%);
+  transform: rotate(-20deg) translateZ(-1px);
+  z-index: -1000;
+}
+
+#eye {
+  top:0;
+  left:0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  background: transparent;
+  transform: translateZ(0px);
+  z-index: 100;
+}
+
+#eye:after {
+  content: "";
+  position: absolute;
+  display: block;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.6) 14%, rgba(255, 255, 255, 0) 27%);
+  transform: translateX(-15%) translateY(-26%) skewX(-27deg);
+  z-index: 100;
+}
+
+#iris {
+  width: 64%;
+  height: 64%;
+  margin: 0;
+  border-radius: 50%;
+  left: 17%;
+  top: 17%;
+  position: absolute;
+  background-image: url('img/radial.png');
+  background-size: cover;
+  transform: rotate3d(0, 1, 0, 90deg) translateZ(calc(345/3));
+  z-index: 90;
+}
+
+#iris:before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border-radius: 50%;
+  position: absolute;
+  background: var(--rainbow);
+  mix-blend-mode: overlay;
+  animation: spinner 23.4s linear infinite;
+  transform: rotate(-30deg);
+  z-index: 91;
+}
+
+#iris:after {
+  content: "";
+  display: block;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--edge);
+  z-index: 92;
+}
+
+#pupil {
+  display: block;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--pupil);
+  transform: translateZ(1px) scale(0.8,0.8);
+  z-index: 93;
+}
+
+#pupil.dilate {
+  animation: adapt 3s ease;
+  animation-direction: normal;
+  animation-fill-mode: forwards;
+}
+
+#pupil.constrict {
+  animation: adapt 3s ease;
+  animation-direction: reverse;
+  animation-fill-mode: backwards;
+}
+
+/* Animations */
+@keyframes spinner {
+  from {
+    transform: rotate(-30deg);
+  }
+  to {
+    transform: rotate(330deg);
+  }
+}
+
+@keyframes adapt {
+  from { transform: scale(0.8,0.8); }
+  to { transform: scale(1.6,1.6); }
+}
+
+
+
+/* HEADLINE */
+p {
+  padding: 0;
+  margin: 0;
+}
+
+#headline {
+  grid-area: hline;
+  align-self: end;
+  word-wrap: break-word;
+  white-space: normal;
+  background-color: transparent;
+  text-shadow: 8px 8px 12px rgba(10, 10, 10, 0.15);
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  z-index: 200;
+}
+
+.lab {
+  color: rgb(225,225,225);
+  text-align: left;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12pt;
+  padding: 0;
+  margin: 0;
+}
+
+
+/* CONTENT */
+#content {
+  grid-area: content;
+  justify-self: start;
+  align-self: start;
+  align-items: center;
+  background-color: transparent;
+  z-index: 200;
+}
+
+
+/* Other Styles */
+
+.inc {
+  font-size: 120%;
+}
+
+.dec {
+  font-size: 90%;
+}
+
+.title {
+  color: rgb(255,255,255);
+  font-size: 74pt;
+}
+
+.by {
+  font-size: 12pt;
+  text-align: end;
+  margin-top: -20px;
+}
+
+.b {
+  font-weight: bold;
+}
+.i {
+  font-style: italic;
+}
+
+a {
+  color: rgb(255,255,255);
+  font-style: italic;
+  text-decoration: none;
+}
+
+a:link {
+  color: rgb(255,255,255);
+}
+
+a:visited {
+  color: #e43d1d;
+}
+
+a:hover {
+  color:#008fde;
+}

@@ -12,9 +12,9 @@ classdef Info < handle
 
     function d = description()
       d = [...
-          'Designed for MATLAB, Iris DVA is a tool for visualizing and ', ...
-          'analyzing electrophysiological data.' ...
-          ];
+        'Designed for MATLAB, Iris DVA is a tool for visualizing and ', ...
+        'analyzing electrophysiological data.' ...
+        ];
     end
 
     function s = site()
@@ -26,20 +26,20 @@ classdef Info < handle
       if ~nargin
         sub = 'public';
       end
-      status = {2,0,145};
+      status = {2,0,148};
       switch sub
         case 'major'
           v = sprintf('%d', status{1});
         case 'minor'
-          v = sprintf('%02d', status{2});
+          v = sprintf('%d', status{2});
         case 'short'
           v = sprintf('%d.%d', status{[1, 2]});
         case 'development'
-          v = sprintf('%d.%02d.%03d', status{:});
+          v = sprintf('%d.%d.%03d', status{:});
         case 'public'
-          v = sprintf('%d.%02d', status{1:2});
+          v = sprintf('%d.%d', status{1:2});
         otherwise
-          v = sprintf('%d.%02d', status{1:3});
+          v = sprintf('%d.%d.%03d', status{1:3});
       end
 
     end
@@ -53,7 +53,11 @@ classdef Info < handle
     end
 
     function y = year()
-      y = '2016-2021';
+      y = '2022';
+    end
+
+    function t = Tag()
+      t = 'iris_ui';
     end
 
     function loc = getResourcePath()
@@ -177,14 +181,14 @@ classdef Info < handle
       import iris.app.Info;
 
       t = {...
-          Info.name, ...
-          Info.year, ...
-          Info.extendedName, ...
-          Info.description, ...
-          Info.version('public'), ...
-          Info.owner, ...
-          Info.author, ...
-          Info.site
+        Info.name, ...
+        Info.year, ...
+        Info.extendedName, ...
+        Info.description, ...
+        Info.version('public'), ...
+        Info.owner, ...
+        Info.author, ...
+        Info.site
         };
 
     end
@@ -192,13 +196,16 @@ classdef Info < handle
     function AStruct = getAvailableAnalyses()
       builtinDir = fullfile(iris.app.Info.getResourcePath, 'Analyses');
       extended = iris.pref.analysis.getDefault().AnalysisDirectory;
-      
+
       if ispc
         builtins = cellstr(ls(builtinDir));
         extendeds = cellstr(ls(extended));
       else
         builtins = strtrim(regexp(ls(builtinDir),'(?<!.m)[\w\s]+\.m', 'match')).';
         extendeds = strtrim(regexp(ls(extended),'(?<!.m)[\w\s]+\.m', 'match')).';
+        if isempty(extendeds)
+          extendeds{1} = '.';
+        end
       end
 
       Analyses = [builtins; extendeds];
@@ -280,11 +287,11 @@ classdef Info < handle
       try
         java.io.File(file).toPath;
       catch
-        tf = true; % is true that it failed the test       
+        tf = true; % is true that it failed the test
       end
       validity = ~tf; % is valid if it didn't fail all tests
     end
-  
+
   end
 
 end
