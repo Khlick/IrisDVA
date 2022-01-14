@@ -76,11 +76,7 @@ function fileLoad(app, ~, event)
   selectedExt = filterText{fltIdx, 1};
   selectedExt = strsplit(selectedExt, ';');
   app.options.PreviousExtension = selectedExt;
-
-  %
-  app.options.save();
-  app.ui.toggleSwitches('off');
-
+  
   % get the reader function name
   label = filterText{fltIdx, 2};
 
@@ -90,19 +86,25 @@ function fileLoad(app, ~, event)
     reader = app.validFiles.getReadFxnByLabel(label);
   end
 
-  % kill dataOverview if it is open
+  % kill processes
+  app.loadShow.update("Preparing Iris for new data.",'animate',true);
+  % toggle switches off and save the state
+  app.ui.toggleSwitches('off');
+  app.options.save();
+  % save preferences so that switches update before displaying the newest data
+  %app.services.savePrefs('Preferences');
+
   app.services.shutdown( ...
     [ ...
       "Analysis", "NewAnalysis", "FileInfo", "DataOverview", "Notes", "Protocols" ...
     ] ...
   );
   
-  app.loadShow.update(sprintf("Loading %s(s).",label));
-  pause(0.05);
+  app.loadShow.update(sprintf("Loading %s(s).",label),'forceDelay',1);
 
   % send the files and reader to the data handler
   app.handler.(lower(prefix))(files, reader);
-
+  
   % bring the window to the front
   app.ui.focus();
 

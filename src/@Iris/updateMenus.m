@@ -2,11 +2,6 @@ function updateMenus(app)
   if ~app.handler.isready, return; end
 
   %% Preferences
-
-  % not sure why we need to save preferences on updates. This seems like a bad
-  % idea.
-  %app.services.savePrefs('Preferences');
-
   % Scale value preference, if set to min, max, absolute max, will changed depending on
   % current data
 

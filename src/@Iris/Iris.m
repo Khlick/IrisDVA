@@ -316,8 +316,8 @@ classdef Iris < iris.app.Container
 
     %
     function updateLoadPercent(app, ~, event)
-
-      if strcmp(event.Data, '!') && ~app.loadShow.isClosed
+      
+      if strcmp(event.Data, '!')
         app.loadShow.shutdown();
         return
       end
@@ -395,7 +395,7 @@ classdef Iris < iris.app.Container
 
       app.draw();
       t = tic();
-      app.updateLoadPercent([],iris.infra.eventData("Updating Menus..."));
+      app.loadShow.update("Updating menus...",'animate',true);
       CU = onCleanup(@()killload(app.loadShow));
       app.updateMenus();
       while(toc(t)<1.2), end

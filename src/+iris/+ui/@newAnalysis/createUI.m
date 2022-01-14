@@ -29,7 +29,6 @@ set(obj.container,...
 obj.argumentContext = uicontextmenu(obj.container);
 cxMenu = uimenu(obj.argumentContext,'Text','Clear Arguments');
 cxMenu.MenuSelectedFcn = @obj.onClearArguments;
-cxMenu.I
 
 % Create nameLabel
 obj.nameLabel = uilabel(obj.container);

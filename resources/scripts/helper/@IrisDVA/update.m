@@ -32,7 +32,7 @@ status = s.status;
 IrisDVA.import();
 
 % update this package
-installedLocation = fileparts(fileparts(mfilename('fullpath')));%..\root\@IrisDVA
+installedLocation = fileparts(fileparts(mfilename('fullpath')));%..\root\@IrisDVA\update.m
 % location in iris of the newer version
 sourceRootPath = fullfile(iris.app.Info.getResourcePath(),'scripts','helper');
 sourcePath = fullfile(sourceRootPath,'@IrisDVA');
@@ -70,11 +70,11 @@ onClean = onCleanup(@()installOnExit(options,sourcePath,installedLocation));
     pathsToRestore = strjoin(currentPath(~ismember(currentPath,pdef)),pathsep);
     rmpath(pathsToRestore);
     pause(0.01);
-    addpath(installLocation);
+    addpath(dst);
     savepath();
     pause(0.05);
     addpath(pathsToRestore);
-    opt.HelpersDirectory = installLocation;
+    opt.HelpersDirectory = dst;
     opt.save();
     % report
     fprintf('Operation completed successfully!\n');

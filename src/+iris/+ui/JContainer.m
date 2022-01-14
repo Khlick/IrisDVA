@@ -22,7 +22,8 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
 
       %build figure base
       obj.container = figure( ...
-      'Visible', 'off', ...
+        'Tag', iris.app.Info.Tag, ...
+        'Visible', 'off', ...
         'NumberTitle', 'off', ...
         'MenuBar', 'none', ...
         'Toolbar', 'none', ...
@@ -82,7 +83,7 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
         'DefaultUigridcontainerBackgroundColor', [1, 1, 1], ...
         'DefaultHgjavacomponentBackgroundColor', [1, 1, 1], ...
         'HandleVisibility', 'off' ...
-      );
+        );
       oldWarn = warning('off', 'MATLAB:ui:javaframe:PropertyToBeRemoved');
 
       try
@@ -276,11 +277,24 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
     function setWindowStyle(obj, s)
       set(obj.container, 'WindowStyle', s);
     end
-
-    function wait(obj)
-      waitfor(obj, 'isready');
+    
+    function waitfor(obj,prop,val)
+      arguments
+        obj
+        prop = 'isready'
+        val = []
+      end
+      if isempty(val)
+        waitfor(obj, prop);
+      else
+        waitfor(obj,prop,val);
+      end
     end
-
+    
+    function wait(obj)
+      uiwait(obj.container);
+    end
+    
     function resume(obj)
       uiresume(obj.container);
     end

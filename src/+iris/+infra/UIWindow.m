@@ -42,11 +42,8 @@ classdef (Abstract) UIWindow < iris.infra.StoredPrefs
       
       obj.constructContainer(varargin{:});
       
-      while ~obj.isready, end
-      
-      obj.container.Tag = iris.app.Info.Tag;
-      
       warning(w);
+      notify(obj,'WindowReady',iris.infra.eventData(true));
     end
 
     %% SET / GET

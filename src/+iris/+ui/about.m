@@ -20,11 +20,7 @@ classdef about < iris.ui.UIContainer
   methods (Access = protected)
     
     % Startup
-    function startupFcn(obj,varargin)
-      obj.Contents.Data = struct( ...
-        'headline', obj.headline, ...
-        'content', obj.message ...
-        );
+    function startupFcn(obj,varargin) %#ok<INUSD> 
     end
     
     % Construct view
@@ -59,7 +55,10 @@ classdef about < iris.ui.UIContainer
       obj.Contents.Layout.Row = 1;
       obj.Contents.Layout.Column = 1;
       obj.Contents.HTMLSource = obj.HTMLSource;
-
+      obj.Contents.Data = struct( ...
+          'headline', obj.headline, ...
+          'content', obj.message ...
+          );
     end
     
   end

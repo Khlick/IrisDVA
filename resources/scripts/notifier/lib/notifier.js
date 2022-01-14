@@ -27,12 +27,13 @@ function setup(htmlComponent) {
     target.style.fontSize = (MAX_HEIGHT * FONT_SCALE + 20) + 'px';
     resizeText();
   };
+  
   // Setup mouseover animation for the bouncey
-  target.addEventListener("mouseover", (evt) => {
+  target.addEventListener("mouseenter", (evt) => {
     target.classList.add("bouncey");
     target.classList.remove("animated");
   });
-  target.addEventListener("mouseout", (evt) => {
+  target.addEventListener("mouseleave", (evt) => {
     target.classList.remove("bouncey");
     if (PreviousData.Animate) {
       target.classList.add("animated");
@@ -121,6 +122,6 @@ function resizeText() {
 // };
 
 // htmlComponent = {
-//   "Data": data1,
+//   "Data": data3,
 //   "addEventListener": (...args) => console.log("addEventListener called :", args)
 // };

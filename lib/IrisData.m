@@ -59,7 +59,7 @@ classdef IrisData
   end
   
   properties (Constant,Hidden = true)
-    BASELINE_TYPES = {'Start','End','None','Asym','Sym'}
+    BASELINE_TYPES = {'Start','End','None','Asym','Sym','Beginning'}
   end
   
   methods
@@ -783,13 +783,6 @@ classdef IrisData
         {'lowpass','bandpass','highpass'} ...
         );
       fltType = char(fltType);
-      if length(p.Results.frequencies) > 1 && ~startsWith(fltType,'band')
-        warning( ...
-          'IRISDATA:FILTER:INCORRECTFREQLENGTH', ...
-          'More than 1 frequency cutoff provided, but only 1 was needed for %s.', ...
-          fltType ...
-          );
-      end
       
       % determine the subs indexes. If subs not provided, we will filter excluded
       % datums as well as included.
@@ -4111,8 +4104,8 @@ classdef IrisData
       if doFit && ~nowarn,checkFitWarn(); end
       baselineValues = cell(nData,1);
       refBaselines = containers.Map();
-      isSweep = strcmpi(type,'sweep');
-      isRef = reference > 0 || isSweep;
+      isSweep = false;% TODO: strcmpi(type,'sweep');
+      isRef = false;% TODO: reference > 0 || isSweep;
       if isRef
         if isSweep
           % compute the sweep from the references
@@ -4261,7 +4254,7 @@ classdef IrisData
     
     function inds = getBaselineIndices(thisLen,type,npts,ofst)
       switch lower(type)
-        case 'start'
+        case {'start','beginning'}
           inds = (1:npts)+ofst;
         case 'end'
           inds = thisLen-ofst-((npts:-1:1)-1);

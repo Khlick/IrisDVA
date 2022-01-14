@@ -18,7 +18,8 @@ classdef questionBox < iris.ui.JContainer
     function startupFcn(obj,varargin)
       
       addlistener(obj,'Close', @obj.onCloseRequest);
-      
+      addlistener(obj,'WindowReady',@obj.onready);
+
       obj.show();
       
       defaultMember = ismember( ...
@@ -30,8 +31,6 @@ classdef questionBox < iris.ui.JContainer
         );
       pause(0.01);
       uicontrol(obj.buttons{defaultMember});
-      
-      obj.wait();
     end
     
     function createUI(obj,varargin)
@@ -180,10 +179,16 @@ classdef questionBox < iris.ui.JContainer
         obj.response = false;
       end
       obj.setWindowStyle('normal');
+      obj.resume();
       obj.reset;
       obj.shutdown;
     end
     
+    function onready(obj,~,~)
+      obj.setWindowStyle('modal');
+      obj.wait();
+    end
+
   end
   methods
     

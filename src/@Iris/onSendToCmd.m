@@ -17,6 +17,8 @@ switch doSave.response
     return;
 end
 
+app.loadShow.update("Collecting data...",'animate',true,'forceDelay',0.8);
+
 sessionId = sprintf( ...
   'IrisExport%s%s', ...
   datestr(app.sessionInfo.sessionStart,'mmmDD'), ...
@@ -37,6 +39,57 @@ while ismember(sessionId,evalin('base','who'))
     sprintf('$1%d', currentNumber) ...
     );
 end
+
+% parse display options
+vStatus = app.ui.viewStatus;
+
+% If saving iData, only apply switches to shown devices
+shownDevices = vStatus.selection.showingDevices;
+
+% check for switch status
+switchOptions = ["filter","baseline"];
+switchStatus = struct2array(utilities.fastKeepField(vStatus.switches,switchOptions));
+if any(switchStatus)
+  for s = 1:numel(switchStatus)
+    if ~switchStatus(s), continue; end
+    prompt = questionBox( ...
+      'Prompt', sprintf('Apply %s selection to exported data\?',switchOptions(s)), ...
+      'Title', sprintf('Apply %s\?',regexprep(lower(switchOptions(s)), "(^|\.)\s*.","${upper($0)}")), ...
+      'Options', {'Yes','No'}, ...
+      'Default', 'No' ...
+      );
+    switchStatus(s) = strcmpi(prompt.response,'Yes');
+  end
+  % apply selections
+  for stype = switchOptions(switchStatus)
+    app.loadShow.update(sprintf("Applying %s...",stype),"animate",true);
+    tmr = tic;
+    switch stype
+      case "filter"
+        prefs = app.services.getPref('filter');
+        iData = iData.Filter( ...
+          'type', lower(prefs.Type), ...
+          'frequencies', [prefs.LowPassFrequency,prefs.HighPassFrequency], ...
+          'order', prefs.Order, ...
+          'devices', shownDevices ...
+          );
+      case "baseline"
+        prefs = app.services.getPref('statistics');
+        iData = iData.Baseline( ...
+          'baselineRegion', lower(prefs.BaselineRegion), ...
+          'numBaselinePoints', prefs.BaselinePoints, ...
+          'baselineOffsetPoints', prefs.BaselineOffset, ...
+          'noFitWarning', true, ... % prevent fitting warning
+          'devices', shownDevices ...
+          );
+      otherwise
+        continue
+    end
+    while toc(tmr) < 1.2, end
+    app.loadShow.update("Done!","animate",false,'forceDelay',0.8);
+  end
+end
+
 
 % send to command
 assignin('base',sessionId,iData);
