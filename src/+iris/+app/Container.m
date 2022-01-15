@@ -98,10 +98,6 @@ classdef (Abstract) Container < handle
       tf = isfield(d, name);
     end
 
-    function tf = ishandle(obj)
-      tf = ~obj.isStopped;
-    end
-
   end
 
   methods (Access = protected)
