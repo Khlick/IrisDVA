@@ -228,8 +228,7 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
     function shutdown(obj)
       obj.setContainerPrefs;
       obj.save();
-      obj.hide;
-      obj.close;
+      obj.close();
     end
 
     function rebuild(obj)
@@ -308,6 +307,7 @@ classdef (Abstract) JContainer < iris.infra.UIWindow
   methods (Access = private)
     %% base routines
     function close(obj)
+      obj.resume();
       delete(obj.container);
     end
 

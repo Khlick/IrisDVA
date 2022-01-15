@@ -451,12 +451,15 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
     %% base routines
     function close(obj)
       if obj.isClosed, return; end
+      obj.resume();
       delete(obj.container);
     end
 
     function destroy(obj)
       if obj.isClosed, return; end
-      delete(obj.container.Children);
+      try %#ok<TRYNC>
+        delete(obj.container.Children);
+      end
     end
 
   end

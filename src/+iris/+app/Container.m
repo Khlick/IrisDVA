@@ -37,9 +37,7 @@ classdef (Abstract) Container < handle
     end
     
     function delete(obj)
-      if ~obj.isStopped || ~isempty(obj.ui)
-        obj.stop();
-      end
+      obj.stop();
     end
     
     function run(obj)
@@ -112,11 +110,9 @@ classdef (Abstract) Container < handle
     end
     
     function close(obj)
-      if ~isempty(obj.ui)
-        obj.ui.shutdown();
-      end
       obj.services.shutdown();
       obj.handler.shutdown();
+      obj.ui.shutdown();
     end
     
     function bind(obj)
@@ -197,6 +193,7 @@ classdef (Abstract) Container < handle
     
     function onUIClose(obj,~,~)
       obj.stop();
+      pause(0.1);
     end
     
   end

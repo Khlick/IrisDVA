@@ -211,13 +211,6 @@ classdef Iris < iris.app.Container
       try %#ok<TRYNC>
         app.loadShow.shutdown();
       end
-      try %#ok<TRYNC>
-        % clean modules
-        Iris.cleanModules();
-      end
-      if app.isAppData("AppCleanupCode")
-        delete(app.getappdata("AppCleanupCode"));
-      end
     end
 
     function postStop(app)
@@ -237,6 +230,12 @@ classdef Iris < iris.app.Container
       % verify we didn't leave any windows open
       leftovers = findall(groot,'Type','Figure','Tag','iris_ui');
       if ~isempty(leftovers), delete(leftovers); end
+
+      try %#ok<TRYNC>
+        % clean modules
+        Iris.cleanModules();
+      end
+      
     end
 
     function bind(app)
