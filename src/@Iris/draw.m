@@ -162,4 +162,10 @@ plotData = cat(1,currentData.plotData);
 
 % send to the ui
 app.ui.updateView(sel, displayProps, plotData, unitLabels);
+
+% update protocols window if open
+if app.services.isOpen('protocols')
+  d = app.handler.getCurrentData;
+  app.services.build('protocols', d.getPropsAsCell());
+end
 end

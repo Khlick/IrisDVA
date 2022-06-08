@@ -1,4 +1,5 @@
 function lvl = determineDepth(s)
+% DETERMINEDEPTH Determines nested structure depth with 0 being no nested structs
 lvl = 0;
 nStructs = length(s);
 counts = zeros(nStructs,1);

@@ -616,8 +616,6 @@ methods
         obj.manualSwitchThrow('Scale');
       end
 
-      %pause(0.01);%drawnow('limitrate');
-      %notify(obj,'RequestRedraw');
     end
 
     function manualSwitchThrow(obj, switchName)
@@ -631,6 +629,7 @@ methods
       evt = matlab.ui.eventdata.ValueChangedData(newVal, prevVal);
       prop.Value = newVal;
       prop.ValueChangedFcn(prop, evt);
+      drawnow();
     end
 
   end

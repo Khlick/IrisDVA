@@ -1,8 +1,8 @@
 classdef notes < iris.ui.UIContainer
   %NOTES Display notes accumulated for the current open files.
   properties (Access = public)
+    GridLayout matlab.ui.container.GridLayout
     NotesTable  matlab.ui.control.Table
-    NotesLabel  matlab.ui.control.Label
   end
   %% Public methods
   methods (Access = public)
@@ -62,37 +62,46 @@ classdef notes < iris.ui.UIContainer
       
       % Create container
       obj.container.Name = 'Notes';
-      obj.container.SizeChangedFcn = @obj.containerSizeChanged;
       obj.container.Resize = 'on';
 
-      % Create NotesTable
-      obj.NotesTable = uitable(obj.container);
-      obj.NotesTable.ColumnName = {'Timestamp'; 'Note'};
-      obj.NotesTable.ColumnWidth = {150, 'auto'};
-      obj.NotesTable.RowName = {};
-      obj.NotesTable.HandleVisibility = 'off';
-      obj.NotesTable.Position = [10, 6, pos(3)-20,pos(4)-50-6];
+      % Grid Layout
+      obj.GridLayout = uigridlayout(obj.container);
+      obj.GridLayout.Padding = [5,10,5,0];
+      obj.GridLayout.RowSpacing = 0;
+      obj.GridLayout.ColumnSpacing = 0;
+      obj.GridLayout.RowHeight = {'1x'};
+      obj.GridLayout.ColumnWidth = {'1x'};
+      obj.GridLayout.BackgroundColor = obj.container.Color;
 
-      % Create NotesLabel
-      obj.NotesLabel = uilabel(obj.container);
-      obj.NotesLabel.HorizontalAlignment = 'center';
-      obj.NotesLabel.VerticalAlignment = 'bottom';
-      obj.NotesLabel.FontName = Aes.uiFontName;
-      obj.NotesLabel.FontSize = 28;
-      obj.NotesLabel.FontWeight = 'bold';
-      obj.NotesLabel.Position = [10,pos(4)-45,pos(3)-20,pos(4)-5];
-      obj.NotesLabel.Text = 'Notes';
+      % Create NotesTable
+      obj.NotesTable = uitable(obj.GridLayout);
+      obj.NotesTable.ColumnName = {'Timestamp'; 'Note'};
+      obj.NotesTable.ColumnWidth = {'fit', '1x'};
+      obj.NotesTable.RowName = {};
+      obj.NotesTable.CellSelectionCallback = @obj.doCopyUITableCell;
+
     end
   end
   
   %% Callback
   methods (Access = private)
-    % Size changed function: container
-    function containerSizeChanged(obj,~,~)
-      position = obj.container.Position;
-      obj.NotesTable.Position = [10,6,position(3)-20,position(4)-50-6];
-      obj.NotesLabel.Position = [10,position(4)-45,position(3)-20,position(4)-5];
+    
+    % copy cell contents callback
+    function doCopyUITableCell(obj,source,event) %#ok<INUSL>
+      try
+        ids = event.Indices;
+        nSelections = size(ids,1);
+        merged = cell(nSelections,1);
+        for sel = 1:nSelections
+          merged{sel} = source.Data{ids(sel,1),ids(sel,2)};
+        end
+        stringified = utilities.unknownCell2Str(merged,';',false);
+        clipboard('copy',stringified);
+      catch x
+        fprintf('Copy failed for reason:\n "%s"\n',x.message);
+      end
     end
+
   end
   %% Preferences
   methods (Access = protected)

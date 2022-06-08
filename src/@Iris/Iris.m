@@ -201,13 +201,15 @@ classdef Iris < iris.app.Container
       cT = now;
       app.sessionInfo.sessionEnd = cT;
       % reset stored prefs for toggles to false
+      app.ui.toggleSwitches('off');
       for tID = ["Filter", "Scale", "Baseline"]
         Iris.setTogglePref(eventData(struct('source', tID, 'value', false)));
       end
-
+      
       try %#ok<TRYNC>
-        app.options.save();
+        app.options.save();        
       end
+      
       try %#ok<TRYNC>
         app.loadShow.shutdown();
       end

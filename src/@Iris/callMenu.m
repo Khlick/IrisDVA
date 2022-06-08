@@ -1,6 +1,5 @@
 function callMenu(app, ~, event)
   s = app.services;
-
   switch lower(event.Data)
     case {'about', 'help', 'newanalysis', 'preferences'}
       s.build(event.Data);

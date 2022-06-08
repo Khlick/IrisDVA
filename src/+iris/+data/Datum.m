@@ -1,6 +1,6 @@
 classdef Datum < matlab.mixin.Copyable
 
-  properties (SetAccess = private)
+  properties %(SetAccess = private)
     id = '' %name
     devices
     sampleRate

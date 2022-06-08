@@ -1,8 +1,8 @@
 classdef protocols < iris.ui.UIContainer
   %PROTOCOLS Display the protocol/experiment parameters for the selected data.
   properties (Access = public)
+    GridLayout matlab.ui.container.GridLayout
     ProtocolsTable  matlab.ui.control.Table
-    ProtocolsLabel  matlab.ui.control.Label
   end
   %% Public methods
   methods (Access = public)
@@ -61,40 +61,31 @@ classdef protocols < iris.ui.UIContainer
       obj.position = pos; %sets container too
       
       % Create container
-      obj.container.Name = 'Protocols';
-      obj.container.SizeChangedFcn = @obj.containerSizeChanged;
+      obj.container.Name = 'Data Properties';
       obj.container.Resize = 'on';
       
-      % Create ProtocolsTable
-      obj.ProtocolsTable = uitable(obj.container);
-      obj.ProtocolsTable.ColumnName = {'Property'; 'Value'};
-      obj.ProtocolsTable.ColumnWidth = {200, 'auto'};
-      obj.ProtocolsTable.ColumnSortable = [true,true];
-      obj.ProtocolsTable.RowName = {};
-      obj.ProtocolsTable.HandleVisibility = 'off';
-      obj.ProtocolsTable.Position = [10, 6, pos(3)-20,pos(4)-50-6];
-      obj.ProtocolsTable.CellSelectionCallback = @obj.doCopyUITableCell;
+      % Grid Layout
+      obj.GridLayout = uigridlayout(obj.container);
+      obj.GridLayout.Padding = [5,10,5,0];
+      obj.GridLayout.RowSpacing = 0;
+      obj.GridLayout.ColumnSpacing = 0;
+      obj.GridLayout.RowHeight = {'1x'};
+      obj.GridLayout.ColumnWidth = {'1x'};
+      obj.GridLayout.BackgroundColor = obj.container.Color;
       
-      % Create ProtocolsLabel
-      obj.ProtocolsLabel = uilabel(obj.container);
-      obj.ProtocolsLabel.HorizontalAlignment = 'center';
-      obj.ProtocolsLabel.VerticalAlignment = 'bottom';
-      obj.ProtocolsLabel.FontName = Aes.uiFontName;
-      obj.ProtocolsLabel.FontSize = 28;
-      obj.ProtocolsLabel.FontWeight = 'bold';
-      obj.ProtocolsLabel.Position = [10,pos(4)-45,pos(3)-20,pos(4)-5];
-      obj.ProtocolsLabel.Text = 'Protocols';
+      % Create ProtocolsTable
+      obj.ProtocolsTable = uitable(obj.GridLayout);
+      obj.ProtocolsTable.ColumnName = {'Property'; 'Value'};
+      obj.ProtocolsTable.ColumnWidth = {'fit', '1x'};
+      obj.ProtocolsTable.RowName = {};
+      obj.ProtocolsTable.CellSelectionCallback = @obj.doCopyUITableCell;
+
     end
   end
   
   %% Callback
   methods (Access = private)
-    % Size changed function: container
-    function containerSizeChanged(obj,~,~)
-      position = obj.container.Position;
-      obj.ProtocolsTable.Position = [10,6,position(3)-20,position(4)-50-6];
-      obj.ProtocolsLabel.Position = [10,position(4)-45,position(3)-20,position(4)-5];
-    end
+    
     % copy cell contents callback
     function doCopyUITableCell(obj,source,event) %#ok<INUSL>
       try

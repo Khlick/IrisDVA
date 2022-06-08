@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+title: Iris Data Visualization and Analysis
+message: If you use this software, please cite it using these metadata.
+type: software
+authors:
+  - given-names: Khris
+    family-names: Griffis
+    email: "khrisgriffis@ucla.edu"
+    affiliation: "UCLA - Sampath Lab"
+    orcid: 'https://orcid.org/0000-0002-6909-9286'
+version: 2.0.152
+date-released: "2022-01-14"
+license: MIT
+repository: "https://github.com/sampath-lab-ucla/IrisDVA/releases/latest"
+repository-code: "https://github.com/sampath-lab-ucla/IrisDVA"
+url: "https://sampathlab.gitbook.io/iris-dva/"
+references:
+  - authors:
+      - name: "Jan Simon"
+    date-released: "2011-06-29"
+    repository: "https://www.mathworks.com/matlabcentral/fileexchange/30247-butterparam"
+    title: ButterParam
+    type: software
+    version: 1.2.0.0
+  - authors:
+      - name: "Jan Simon"
+    date-released: "2011-07-20"
+    repository: "https://www.mathworks.com/matlabcentral/fileexchange/32261-filterm"
+    title: FilterM
+    type: software
+    version: 1.0.0.0
+
+

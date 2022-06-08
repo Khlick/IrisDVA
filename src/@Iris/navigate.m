@@ -65,6 +65,7 @@ if isequal(newSel,cSel.selected)
   % check if highlight is different?
   return
 end
+% apply new selection and let listeners handle returns
 app.handler.currentSelection = newSel;
 end
 

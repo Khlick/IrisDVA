@@ -2,7 +2,7 @@ classdef fileInfo < iris.ui.UIContainer
   %FILEINFO Displays metadata information attached to each open file.
   % Properties that correspond to app components
   properties (Access = public)
-    FileInfoLabel   matlab.ui.control.Label
+    GridLayout matlab.ui.container.GridLayout
     FileTree        matlab.ui.container.Tree
     PropNodes    
     PropTable       matlab.ui.control.Table
@@ -125,45 +125,34 @@ classdef fileInfo < iris.ui.UIContainer
         pos = utilities.centerFigPos(initW,initH);
       end
       obj.position = pos; %sets container too
-      w = pos(3);
-      h = pos(4);
-      
-      treeW = min([floor(w*0.33),208]);
-      
       
       % Create container
       obj.container.Name = 'File Info';
-      obj.container.SizeChangedFcn = @obj.containerSizeChanged;
       obj.container.Resize = 'on';
       
+      % Grid Layout
+      obj.GridLayout = uigridlayout(obj.container);
+      obj.GridLayout.Padding = [5,10,5,0];
+      obj.GridLayout.RowSpacing = 0;
+      obj.GridLayout.ColumnSpacing = 0;
+      obj.GridLayout.RowHeight = {'1x'};
+      obj.GridLayout.ColumnWidth = {'fit','1x'};
+      obj.GridLayout.BackgroundColor = obj.container.Color;
+
       % Create FileTree
-      obj.FileTree = uitree(obj.container);
+      obj.FileTree = uitree(obj.GridLayout);
       obj.FileTree.FontName = 'Times New Roman';
       obj.FileTree.FontSize = 16;
       obj.FileTree.Multiselect = 'off';
       obj.FileTree.SelectionChangedFcn = @obj.getSelectedInfo;
 
       % Create PropTable
-      obj.PropTable = uitable(obj.container);
+      obj.PropTable = uitable(obj.GridLayout);
       obj.PropTable.ColumnName = {'Property'; 'Value'};
-      obj.PropTable.ColumnWidth = {125, 'auto'};
+      obj.PropTable.ColumnWidth = {'fit', '1x'};
       obj.PropTable.RowName = {};
-      obj.PropTable.HandleVisibility = 'off';
+      obj.PropTable.CellSelectionCallback = @obj.doCopyUITableCell;
       
-
-      % Create FileInfoLabel
-      obj.FileInfoLabel = uilabel(obj.container);
-      obj.FileInfoLabel.HorizontalAlignment = 'Left';
-      obj.FileInfoLabel.VerticalAlignment = 'bottom';
-      obj.FileInfoLabel.FontName = Aes.uiFontName;
-      obj.FileInfoLabel.FontSize = 22;
-      obj.FileInfoLabel.FontWeight = 'bold';
-      
-      obj.FileInfoLabel.Text = '  File Info';
-      
-      obj.FileTree.Position = [10 10 treeW h-35-10-10];
-      obj.PropTable.Position = [treeW+8+10, 10, w-treeW-7-10-10,h-10-10];
-      obj.FileInfoLabel.Position = [10,h-35,treeW,35];
     end
     
     %Destruct View
@@ -179,15 +168,20 @@ classdef fileInfo < iris.ui.UIContainer
   
   %% Callback
   methods (Access = private)
-    % Size changed function: container
-    function containerSizeChanged(obj,~,~)
-      pos = obj.container.Position;
-      w = pos(3);
-      h = pos(4);
-      treeW = min([floor(w*0.33),208]);
-      obj.FileTree.Position = [10 10 treeW h-35-10-10];
-      obj.PropTable.Position = [treeW+8+10, 10, w-treeW-7-10-10,h-10-10];
-      obj.FileInfoLabel.Position = [10,h-35,treeW,35];
+    % copy cell contents callback
+    function doCopyUITableCell(obj,source,event) %#ok<INUSL>
+      try
+        ids = event.Indices;
+        nSelections = size(ids,1);
+        merged = cell(nSelections,1);
+        for sel = 1:nSelections
+          merged{sel} = source.Data{ids(sel,1),ids(sel,2)};
+        end
+        stringified = utilities.unknownCell2Str(merged,';',false);
+        clipboard('copy',stringified);
+      catch x
+        fprintf('Copy failed for reason:\n "%s"\n',x.message);
+      end
     end
     % Selection Node changed.
     function getSelectedInfo(obj,~,evt)

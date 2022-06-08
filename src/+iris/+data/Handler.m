@@ -21,7 +21,7 @@ classdef Handler < matlab.mixin.Copyable
 
   properties (Hidden = true, SetAccess = private)
     membership cell
-    fileMap containers.Map
+    fileMap
   end
 
   properties (Dependent)
@@ -75,7 +75,7 @@ classdef Handler < matlab.mixin.Copyable
         @(m) all(ismember(m.data, drop)), ...
         obj.membership, ...
         'UniformOutput', 1 ...
-      );
+        );
 
       % reevaluate indices
       for d = 1:length(obj.Data)
@@ -119,21 +119,24 @@ classdef Handler < matlab.mixin.Copyable
     function append(obj, data, files, meta, notes)
       % APPEND Append parsed data onto existing object.
       assert( ...
-      iscell(data) && iscell(meta) && iscell(notes) && (iscell(files) || isstring(files)), ...
+        iscell(data) && iscell(meta) && iscell(notes) && (iscell(files) || isstring(files)), ...
         'data, meta and notes arguments must be cells or cell arrays.' ...
-      );
+        );
       assert( ...
         (length(data) == length(meta)) && ...
         (length(meta) == length(notes)) && ...
         (length(notes) == length(files)), ...
         'All inputs must be equal length.' ...
-      );
+        );
 
       % once we are good, begin parsing contents
       import utilities.*; % utility library
 
       % setup memberships
       fmap = containers.Map('KeyType', 'char', 'ValueType', 'any');
+
+      % merge duplicate file entries, in the event that a single caller loaded
+      % multiple arrays.
 
       for f = 1:length(files)
         IDX = obj.nFiles + 1;
@@ -244,11 +247,11 @@ classdef Handler < matlab.mixin.Copyable
       if ~obj.isready, popped = []; return; end
       %pops an entire file
       popped = struct( ...
-      'file', obj.fileList{end}, ...
+        'file', obj.fileList{end}, ...
         'Meta', obj.Meta{end}, ...
         'dataIndex', obj.membership{end}.data, ...
         'noteIndex', obj.membership{end}.Notes ...
-      );
+        );
       popped.data = obj(poppped.dataIndex);
       popped.notes = obj.Notes(popped.noteIndex, :);
       popped.tracker = obj.Tracker.getStatus().inclusions(popped.dataIndex);
@@ -489,7 +492,7 @@ classdef Handler < matlab.mixin.Copyable
       status = obj.Tracker.getStatus;
       obj.Tracker.setInclusion( ...
         struct('selected', inds, 'inclusion', ~status.inclusions(inds)) ...
-      );
+        );
       obj.Data(inds).setInclusion(~status.inclusions(inds));
       notify(obj, 'onSelectionUpdated');
     end
@@ -497,7 +500,7 @@ classdef Handler < matlab.mixin.Copyable
     function setInclusion(obj, inds, vals)
       obj.Tracker.setInclusion( ...
         struct('selected', inds, 'inclusion', logical(vals)) ...
-      );
+        );
       obj.Data(inds).setInclusion(logical(vals));
       notify(obj, 'onSelectionUpdated');
     end
@@ -618,7 +621,7 @@ classdef Handler < matlab.mixin.Copyable
       obj.Tracker = iris.data.Tracker();
       obj.Notes = {};
       obj.membership = {};
-      obj.fileMap = containers.Map();
+      obj.fileMap = [];
     end
 
     function [d, fl, m, n] = readData(obj, files, reader)
@@ -653,7 +656,7 @@ classdef Handler < matlab.mixin.Copyable
         notify( ...
           obj, 'fileLoadStatus', ...
           iris.infra.eventData(accDataRead / totalDataSize) ...
-        );
+          );
 
         if isempty(reader{f})
           reader{f} = validFiles.getReadFxnFromFile(files{f});
@@ -677,7 +680,7 @@ classdef Handler < matlab.mixin.Copyable
       notify( ...
         obj, 'fileLoadStatus', ...
         iris.infra.eventData(accDataRead / totalDataSize) ...
-      );
+        );
 
       emptySlots = cellfun(@isempty, d, 'unif', 1);
       skipped = skipped(emptySlots, :);
@@ -697,6 +700,14 @@ classdef Handler < matlab.mixin.Copyable
       n = n(~emptySlots);
       fl = fl(~emptySlots);
       % unpack
+      % if d or m or n have multiple entries, let's merge
+      internalCounts = cellfun(@numel,d,'UniformOutput',true);
+      if sum(internalCounts) > nf
+        dIdx = find(internalCounts > 1);
+        for dx = dIdx
+          d{dx} = cat(2,d{dx}{:});
+        end
+      end
       d = [d{:}];
       m = [m{:}];
       n = [n{:}];
@@ -719,4 +730,4 @@ classdef Handler < matlab.mixin.Copyable
 
   end
 
-  end %eoc
+end %eoc

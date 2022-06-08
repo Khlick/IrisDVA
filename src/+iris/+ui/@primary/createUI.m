@@ -68,7 +68,7 @@ obj.NotesMenuD.Text = 'Notes...';
 % Create ProtocolsMenuD
 obj.ProtocolsMenuD = uimenu(obj.ViewMenu);
 obj.ProtocolsMenuD.Enable = 'off';
-obj.ProtocolsMenuD.Text = 'Datum Properties...';
+obj.ProtocolsMenuD.Text = 'Data Properties...';
 
 % Create OverviewMenuD
 obj.OverviewMenuD = uimenu(obj.ViewMenu);

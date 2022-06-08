@@ -216,11 +216,11 @@ classdef dataOverview < iris.ui.UIContainer
       % Create the Grid Layout
       obj.GridLayout = uigridlayout(obj.container);
       obj.GridLayout.BackgroundColor = obj.container.Color;
-      obj.GridLayout.Padding = [10 10 10 10];
+      obj.GridLayout.Padding = [5,10,5,0];
       obj.GridLayout.RowSpacing = 3;
       obj.GridLayout.ColumnSpacing = 3;
       obj.GridLayout.RowHeight = {'1x',36};
-      obj.GridLayout.ColumnWidth = {250,'1x','1x'};
+      obj.GridLayout.ColumnWidth = {300,'1x','1x'};
       
       % Create FileTree
       obj.FileTree = uitree(obj.GridLayout,'Layout',GridLayoutOptions('Row',1,'Column',1));

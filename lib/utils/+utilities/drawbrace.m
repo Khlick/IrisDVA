@@ -22,7 +22,7 @@ function h = drawbrace(start, stop, width, varargin)
     % Get axis size
     
     if numel(varargin)>0 && ismember("axes",lower(string(varargin(1:2:end))))
-      loc = find(ismember("axes",lower(string(varargin(1:2:end)))),1,'first')*2;
+      loc = find(ismember(lower(string(varargin(1:2:end))),"axes"),1,'first')*2;
       axs = varargin{loc};
       varargin([loc-1,loc]) = [];
     else
@@ -30,8 +30,8 @@ function h = drawbrace(start, stop, width, varargin)
     end
     pos = get(axs, 'Position');
     opos = get(gcf, 'Position');
-    ylims = ylim;
-    xlims = xlim;
+    ylims = axs.YLim;
+    xlims = axs.XLim;
     
     % Take logarithmic scale into account
     isxlog = strcmp(get(axs, 'XScale'), 'log');
