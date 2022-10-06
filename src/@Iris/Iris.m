@@ -196,8 +196,10 @@ classdef Iris < iris.app.Container
     end
 
     function preStop(app)
-      import iris.infra.eventData;
       preStop@iris.app.Container(app);
+      
+      import iris.infra.eventData;
+      
       cT = now;
       app.sessionInfo.sessionEnd = cT;
       % reset stored prefs for toggles to false
@@ -226,9 +228,9 @@ classdef Iris < iris.app.Container
       displayStruct.startTime = dtime(startTime);
       displayStruct.endTime = dtime(endTime);
       displayStruct.duration = duration;
-      fprintf('Exiting Iris DVA:\n');
+      fprintf('Iris DVA Session Information:\n');
       disp(displayStruct);
-      fprintf('%%%s%%\n\n', repmat('-', 1, 40));
+      fprintf('%%%s%%\n\n', repmat('-', 1, 42));
       % verify we didn't leave any windows open
       leftovers = findall(groot,'Type','Figure','Tag','iris_ui');
       if ~isempty(leftovers), delete(leftovers); end

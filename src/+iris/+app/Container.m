@@ -40,10 +40,6 @@ classdef (Abstract) Container < handle
       obj.setappdata("AppCleanupCode",@()'cleanup');
     end
 
-    function delete(obj)
-      obj.stop();
-    end
-
     function run(obj)
       obj.preRun;
       obj.bind;
@@ -54,10 +50,10 @@ classdef (Abstract) Container < handle
       if obj.isStopped, return; end
       obj.ui.hide();
       fprintf('Closing Iris\n');
-      obj.preStop;
-      obj.unbind;
-      obj.close;
-      obj.postStop;
+      obj.preStop();
+      obj.unbind();
+      obj.close();
+      obj.postStop();
       obj.isStopped = true;
       notify(obj, 'didStop');
     end

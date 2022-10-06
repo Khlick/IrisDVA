@@ -101,5 +101,5 @@ fprintf('It is located at:\n  "%s"\n', ...
   fullfile(iris.app.Info.getAppPath(), 'lib', 'IrisData.m') ...
   );
 
-
+app.loadShow.update("Done!","animate",false,'forceDelay',0.8);
 end

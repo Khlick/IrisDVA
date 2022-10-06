@@ -26,7 +26,7 @@ end
 
 
 for ii = 1:n
-  [datout(:,:,ii), Kl] = reshaperfxn(datin(:,ii), winlen, overlap);
+  [datout(:,:,ii), Kl] = reshaperfxn(datin(:,ii), winlen, overlap); %#ok<AGROW> 
 end
 
 if expand
@@ -68,8 +68,8 @@ if Kl ~= K
 end
 
 %put data into windowed columns with overlap
-coli = 1 + [0:(Kl-1)]*(L-overlap);
-rowi = [1:L]';
+coli = 1 + (0:(Kl-1))*(L-overlap);
+rowi = (1:L).';
 %make empty
 datout = nan(L, Kl, class(datin));
 datout(:) = datin(rowi(:,ones(1,Kl))+coli(ones(L,1),:)-1);

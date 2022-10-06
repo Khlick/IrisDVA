@@ -229,10 +229,8 @@ methods (Access = protected)
         obj.ScaleValue.ColumnEditable = [false,true];
         obj.ScaleValue.Enable = 'on';
       otherwise
-      if obj.ScaleValue.ColumnEditable(end)
-        obj.ScaleValue.ColumnEditable = [false,false];
-        obj.ScaleValue.Enable = 'off';
-      end
+      obj.ScaleValue.ColumnEditable = [false,false];
+      obj.ScaleValue.Enable = 'off';
     end
     obj.Notify('ScalingChanged', iris.infra.eventData({'ScaleMethod',event}));
   end

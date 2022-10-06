@@ -1689,20 +1689,21 @@ classdef IrisData
       
       % determine the grouping
       groupingTable = filterTable(:,groupBy);
-      % in this case, we split ignoring inclusions and then apply them
+      % in this case, we split ignoring inclusions and then apply them after split
       groups = IrisData.determineGroups(groupingTable);
       nGroups = height(groups.Table);
       
-      [~,runStart,~] = unique(groups.Singular,'stable');
-      runEnd = diff([runStart(:);obj.nDatums+1]);
-      subsIndex = arrayfun(@(s,e) s-1+(1:e), runStart,runEnd,'UniformOutput',false);
-      
-      dataCells = cell(1,nGroups);
-      [dataCells{:}] = obj.subsref(substruct('()',subsIndex));
-      
-      % apply inclusions changes
+      % loop over groups and collect the data using singular mapping
+      dataCells = cell(nGroups,1);
       for c = 1:nGroups
-        dataCells{c}.InclusionList = inclusions(subsIndex{c});
+        g = groups.Table.SingularMap(c);
+        subsIndex = find(groups.Singular == g);
+        % irisdata.subsref() to get data(inds) -> irisdata
+        dataCells{c} = obj.subsref( ... 
+            substruct( '()', {subsIndex} ) ...
+            );
+        % apply inclusions changes
+        dataCells{c}.InclusionList = inclusions(subsIndex);
       end
       
       % split each dataCell by device if requested

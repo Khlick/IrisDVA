@@ -128,43 +128,4 @@ for iter = factorVec
   grpID = grpID + 1;
 end
 
-%{
-% try new algorithm above
-checkPattern = nchoosek(1:nFactors,2);
-tests = false(nFactors);
-for iter = 1:size(checkPattern,1)
-  idx = checkPattern(iter,:);
-  check = isequal(factorInput(idx(1)),factorInput(idx(2)));
-  tests(idx(1),idx(2)) = check;
-  tests(idx(2),idx(1)) = check;
-end
-[r,c] = find(tests);
-inds = zeros(numel(r),2);
-for iter = 1:numel(r)
-  inds(iter,:) = sort([r(iter),c(iter)]);
-end
-
-inds = unique(inds,'rows','stable');
-indVals = unique(inds(:,1),'stable');
-nGrouped = size(indVals,1);
-groupCounter = 1;
-vec = zeros(nFactors,1);
-for iter = 1:nGrouped
-  thisIdx = inds(inds(:,1) == indVals(iter),:);
-  thisIdx = unique(thisIdx(:));
-  skips = false(numel(thisIdx),1);
-  for jter = 1:numel(thisIdx)
-    if vec(thisIdx(jter)) 
-      skips(jter) = true;
-      continue
-    end
-    vec(thisIdx(jter)) = groupCounter;
-  end
-  if all(skips), continue; end
-  groupCounter = groupCounter + 1;
-end
-
-leftOvers = vec == 0;
-vec(leftOvers) = groupCounter + ((1:sum(leftOvers))' - 1);
-%}
 end

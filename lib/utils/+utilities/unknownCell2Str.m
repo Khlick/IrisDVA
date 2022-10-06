@@ -31,7 +31,7 @@ for I = 1:length(caClass)
       end
       strNow = strjoin(logStrings, ',');
     case 'cell'
-      [strNow,insideClass] = utilities.unknownCell2Str(cellAr{I},sep);
+      [strNow,insideClass] = utilities.unknownCell2Str(cellAr{I},sep,uniquify);
       caClass{I} = cat(2,caClass(I),insideClass{:});
     case 'struct'
       thisS = cellAr{I};
