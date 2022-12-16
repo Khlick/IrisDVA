@@ -30,7 +30,7 @@ elseif ismatrix(inputArray)
     );
   inputArray = table2cell(inputTable);
 else
-  error("IRISDATA:DETERMINEGROUPS:INPUTUNKNOWN","Incorrect input type.");
+  error("UTILITIES:DETERMINEGROUPS:INPUTUNKNOWN","Incorrect input type.");
 end
 
 idNames = matlab.lang.makeValidName(idNames);
@@ -67,6 +67,8 @@ end
 
 % get the group mapping
 [uGroups,groupIdx,Singular] = unique(groupVec,'rows');
+nGroups = numel(uGroups);
+
 groupTable = [array2table(uGroups,'VariableNames',idNames),inputTable(groupIdx,:)];
 groupTable.Combined = rowfun( ...
   @(x)join(string(x),'::'), ...
@@ -79,14 +81,12 @@ if any(~uGroups)
   % ensure 0 if exclusions are present
   Singular = Singular - 1;
 end
-  
-tblt = tabulate(Singular);
 
-% tblt arrives sorted because we let unique(groupVec) sort Singular. So we
-% can map value and counts to rows of the groupTable
-groupTable.Counts = tblt(:,2);
-groupTable.SingularMap = tblt(:,1);
-groupTable.Frequency = tblt(:,3);
+% Produce summary table for group map
+% *Singular is an integer index array
+groupTable.Counts = histcounts(sort(Singular),nGroups).';% tblt(:,2);
+groupTable.SingularMap = uGroups;% tblt(:,1);
+groupTable.Frequency = groupTable.Counts./sum(groupTable.Counts).*100; % percent
 
 %output
 groupInfo = struct();
@@ -118,7 +118,7 @@ for iter = factorVec
   thisValue = factorInput(iter);
   didAsgn = false(nFactors,1);
   for idx = factorVec
-    if vec(idx), continue; end %already labelled
+    if vec(idx), continue; end %already labeled
     if isequal(thisValue,factorInput(idx))
       didAsgn(idx) = true;
       vec(idx) = grpID;

@@ -6,6 +6,7 @@ classdef promptBox < iris.ui.JContainer
     prompts
     promptTitles
     defaults
+    validClose=false
   end
   
   properties (Hidden = true, Access = protected)
@@ -13,6 +14,7 @@ classdef promptBox < iris.ui.JContainer
     input
     label
     button
+    allowDefaults
   end
   
   properties (Dependent)
@@ -23,7 +25,11 @@ classdef promptBox < iris.ui.JContainer
   methods
     
     function h = get.halt(obj)
-      tests = zeros(1,obj.nPrompts);
+      if obj.allowDefaults
+        h=false;
+        return
+      end
+      tests = false(1,obj.nPrompts);
       for i = 1:obj.nPrompts
         tests(i) = strcmpi(obj.inputs{i},obj.defaults{i});
       end
@@ -31,7 +37,7 @@ classdef promptBox < iris.ui.JContainer
     end
     
     function r = get.response(obj)
-      if obj.halt, r = []; return; end
+      if obj.halt || ~obj.validClose, r = []; return; end
       r = struct();
       for i = 1:obj.nPrompts
         r.(obj.promptTitles{i}) = obj.inputs{i};
@@ -83,10 +89,13 @@ classdef promptBox < iris.ui.JContainer
         @(v) validateattributes(v,{'numeric'},{'numel',1}) ...
         );
       ip.addParameter('ButtonLabel', 'Go', @ischar);
+      ip.addParameter('AllowDefaults',false,@islogical);
       
       
       ip.KeepUnmatched = true;
       ip.parse(varargin{:});
+
+      obj.allowDefaults = ip.Results.AllowDefaults;
       
       w = max([265,ip.Results.Width]);
       
@@ -193,6 +202,7 @@ classdef promptBox < iris.ui.JContainer
         warndlg('Please enter valid input[s].');
         return;
       end
+      obj.validClose = true;
       obj.onCloseRequest([],[]);
     end
     

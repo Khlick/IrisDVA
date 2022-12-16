@@ -136,10 +136,10 @@ classdef Iris < iris.app.Container
       % copy to the new location
       copyfile(sourcePath, fullfile(installLocation, '@IrisDVA'), 'f');
 
-      pdef = strsplit(pathdef, ';');
+      pdef = strsplit(pathdef, pathsep);
       pdef(cellfun(@isempty, pdef, 'uniformoutput', true)) = [];
 
-      currentPath = strsplit(path, ';');
+      currentPath = strsplit(path, pathsep);
       currentPath(cellfun(@isempty, currentPath, 'uniformoutput', true)) = [];
 
       pathsToRestore = strjoin(currentPath(~ismember(currentPath, pdef)), pathsep);

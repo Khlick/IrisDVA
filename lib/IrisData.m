@@ -3,48 +3,48 @@ classdef IrisData
   %   IrisData is a data class object which should not undergo any modification.
   %   See description of properties and methods for help working with this data
   %   class.
-  
+
   properties (SetAccess=private)
-    
+
     % Meta- A `struct` object, holds the metainformation about the files from
     % which the data were extracted.
     Meta
-    
+
     % Notes- An Nx2 cell array of the pattern {timestamp,note}.
     %   The property will have all supplied notes concatenated from 1xA cell array
     %   input. Thus the input 'Notes' paramter in the object constructor should be
     %     `{ {file 1: Nx2 cell}, {file A: Nx2 cell} }`.
     Notes
-    
+
     % Data- A struct array contianing the collected data.
     Data
-    
+
     % Files- A string vector containing the names of the most recent files
     % associated with the contained data.
     Files
-    
+
     % Membership- A map containing the file name and associated data and notes
     % indices.
     Membership
-    
+
     % UserData- A struct containing any extra parameters supplied at construction.
     % This will always contain a map of the original file indices.
     UserData
-    
+
     % IndexMap- A map object with keys which correspond to original index numbers.
     IndexMap
-    
+
     % DeviceMap- A map object with keys which correspond to available devices.
     %   Values returned correspond to indices of each datum where the device is found.
     %   If the device is not found on a particular datum, the index returned is -1.
     %   The returned vector has length of obj.nDatums.
     %   Usage: indices = IrisData.DeviceMap('Axopatch200B');
     DeviceMap
-    
+
     % FileHistory- A string array of file names associated with this data file.
     FileHistory
   end
-  
+
   properties (Dependent = true)
     % Specs- A struct hold table and datum properties. Used in groupBy commands.
     Specs
@@ -57,13 +57,13 @@ classdef IrisData
     % AvailableDevices- A list of the available devices from all data.
     AvailableDevices
   end
-  
+
   properties (Constant,Hidden = true)
     BASELINE_TYPES = {'Start','End','None','Asym','Sym','Beginning'}
   end
-  
+
   methods
-    
+
     function obj = IrisData(varargin)
       %IRISDATA Construct instance of Iris DVA data class.
       %   IrisData expects either a struct with fields, or name value pairs for,
@@ -99,7 +99,7 @@ classdef IrisData
       %  @param FileHistory: optional string array. A string array of files
       %  associated with the data. This will be automatically populated when
       %  passing data from IrisData to IrisData objects.
-      
+
       ip = inputParser();
       ip.KeepUnmatched = true;
       ip.addParameter('Data', {}, @(v)validateattributes(v,{'cell'},{'nonempty'}));
@@ -108,15 +108,15 @@ classdef IrisData
       ip.addParameter('Files', {}, @(v)validateattributes(v,{'cell','string'},{'nonempty'}));
       ip.addParameter('Membership', containers.Map(), @(v)isa(v, 'containers.Map'));
       ip.addParameter('FileHistory',[], @(v)isempty(v) || isstring(v));
-      
+
       ip.parse(varargin{:});
-      
+
       obj.Meta = ip.Results.Meta; %cell array
       obj.Files = string(ip.Results.Files(:)); %string list
       fh = arrayfun(@(f)strsplit(f,";"),obj.Files,'UniformOutput',false);
       obj.FileHistory = unique([fh{:},ip.Results.FileHistory],'stable');
       obj.Notes = cat(1,ip.Results.Notes{:}); %cell array of Nx2 cells
-      
+
       % Membership Map using filenames as keys. make a copy of the input map to
       % prevent issues from passing containers.Map handles around
       obj.Membership = containers.Map( ...
@@ -127,26 +127,29 @@ classdef IrisData
       obj.Data = cat(1,ip.Results.Data{:});
       % anything unrecognized gets stored as a struct in UserData
       obj.UserData = ip.Unmatched;
-      
+
       %buld index map
       ogInds = obj.getOriginalIndex(1:obj.nDatums);
+      obj.IndexMap = containers.Map((1:obj.nDatums)',ogInds(:));
       % build the indexmap. Note this could be a 1:1 map
+      %{
       if iscell(ogInds) %ie one datum represents multiple ogInds
         sizes = cellfun(@numel,ogInds,'UniformOutput',true);
-        repInds = IrisData.rep((1:obj.nDatums)',1,sizes(:));
-        obj.IndexMap = containers.Map([ogInds{:}],repInds);
+        %repInds = IrisData.rep((1:obj.nDatums)',1,sizes(:));
+        obj.IndexMap = containers.Map((1:obj.nDatums)',ogInds);
       else
-        obj.IndexMap = containers.Map(ogInds,(1:obj.nDatums)');
+        obj.IndexMap = containers.Map((1:obj.nDatums)',ogInds);
       end
-      
+      %}
+
       % Build device map
       aDevs = obj.AvailableDevices;
       nDevs = length(aDevs);
-      
+
       devList = obj.getDeviceList();
-      
+
       devVals = cell(size(aDevs));
-      
+
       for i = 1:nDevs
         inds = -ones(obj.nDatums,1);
         for d = 1:obj.nDatums
@@ -158,7 +161,7 @@ classdef IrisData
       end
       obj.DeviceMap = containers.Map(aDevs,devVals);
     end
-    
+
     function iData = Aggregate(obj,varargin)
       % AGGREGATE   Compute statistical aggregation on data.
       %   Usage:
@@ -188,7 +191,7 @@ classdef IrisData
       %     for aggregate.
       %   @param 'inclusionOverride': Must be either empty array or logical vector
       %   the same length as the current data.
-      %   @param 'xAggregator': (unused) aggregator function for x values.
+      %   @param 'xAggregator': aggregator function for x values.
       %   @param 'plot': boolean indicating whether there should be a plot made
       %     (true) or not (false).
       %
@@ -200,75 +203,75 @@ classdef IrisData
       %   method or a new method will allow the calculation to result in a any
       %   sized output from the groups. Also, being able to apply statistics
       %   across devices is desirable.
-      
+
       % local constants
       validGroups = obj.getPropertyNames();
-      
+
       % input parser
       p = inputParser();
-      
+
       p.addParameter('groupBy', 'none', ...
         @(v)IrisData.ValidStrings(v,[{'none';'all'};validGroups(:)]) ...
         );
-      
+
       p.addParameter('customGrouping', [], ...
         @(x) ...
         isempty(x) || (numel(x) == obj.nDatums) ...
         );
-      
+
       p.addParameter('devices', 'all', ...
         @(v)IrisData.ValidStrings(v,['all';obj.AvailableDevices]) ...
         );
-      
+
       p.addParameter('baselineFirst', true, @(v)islogical(v)&&isscalar(v));
-      
+
       p.addParameter('baselineRegion', 'start', ...
         @(v)IrisData.ValidStrings(v,obj.BASELINE_TYPES) ...
         );
-      
+
       p.addParameter( ...
         'baselineReference', 0, ...
         @(v) isscalar(v) && isnumeric(v) && (v >=0) ...
         );
-      
+
       p.addParameter('numBaselinePoints', 1000, @isnumeric);
-      
+
       p.addParameter('baselineOffsetPoints', 0, ...
         @(v)validateattributes(v,{'numeric'},{'nonnegative','scalar'}) ...
         );
-      
+
       p.addParameter('statistic', @(x)mean(x,1,'omitnan'), ...
         @(v)validateattributes(v, ...
         {'char','string','function_handle','cell'}, ... %'cell'
         {'nonempty'} ...
         ) ...
         );
-      
+
       p.addParameter('xAggregator', @(x)mean(x,1,'omitnan'), ...
         @(v)validateattributes(v, ...
         {'char','string','function_handle','cell'}, ... %'cell'
         {'nonempty'} ...
         ) ...
         );
-      
+
       p.addParameter('scaleFactor', 1, @(x)isscalar(x) && isnumeric(x));
-      
+
       p.addParameter('inclusionOverride', [], ...
         @(v)validateattributes(v,{'logical', 'numeric'},{'nonnegative'}) ...
         );
-      
+
       p.addParameter('plot', false, @islogical);
-      
+
       p.addParameter('noFitWarning', false, @(x)isscalar(x) && islogical(x));
-      
+
       p.addParameter('truncate', false, @islogical);
-      
+
       p.PartialMatching = true;
       p.CaseSensitive = false;
       p.KeepUnmatched = false;
       % Parse input parameters
       p.parse(varargin{:});
-      
+
       % validate input strings
       [~,groupBy] = IrisData.ValidStrings( ...
         p.Results.groupBy, ...
@@ -282,7 +285,7 @@ classdef IrisData
         p.Results.devices, ...
         ['all';obj.AvailableDevices] ...
         );
-      
+
       % Create inclusions vector
       isOverride = ~isempty(p.Results.inclusionOverride);
       overrideLength = length(p.Results.inclusionOverride);
@@ -291,7 +294,7 @@ classdef IrisData
       else
         inclusions = obj.InclusionList;
       end
-      
+
       %Determine the grouping vector
       filterTable = obj.Specs.Table;
       isCustom = false;
@@ -322,19 +325,19 @@ classdef IrisData
         groupBy = {'all'};
         filterTable.all = num2str(ones(height(filterTable),1));
       end
-      
+
       % determine the grouping
       groupingTable = filterTable(:,groupBy);
       groups = IrisData.determineGroups(groupingTable,inclusions,true,isCustom);
       nGroups = height(groups.Table);
-      
+
       % Copy included datums
       data = obj.copyData(inclusions);
       nData = sum(inclusions);
       subs = find(inclusions);
-      
+
       baselineValues = cell(obj.nDatums,1);
-      
+
       % baseline (if First)
       if p.Results.baselineFirst && ~strcmp(baseLoc,'None')
         [data,baselineValues] = IrisData.subtractBaseline( ...
@@ -347,23 +350,23 @@ classdef IrisData
           p.Results.baselineReference ...
           );
       end
-      
+
       %%% Compute Group Statistics
-      
+
       % determine device locations within data
       if contains({'all'},devices)
         devices = obj.AvailableDevices;
       end
-      
+
       % count number of requested devices
       nDevOut = length(devices);
-      
+
       % Parse the aggregate function
       fx = determineStat(p.Results.statistic);
       xFx = determineStat(p.Results.xAggregator);
       nFx = numel(fx);
       multipleFx = nFx > 1;
-      
+
       if multipleFx && (numel(xFx) == 1)
         xFx = IrisData.rep(xFx,nFx,1);
       elseif multipleFx && (numel(xFx) ~= nFx)
@@ -372,20 +375,20 @@ classdef IrisData
           'same length as "statistic" argument.'] ...
           );
       end
-      
+
       % grouping vector
       groupVector = groups.Singular;
       groupMap = groups.Table.SingularMap;
-      
+
       % init output
       statMap = cell(nDevOut,1);
-      
+
       % Gather data by device
       for d = 1:nDevOut
         % determine the datums that have this device
         thisInds = obj.DeviceMap(devices{d});
         thisInds = thisInds(inclusions);
-        
+
         % get the lengths of data
         dataLengths(1:nData,1) = struct('x',[],'y',[]);
         sampleRates = zeros(length(thisInds),1);
@@ -396,28 +399,28 @@ classdef IrisData
           % collect sample rates for expansion to multiple statistics
           sampleRates(i) = data(i).sampleRate{thisInds(i)};
         end
-        
+
         % preallocate maximum sized vector for this device.
         maxLen = max([dataLengths.y]);
         [xvals,yvals] = deal(nan(maxLen,nData));
-        
+
         % gather data
         for i = 1:length(thisInds)
           % if datum has no device, thisInds(i) == -1
           if thisInds(i) < 0, continue;end
           thisX = data(i).x{thisInds(i)};
           thisY = data(i).y{thisInds(i)}.*p.Results.scaleFactor;
-          
+
           xvals(1:dataLengths(i).x,i) = thisX(:);
           yvals(1:dataLengths(i).y,i) = thisY(:);
         end
-        
+
         %%% compute groups statistics
-        
+
         % Create cell array for each fx
         xStats = cell(nGroups,nFx);
         yAggs = cell(nGroups,nFx);
-        
+
         groupedDataLengths = zeros(1,nGroups);
         for g = 1:nGroups
           thisGrpNum = groupMap(g);
@@ -430,7 +433,7 @@ classdef IrisData
             thisXAgg = xFx{f}(thisXSub')';
             xStats{g,f} = thisXAgg(:); %force column
           end
-          
+
           % Get the minimum grouped data length from X Values if truncating
           if p.Results.truncate
             groupedDataLengths(g) = min([dataLengths(thisGrpInd).x],[],'omitnan');
@@ -450,7 +453,7 @@ classdef IrisData
           1:nFx, ...
           'UniformOutput', false ...
           );
-        
+
         % store in map
         thisStruct = struct();
         thisStruct.devices = [ ...
@@ -479,11 +482,11 @@ classdef IrisData
           );
         statMap{d} = thisStruct;
       end
-      
+
       % convert the statistic map to a struct representing
       % IrisData.getDataMatrix();
       statStrc = cat(1,statMap{:});
-      
+
       mat = statStrc(1);
       if numel(statStrc) > 1
         fn = fieldnames(mat);
@@ -491,14 +494,14 @@ classdef IrisData
           mat.(fn{fidx}) = [statStrc.(fn{fidx})];
         end
       end
-      
+
       % update nDevOut
       nDevOut = numel(mat.devices);
-      
+
       % Need to expand matrices to individual data entries and merge grouped
       % parameters from original data and then perform baseline (first == 0).
       % Finally, the data need to be structed for a new instance of IrisData.
-      
+
       %%% TODO: Truncate device units if they're not included.
       %%% TODO: Allow unit changed expresssion, e.g. for stat == 'var', units
       %%% for that device shoule be converted to %s^2. If a custom function is
@@ -509,7 +512,7 @@ classdef IrisData
       %%% units, ''. This way, units could be written as latex or tex. Perhaps
       %%% we would need to update the plot method to search for $ inside the
       %%% unit values and set interpreter to latex accordingly.
-      
+
       aggs(1:nGroups,1) = data(1); % copy structure layout
       % keep track of groups for building new maps
       oldMbr = obj.getFileFromIndex(subs);
@@ -593,7 +596,7 @@ classdef IrisData
         newMbr{g,1} = find(thisGroupLog);
         newMbr{g,2} = oldMbr(thisGroupLog);
       end
-      
+
       % baseline (if ~First)
       if ~p.Results.baselineFirst && ~strcmp(baseLoc,'None')
         % if we are  doing this after, find the merged location of the indicated
@@ -614,15 +617,15 @@ classdef IrisData
           refNum ...
           );
       end
-      
+
       % finally, produce a new IrisData object for the aggs variable
-      
+
       % membership map files to new indices
       % notes subset only notes to used files
       mbrMap = containers.Map();
       newNotes = cell(0,2);
       newMeta = cell(0,2);
-      
+
       files = unique(oldMbr);
       gInds = 1:nGroups;
       for f = 1:length(files)
@@ -647,7 +650,7 @@ classdef IrisData
         %update map.
         mbrMap(files(f)) = mpS;
       end
-      
+
       % userData (add preprocessed data here)
       fn = fieldnames(obj.UserData);
       fv = struct2cell(obj.UserData);
@@ -678,7 +681,7 @@ classdef IrisData
       % flatten userdata field
       newUD = [fn(:),fv(:)]';
       newUD = newUD(:);%single vector
-      
+
       % set new indices
       for d = 1:numel(aggs)
         aggs(d).index = d;
@@ -693,7 +696,7 @@ classdef IrisData
         'filehistory', obj.FileHistory, ...
         newUD{:} ...
         );
-      
+
       % plot if requested
       if p.Results.plot
         plot(iData);
@@ -734,11 +737,11 @@ classdef IrisData
             for ii = 1:numel(theStat)
               fcn(ii) = determineStat(theStat{ii});
             end
-            
+
         end
       end
     end
-    
+
     function iData = Filter(obj,varargin)
       % FILTER   Apply a digital butterworth filter with specified inputs using a
       % bidirectional filter design with zero phase offset.
@@ -755,10 +758,10 @@ classdef IrisData
       %   their datums processed.
       %
       %   Returns: IrisData object
-      
+
       % parse inputs
       p = inputParser();
-      
+
       p.addParameter('type', 'lowpass',...
         @(v)IrisData.ValidStrings(v,{'lowpass','bandpass','highpass'}) ...
         );
@@ -769,21 +772,21 @@ classdef IrisData
         @(o)validateattributes(o,{'numeric'},{'integer','scalar'}) ...
         );
       p.addParameter('subs', [], @(x) isempty(x) || isnumeric(x));
-      
+
       p.addParameter('devices', 'all', ...
         @(v)IrisData.ValidStrings(v,['all';obj.AvailableDevices]) ...
         );
       p.addParameter('scaleFactor', 1, @(x)isscalar(x) && isnumeric(x));
-      
+
       p.parse(varargin{:});
-      
+
       % validate filter prefs
       [~,fltType] = IrisData.ValidStrings( ...
         p.Results.type, ...
         {'lowpass','bandpass','highpass'} ...
         );
       fltType = char(fltType);
-      
+
       % determine the subs indexes. If subs not provided, we will filter excluded
       % datums as well as included.
       hasSubs = ~isempty(p.Results.subs);
@@ -793,7 +796,7 @@ classdef IrisData
       else
         inclusions = true(obj.nDatums,1);
       end
-      
+
       % determine device names
       [~,devices] = IrisData.ValidStrings( ...
         p.Results.devices, ...
@@ -802,10 +805,10 @@ classdef IrisData
       if ismember({'all'},devices)
         devices = obj.AvailableDevices;
       end
-      
+
       % Collect data and apply filtering
       data = obj.copyData(inclusions);
-      
+
       % apply the filter
       data = IrisData.butterFilter( ...
         data, ...
@@ -814,19 +817,19 @@ classdef IrisData
         p.Results.order, ...
         devices ...
         );
-      
+
       % If subs given, subset obj
       if hasSubs
         newObj = obj(subs);
       else
         newObj = obj;
       end
-      
+
       % create new IrisData object
       iData = newObj.UpdateData(data).AppendUserData('FilterParameters',p.Results);
-      
+
     end
-    
+
     function iData = Scale(obj,varargin)
       % SCALE   Apply Scaling to data
       %   Usage:
@@ -846,13 +849,13 @@ classdef IrisData
       %   of flag status.
       %
       %   Returns: IrisData object
-      
+
       p = inputParser();
-      
+
       p.addOptional('scaleFactor', 1, ...
         @(x) isnumeric(x) && (isscalar(x) || (numel(x) == obj.MaxDeviceCount)) ...
         );
-      
+
       p.addParameter('type', 'multiply', ...
         @(v) ...
         IrisData.ValidStrings( ...
@@ -860,13 +863,13 @@ classdef IrisData
         {'multiply', 'divide', 'add', 'subtract'} ...
         ) ...
         );
-      
+
       p.addParameter('devices', 'all', ...
         @(v)IrisData.ValidStrings(v,['all';obj.AvailableDevices]) ...
         );
-      
+
       p.parse(varargin{:});
-      
+
       % parse inputs
       [~,devices] = IrisData.ValidStrings( ...
         p.Results.devices, ...
@@ -877,13 +880,13 @@ classdef IrisData
         {'multiply', 'divide', 'add', 'subtract'} ...
         );
       S = obj.copyData(true(obj.nDatums,1));
-      
+
       S = IrisData.scaleData(S,p.Results.scaleFactor,devices,type{1});
       % create output IrisData
       iData = obj.UpdateData(S);
       iData.AppendUserData('ScaleValues',p.Results.scaleFactor);
     end
-    
+
     function iData = Baseline(obj,varargin)
       % BASELINE   Apply Baseline Subtraction to data.
       %   Usage:
@@ -903,23 +906,23 @@ classdef IrisData
       %   their datums processed.
       %
       %   Returns: IrisData object
-      
+
       p = inputParser();
-      
+
       p.addParameter('baselineRegion', 'start', ...
         @(v)IrisData.ValidStrings(v,obj.BASELINE_TYPES) ...
         );
-      
+
       p.addParameter('numBaselinePoints', 1000, @isnumeric);
-      
+
       p.addParameter('baselineOffsetPoints', 0, ...
         @(v)validateattributes(v,{'numeric'},{'nonnegative','scalar'}) ...
         );
-      
+
       p.addParameter('subs', [], @(x) isempty(x) || isnumeric(x));
-      
+
       p.addParameter('noFitWarning', false, @(x)isscalar(x) && islogical(x));
-      
+
       p.addParameter('devices', 'all', ...
         @(v)IrisData.ValidStrings(v,['all';obj.AvailableDevices]) ...
         );
@@ -927,9 +930,9 @@ classdef IrisData
         'baselineReference', 0, ...
         @(v) isscalar(v) && isnumeric(v) && (v >=0) ...
         );
-      
+
       p.parse(varargin{:});
-      
+
       % validate input strings
       [~,baseLoc] = IrisData.ValidStrings( ...
         p.Results.baselineRegion, ...
@@ -943,7 +946,7 @@ classdef IrisData
         p.Results.devices, ...
         ['all';obj.AvailableDevices] ...
         );
-      
+
       % determine the subs indexes. If subs not provided, we will filter excluded
       % datums as well as included.
       hasSubs = ~isempty(p.Results.subs);
@@ -953,10 +956,10 @@ classdef IrisData
       else
         inclusions = true(obj.nDatums,1);
       end
-      
+
       % Collect data and apply filtering
       data = obj.copyData(inclusions);
-      
+
       % apply the subtraction
       [data,baselineValues] = IrisData.subtractBaseline( ...
         data, ...
@@ -967,7 +970,7 @@ classdef IrisData
         devices, ...
         p.Results.baselineReference ...
         );
-      
+
       % If subs given, subset obj
       if hasSubs
         newObj = obj(subs);
@@ -975,26 +978,26 @@ classdef IrisData
       else
         newObj = obj;
       end
-      
+
       % create new IrisData object
       iData = newObj.UpdateData(data);
       iData = iData.AppendUserData('BaselineValues',baselineValues);
     end
-    
+
     function iData = Reorder(obj,newOrder)
       % REORDER Reorder data entries, excluded numbers will be dropped (not implemented)
       error("Not yet implemented");
     end
-    
+
     function iData = UpdateData(obj,S)
       % UPDATEDATA Designed for use following edits to IrisData.copyData();
-      
+
       % validate input Struct
       assert(isstruct(S),numel(S) == obj.nDatums);
-      
+
       % get the saveObject
       sObj = obj.saveobj();
-      
+
       % map input data to saveobj Data field
       nFiles = length(sObj.Files);
       for F = 1:nFiles
@@ -1002,18 +1005,18 @@ classdef IrisData
         dataIdx = sObj.Membership(fname).data;
         sObj.Data{F} = S(dataIdx);
       end
-      
+
       % create new IrisData object
       iData = IrisData( ...
         IrisData.fastrmField(sObj,'UserData'), ...
         sObj.UserData{:} ...
         );
     end
-    
+
     function iData = UpdateFileList(obj,FileList)
       % UPDATEFILELIST Updates the file list and associate index map
       % TODO: Update files in ud.oginds
-      
+
       FileList = string(FileList);
       nFiles = numel(obj.Files);
       if numel(FileList) ~= nFiles
@@ -1021,24 +1024,24 @@ classdef IrisData
       end
       % get the saveObj
       sObj = obj.saveobj();
-      
+
       % update membership map
       for f = 1:nFiles
         sObj.Membership(FileList(f)) = obj.Membership(obj.Files(f));
         remove(sObj.Membership,obj.Files(f));
       end
-      
+
       % update files
       sObj.Files = FileList(:)';
-      
+
       % new object
       iData = IrisData( ...
         IrisData.fastrmField(sObj,'UserData'), ...
         sObj.UserData{:} ...
         );
-      
+
     end
-    
+
     function iData = AppendDevices(obj,varargin)
       % APPENDDEVICES Append new data as devices to each datum.
       %   Inputs are name~value pairs or a struct with the following fields.
@@ -1061,10 +1064,10 @@ classdef IrisData
       %  ForceOverwrite (scalar:bool): A boolean indicating how to handle
       %     the preservation of an existing device.
       %
-      %  * Any unmatched Name~Value pairs are appended to protocol paramters of
+      %  * Any unmatched Name~Value pairs are appended to protocol parameters of
       %  each datum.
       p = inputParser();
-      
+
       p.addParameter('Data', {struct()}, ...
         @(v) iscell(v) && all(cellfun(@isstruct,v,'unif',1)) ...
         );
@@ -1078,19 +1081,19 @@ classdef IrisData
       p.addParameter('Subset', [], @(v)isempty(v) || isvector(v));
       p.addParameter('RespectInclusion', false, @isscalar);
       p.addParameter('ForceOverwrite', false, @isscalar);
-      
+
       p.PartialMatching = true;
       p.CaseSensitive = false;
       p.KeepUnmatched = true;
       % Parse input parameters
       p.parse(varargin{:});
-      
+
       % validate input lengths
       nNew = numel(p.Results.Data);
       if ~isequaln(nNew,numel(p.Results.Name),numel(p.Results.Units))
         error('Data, Name and Units input cell arrays must contain the same number of elements.');
       end
-      
+
       % parse indices
       if p.Results.RespectInclusion
         inclusions = obj.InclusionList;
@@ -1104,7 +1107,7 @@ classdef IrisData
           );
       end
       n = sum(inclusions);
-      
+
       % validate units and datums structs
       isValidDataStruct = all(cellfun( ...
         @(d) all(ismember({'x','y'},fieldnames(d(1)))), ...
@@ -1124,7 +1127,7 @@ classdef IrisData
       if ~isValidUnitStruct
         error('Units structs must have "x" and "y" fields.');
       end
-      
+
       % compute sampling rates
       sampleRate = p.Results.SampleRate;
       indsToCompute = cellfun(@isempty,sampleRate,'unif',1);
@@ -1133,14 +1136,14 @@ classdef IrisData
         x = p.Results.Data{i}(1).x;
         sampleRate{i} = 1/mean(diff(x));
       end
-      
+
       % store ForceOverwrite in a mutable variable
       ForceOverwrite = p.Results.ForceOverwrite;
       keepOriginal = false; % start false to force prompt
-      
+
       % Collect any extra information
       protocolParams = IrisData.recurseStruct(p.Unmatched,false);
-      
+
       % determine if we are overriding a device
       devs = obj.AvailableDevices;
       deviceExists = ismember(p.Results.Name,devs);
@@ -1150,15 +1153,15 @@ classdef IrisData
           'Overwrite Device?', ...
           'Yes', 'No', 'Cancel','Yes' ...
           );
-        
+
         overrideDevice = strcmpi(overrideDevice,'Yes');
       elseif ~any(deviceExists) && ~ForceOverwrite
         overrideDevice = false;
       end
-      
+
       % collect data
       d = obj.copyData(inclusions);
-      
+
       % loop through data structs and append new info
       for i = 1:n
         this = d(i);
@@ -1172,7 +1175,7 @@ classdef IrisData
           find(thisDeviceOverwrite), ...
           numel(this.devices)+(1:(nNew-sum(thisDeviceOverwrite))) ...
           ];
-        
+
         % append new params
         protocols = this.protocols;
         paramCopy = protocolParams;
@@ -1199,46 +1202,46 @@ classdef IrisData
         end
         % merge new protocols
         this.protocols = [protocols;paramCopy];
-        
+
         % append new Units
         this.units(devIndex) = p.Results.Units;
-        
+
         % append new Names
         this.devices(devIndex) = p.Results.Name;
-        
+
         % append new sampleRate
         this.sampleRate(devIndex) = sampleRate;
-        
+
         % append new Data
         this.x(devIndex) = cellfun(@(v)v(i).x,p.Results.Data,'unif',0);
         this.y(devIndex) = cellfun(@(v)v(i).y,p.Results.Data,'unif',0);
-        
+
         % update device count
         this.nDevices = numel(this.devices);
-        
+
         d(i) = this;
       end
-      
+
       % create a new IrisData object
       iData = obj.subsref(substruct('()',{find(inclusions)}));
       iData = iData.UpdateData(d);
     end
-    
+
     function iData = GetDevice(obj,deviceName)
       % GETDEVICE Returns IrisData object with data specified by deviceName.
-      
+
       % validate device name
       [isDev,device] = IrisData.ValidStrings(deviceName,obj.AvailableDevices);
       if ~isDev
         error("Device '%s' not found.",deviceName);
       end
-      
+
       % locate the device index to select
       devIdx = obj.DeviceMap(string(device));
-      
+
       n = obj.nDatums;
       data = obj.copyData(true(n,1));
-      
+
       % loop and gather the device data
       for dx = 1:n
         this = data(dx);
@@ -1250,26 +1253,26 @@ classdef IrisData
         this.nDevices = numel(this.devices);
         data(dx) = this;
       end
-      
+
       % build new object
       iData = obj.UpdateData(data);
     end
-    
+
     function iData = RemoveDevice(obj,deviceName)
       % REMOVEDEVICE Returns IrisData object after dropping device specified.
-      
+
       % validate device name
       [isDev,device] = IrisData.ValidStrings(deviceName,obj.AvailableDevices);
       if ~isDev
         error("Device '%s' not found.",deviceName);
       end
-      
+
       % locate the device index to drop
       devIdx = obj.DeviceMap(string(device));
-      
+
       n = obj.nDatums;
       data = obj.copyData(true(n,1));
-      
+
       % loop and drop the device from each datum
       for dx = 1:n
         this = data(dx);
@@ -1281,11 +1284,11 @@ classdef IrisData
         this.nDevices = numel(this.devices);
         data(dx) = this;
       end
-      
+
       % build new object
       iData = obj.UpdateData(data);
     end
-    
+
     function iData = Concat(obj,varargin)
       % CONCAT Concatenate inputs onto end of calling data object. Returns new
       % object.
@@ -1301,21 +1304,21 @@ classdef IrisData
       % Notes need to be merged, if the input files are the same, then no need to
       % update, but if multiple files appear, Notes need to be kept separate but
       % notes Indices in the membership file need to be updated, just like datums
-      
+
       %error('Concat is under development for a future release.');
-      
+
       % check vargs for IrisData classes
       datArgs = cellfun(@(input)isa(input,'IrisData'),varargin,'UniformOutput',true);
       dats = varargin(datArgs);
-      
+
       sObj = obj.saveobj();
       vObjs = cellfun(@(o)o.saveobj(),dats,'UniformOutput',false);
-      
+
       % copy base membership container
       baseMembership = containers.Map(sObj.Membership.keys(),sObj.Membership.values());
       baseKeys = baseMembership.keys();
       baseValues = baseMembership.values();
-      
+
       dOfst = obj.nDatums;
       nOfst = max(cellfun(@(m)max(m.notes),baseValues,'UniformOutput',true));
       for d = 1:numel(vObjs)
@@ -1344,7 +1347,7 @@ classdef IrisData
           else
             mIdx = thisM.Meta;
           end
-          
+
           % meta
           mMatch = cellfun(@(m)isequal(m,this.Meta{mIdx}),sObj.Meta,'UniformOutput',true);
           if ~any(mMatch)
@@ -1354,7 +1357,7 @@ classdef IrisData
             newMetaIdx = find(mMatch);
           end
           thisM.Meta = newMetaIdx;
-          
+
           % notes
           noteMatch = cellfun(@(n)isequal(n,this.Notes{fIdx}),sObj.Notes,'UniformOutput',true);
           if ~any(mMatch)
@@ -1364,7 +1367,7 @@ classdef IrisData
             newNoteIdx = baseValues{find(noteMatch,1,'first')}.notes;
           end
           thisM.notes = newNoteIdx;
-          
+
           % files
           fileMatch = sObj.Files == kthKey;
           if ~any(fileMatch)
@@ -1374,9 +1377,9 @@ classdef IrisData
             fileIndex = find(fileMatch,1,'first');
           end
           thisM.File = fileIndex;
-          
+
           sObj.FileHistory = unique([sObj.FileHistory,this.FileHistory],'stable');
-          
+
           % get new data
           thisD = this.Data{fIdx};
           if ismember(kthKey,string(baseKeys))
@@ -1433,41 +1436,41 @@ classdef IrisData
             % update keys
             baseMembership(kthKey) = thisM;
             baseKeys{end+1} = kthKey; %#ok
-            
+
             % update offsets
             dOfst = dOfst + numel(thisD);
           end
-          
+
         end
-        
+
         %user data
         oldUD = reshape(sObj.UserData,2,[]);
         newUD = reshape(this.UserData,2,[]);
-        
+
         % give priority to newUD
         mergedUD = [newUD,oldUD];
         [~,idx,~] = unique(mergedUD(1,:),'stable');
-        
+
         mergedUD = mergedUD(:,idx);
         % flatten
         sObj.UserData = mergedUD(:);
       end
-      
+
       % organize the membership contianer in case ordering got off.
       dataIDs = 1:dOfst;
       for n = 1:numel(sObj.Files)
         newKey = sObj.Files(n);
         mbrS = baseMembership(newKey);
-        
+
         thisDlen = numel(sObj.Data{n});
         dSubs = 1:thisDlen;
-        
+
         % update the membership struct
         mbrS.data = dataIDs(dSubs);
-        
+
         % drop the used indices from the the ID vectors
         dataIDs(dSubs) = [];
-        
+
         % update membership struct
         if ~isfield(mbrS,"Meta")
           mbrS.Meta = n;
@@ -1475,20 +1478,20 @@ classdef IrisData
         if ~isfield(mbrS,"File")
           mbrS.File = n;
         end
-        
+
         % update base membership
         baseMembership(newKey) = mbrS;
       end
-      
+
       sObj.Membership = containers.Map(baseMembership.keys(),baseMembership.values());
-      
+
       % create the new iData
       iData = IrisData( ...
         IrisData.fastrmField(sObj,'UserData'), ...
         sObj.UserData{:} ...
         );
     end
-    
+
     function iData = CleanInclusions(obj,inclusionOverride)
       % CleanInclusions Drop datums flagged as excluded.
       if nargin < 2
@@ -1543,7 +1546,7 @@ classdef IrisData
       for d = 1:mbr.Count
         dat = s.Data{d};
         n = numel(dat);
-        
+
         for keyidx = 1:mbr.Count
           this = mbr(keys{keyidx});
           if isequal(double([dat.index]),this.data)
@@ -1557,78 +1560,78 @@ classdef IrisData
         mbr(keys{keyidx}) = this;
         ofst = ofst + n;
       end
-      
+
       % create new idata object
       iData = IrisData( ...
         IrisData.fastrmField(s,'UserData'), ...
         s.UserData{:} ...
         );
     end
-    
+
     function iData = AppendUserData(obj,varargin)
       if mod(numel(varargin),2)
         error('UserData must be entered in Name~Value pairs.');
       end
-      
+
       sObj = obj.saveobj();
-      
+
       % merge userData
       oldUD = reshape(sObj.UserData,2,[]);
       newUD = reshape(varargin,2,[]);
-      
+
       % give priority to newUD
       mergedUD = [newUD,oldUD];
       [~,idx,~] = unique(mergedUD(1,:),'stable');
-      
+
       mergedUD = mergedUD(:,idx);
       % flatten
       mergedUD = mergedUD(:);
-      
+
       % create new IrisData object
       iData = IrisData( ...
         IrisData.fastrmField(sObj,'UserData'), ...
         mergedUD{:} ...
         );
     end
-    
+
     function varargout = Split(obj,varargin)
       % SPLIT Split the data by a valid filter array, 'none' or 'device'. See
       % obj.getPropertyNames();
       % Supplying 'none' here works differently than in Aggregate method. Here,
       % supplying 'groupBy', parameter as 'none' will split each datum into its
       % own IrisData object.
-      
+
       % local constants
       validGroups = obj.getPropertyNames();
-      
+
       % input parser
       p = inputParser();
-      
+
       p.addOptional('groupBy', 'all', ...
         @(v)IrisData.ValidStrings(v,[{'none';'all';'devices'};validGroups(:)]) ...
         );
-      
+
       p.addParameter('customGrouping', [], ...
         @(x) ...
         isempty(x) || (numel(x) == obj.nDatums) ...
         );
-      
+
       p.addParameter('inclusionOverride', [], ...
         @(v)validateattributes(v,{'logical', 'numeric'},{'nonnegative'}) ...
         );
-      
+
       p.PartialMatching = true;
       p.CaseSensitive = false;
       p.KeepUnmatched = false;
       % Parse input parameters
       p.parse(varargin{:});
-      
+
       % validate input strings
       [~,groupBy] = IrisData.ValidStrings( ...
         p.Results.groupBy, ...
         [{'none';'all';'devices'};validGroups(:)] ...
         );
-      
+
       requestedDeviceSplit = ismember(groupBy,'devices');
       if requestedDeviceSplit
         devSplit = true;
@@ -1639,7 +1642,7 @@ classdef IrisData
       else
         devSplit = false;
       end
-      
+
       % Create inclusions vector
       isOverride = ~isempty(p.Results.inclusionOverride);
       overrideLength = length(p.Results.inclusionOverride);
@@ -1648,10 +1651,10 @@ classdef IrisData
       else
         inclusions = obj.InclusionList();
       end
-      
+
       %Determine the grouping vector
       filterTable = obj.Specs.Table;
-      
+
       if ~isempty(p.Results.customGrouping)
         customGroup = p.Results.customGrouping;
         groupBy = {'customGrouping'};
@@ -1686,26 +1689,26 @@ classdef IrisData
         end
         %}
       end
-      
+
       % determine the grouping
       groupingTable = filterTable(:,groupBy);
       % in this case, we split ignoring inclusions and then apply them after split
       groups = IrisData.determineGroups(groupingTable);
       nGroups = height(groups.Table);
-      
+
       % loop over groups and collect the data using singular mapping
       dataCells = cell(nGroups,1);
       for c = 1:nGroups
         g = groups.Table.SingularMap(c);
         subsIndex = find(groups.Singular == g);
         % irisdata.subsref() to get data(inds) -> irisdata
-        dataCells{c} = obj.subsref( ... 
-            substruct( '()', {subsIndex} ) ...
-            );
+        dataCells{c} = obj.subsref( ...
+          substruct( '()', {subsIndex} ) ...
+          );
         % apply inclusions changes
         dataCells{c}.InclusionList = inclusions(subsIndex);
       end
-      
+
       % split each dataCell by device if requested
       if devSplit
         nd = numel(dataCells);
@@ -1735,7 +1738,7 @@ classdef IrisData
         end
         return
       end
-      
+
       % determine if we are unpacking the data objects
       if nargout <= 1
         if nGroups == 1
@@ -1747,7 +1750,7 @@ classdef IrisData
         [varargout{1:nGroups}] = deal(dataCells{:});
       end
     end
-    
+
     function iData = EditDatumProperties(obj)
       % EDITDATUMPROPERTIES Use graphical interface to edit per datum properties.
       % This method works ok, but is under development. It is a mess right now and
@@ -1755,22 +1758,22 @@ classdef IrisData
       D = obj.copyData();
       dS = IrisData.fastrmField(obj.copyData(),{'x','y'});
       S = dS;
-      
+
       IS_EDITED = false;
-      
+
       % Create Figure
       %
       width = 800;
       height = 450;
-      
+
       fig = uifigure('Name', 'Datum Editor', 'Visible', 'off');
-      
+
       fig.Position = obj.centerFigPos(width,height);
       fig.CloseRequestFcn = @onCloseRequest;
-      
+
       hTree = buildUI(fig);
-      
-      
+
+
       fprintf('Collecting data metadata...\n');
       pause(0.01);
       recurseDatums(dS,'Data',hTree);
@@ -1780,42 +1783,42 @@ classdef IrisData
       firstNode.PreviousSelectedNodes = [];
       hTree.SelectedNodes = firstNode.SelectedNodes;
       pause(0.05);
-      
+
       fig.Visible = 'on';
-      
+
       getSelectedInfo(hTree,firstNode);
-      
+
       uiwait(fig);
-      
+
       if ~IS_EDITED
         iData = obj;
         return;
       end
-      
+
       [S(1:end).x] = D.x;
       [S(1:end).y] = D.y;
-      
+
       iData = obj.UpdateData(S);
-      
+
       %%% Helper Functions
       function hTree = buildUI(fig)
         tGrid = uigridlayout(fig,[1,2]);
         tGrid.ColumnWidth = {'3x','5x'};
         tGrid.Padding = [10,5,10,5];
-        
+
         hTree = uitree(tGrid);
         hTree.FontName = 'Times New Roman';
         hTree.FontSize = 16;
         hTree.Multiselect = 'off';
         hTree.SelectionChangedFcn = @(s,e)getSelectedInfo(hTree,e);
-        
+
         pTab = uitable(tGrid);
         pTab.ColumnName = {'Property', 'Value', 'Type'};
         pTab.ColumnWidth = {150, 'auto', 40};
         pTab.RowName = {};
         pTab.CellEditCallback = @updateEditStatus;
       end
-      
+
       function updateEditStatus(src,evt)
         if ~isequal(evt.NewData,evt.PreviousData)
           IS_EDITED = true;
@@ -1841,7 +1844,7 @@ classdef IrisData
           end
         end
       end
-      
+
       function getSelectedInfo(src,evt)
         f = ancestor(src,'figure');
         if ~isempty(evt.SelectedNodes)
@@ -1872,8 +1875,8 @@ classdef IrisData
             evt.PreviousSelectedNodes.NodeData = nodeData;
           end
         end
-        
-        
+
+
         % process data for display
         d(:,2) = arrayfun(@IrisData.unknownCell2Str,d(:,2),'UniformOutput',false);
         tab.Data = d;
@@ -1884,7 +1887,7 @@ classdef IrisData
         tab.ColumnEditable = [false,true,false];
         drawnow('limitrate');
       end
-      
+
       % create nodes (recursive over structs)
       function recurseDatums(S, name, parentNode)
         for f = 1:length(S)
@@ -1910,7 +1913,7 @@ classdef IrisData
           % convert struct to property~value pairs
           props = fieldnames(this);
           vals = struct2cell(this);
-          
+
           %find nests
           notNested = cellfun(@(v) ~isstruct(v),vals,'unif',1);
           if ~isfield(this,'id')
@@ -1968,8 +1971,8 @@ classdef IrisData
         h = fig.Children(1).Children( ...
           arrayfun(@(c)isa(c,'matlab.ui.container.Tree'), fig.Children(1).Children) ...
           );
-        
-        
+
+
         S = cell(numel(h.Children),1);
         for c = 1:numel(h.Children)
           node = h.Children(c);
@@ -1994,8 +1997,8 @@ classdef IrisData
         end
         S = cat(1,S{:});
       end
-      
-      
+
+
       function dataCell = recurseNode(Node)
         name = regexp(Node.Text,'(?<=\()[^)]*(?=\))','match','once');
         if any(strcmpi(name,{'protocols','displayProperties'}))
@@ -2020,7 +2023,7 @@ classdef IrisData
           dataCell{2}.(newFields{i}) = mergedData;
         end
       end
-      
+
       % save on close request
       function onCloseRequest(src,~)
         fig = ancestor(src,'figure');
@@ -2034,24 +2037,153 @@ classdef IrisData
         delete(fig);
       end
     end
-    
+
+    function obj = uiSetInclusionList(obj)
+      devices = obj.AvailableDevices{1};
+      [cList,nList] = deal(obj.InclusionList);
+      dataTable = table( ...
+        (1:obj.nDatums).', ...
+        cList, ...
+        nList, ...
+        VariableNames=["Datum","Current","New"] ...
+        );
+      
+      % container to build the app
+      app = struct();
+      ui = uifigure(Name="Inclusion Editor",Visible="on");
+      p = IrisData.FigureParameters();
+      set(ui,p{:});
+      ui.Position = IrisData.centerFigPos(582,540);
+      ui.CloseRequestFcn = @(s,e)uiresume(ancestor(s,'figure'));
+
+      clup = onCleanup(@()delete(ui));
+
+      % Create MainLayout
+      app.MainLayout = uigridlayout(ui);
+      app.MainLayout.ColumnWidth = {'1x'};%, 220};
+      app.MainLayout.RowHeight = {'1x',30};
+      app.MainLayout.RowSpacing = 5;
+      app.MainLayout.ColumnSpacing = 5;
+      app.MainLayout.Scrollable = 'on';
+      app.MainLayout.BackgroundColor = [1 1 1];
+
+      % Create DataTable
+      app.DataTable = uitable(app.MainLayout);
+      app.DataTable.Layout.Row = 1;
+      app.DataTable.Layout.Column = 1;
+      app.DataTable.Data = dataTable;
+      app.DataTable.ColumnWidth = {'auto',100,100};
+      app.DataTable.ColumnEditable = [false(1,2),true];
+      
+      % Create ButtonLayout
+      app.ButtonLayout = uigridlayout(app.MainLayout);
+      app.ButtonLayout.ColumnWidth = {'1x', 85, '1x'};
+      app.ButtonLayout.RowHeight = {'1x'};
+      app.ButtonLayout.ColumnSpacing = 0;
+      app.ButtonLayout.RowSpacing = 0;
+      app.ButtonLayout.Padding = [0 0 0 0];
+      app.ButtonLayout.Layout.Row = 2;
+      app.ButtonLayout.Layout.Column = 1;
+      app.ButtonLayout.BackgroundColor = [1 1 1];
+
+      % Create DoneButton
+      app.DoneButton = uibutton(app.ButtonLayout, 'push');
+      app.DoneButton.Layout.Row = 1;
+      app.DoneButton.Layout.Column = 2;
+      app.DoneButton.Text = "Done";
+      app.DoneButton.ButtonPushedFcn = @(s,e)close(ancestor(s,'figure'));
+      
+
+      % Check if sparklines are supported
+      % sparkline
+      sparkpath = "";
+      try %#ok<TRYNC> 
+        sparkpath = fullfile(iris.app.Info.getResourcePath(),"scripts","spark.html");
+      end
+      if sparkpath ~= ""
+        
+        N = obj.nDatums;
+
+        % adjust grids, add grid and loop through data
+        app.MainLayout.ColumnWidth = {'1x', 250};
+        % Create SparkLayout
+        app.SparkLayout = uigridlayout(app.MainLayout);
+        app.SparkLayout.ColumnWidth = {'1x',30, 190,'1x'};
+        app.SparkLayout.RowHeight = [{20},repmat({34},1,N)];
+        app.SparkLayout.ColumnSpacing = 0;
+        app.SparkLayout.RowSpacing = 0;
+        app.SparkLayout.Padding = [0 0 0 0];
+        app.SparkLayout.Layout.Row = 1;
+        app.SparkLayout.Layout.Column = 2;
+        app.SparkLayout.Scrollable = 'on';
+        app.SparkLayout.BackgroundColor = [1 1 1];
+  
+        % Create DataTracesLabel
+        app.DataTracesLabel = uilabel(app.SparkLayout);
+        app.DataTracesLabel.HorizontalAlignment = 'center';
+        app.DataTracesLabel.VerticalAlignment = 'bottom';
+        app.DataTracesLabel.Layout.Row = 1;
+        app.DataTracesLabel.Layout.Column = [1 4];
+        app.DataTracesLabel.Text = 'Data Traces';
+
+        % collect trace data
+        m = obj.Filter('freq',100).getDataMatrix('devices',devices,'respectInclusion',false);
+        
+        traceData(1,1:N) = struct(width=190,height=29,Values=[]);
+        app.SparkLabels = gobjects(N,1);
+        app.SparkLines = gobjects(N,1);
+        for d = 1:N
+          traceData(d).Values = decimate( ...
+            smoothdata( ...
+              m.y{1}(:,d)-mean(m.y{1}(1:100,d),'omitnan'), ...
+              'movmean', 15, ...
+              'omitnan' ...
+              ), ...
+            200, ...
+            5 ...
+            );
+          % draw datum index
+          app.SparkLabels(d) = uilabel(app.SparkLayout);
+          app.SparkLabels(d).HorizontalAlignment = 'center';
+          app.SparkLabels(d).FontName = 'Courier';
+          app.SparkLabels(d).FontSize = 10;
+          app.SparkLabels(d).Layout.Row = d+1;
+          app.SparkLabels(d).Layout.Column = 2;
+          app.SparkLabels(d).Text = string(d);
+
+          % draw the sparkline
+          app.SparkLines(d) = uihtml(app.SparkLayout);
+          app.SparkLines(d).Layout.Row = d+1;
+          app.SparkLines(d).Layout.Column = 3;
+          app.SparkLines(d).HTMLSource = sparkpath;
+          app.SparkLines(d).Data = traceData(d);
+        end
+      end
+
+      % wait for the figure to close
+      uiwait(ui);
+      
+      % update inclusion list
+      obj.InclusionList = app.DataTable.Data.New;      
+    end
+
   end
-  
+
   %% Access Methods
-  
+
   methods
-    
+
     function n = get.nDatums(obj)
       n = length(obj.Data);
     end
-    
+
     function lst = get.InclusionList(obj)
       lst = false(obj.nDatums,1);
       for i = 1:obj.nDatums
         lst(i) = obj.Data(i).inclusion;
       end
     end
-    
+
     function obj = set.InclusionList(obj,lst)
       if numel(lst) ~= obj.nDatums
         error('New inclusion list must be a logical vector of %d length.',obj.nDatums);
@@ -2063,12 +2195,12 @@ classdef IrisData
       end
       obj = obj.UpdateData(d);
     end
-    
+
     function n = get.MaxDeviceCount(obj)
       counts = [obj.Data.nDevices];
       n = max(counts);
     end
-    
+
     function lst = get.AvailableDevices(obj)
       fullList = obj.getDeviceList();
       % reshape to column vector
@@ -2077,18 +2209,18 @@ classdef IrisData
       fullList(cellfun(@isempty,fullList,'UniformOutput',1)) = [];
       lst = unique(fullList,'stable');
     end
-    
+
     function flt = get.Specs(obj)
       % Specs Collect protocol and display properties into table object.
       %   Specs returns a struct containing a unified table (Table) of strings where
       %   variable name correspond to all possible protoco/display properties and a
       %   cell array (Datums) containing the individual datum properties.
-      
+
       % initialize containers
       propCell = cell(obj.nDatums,1);
       % initialize container to store all possible property names
       aggPropNames = {};
-      
+
       %loop
       for i = 1:obj.nDatums
         % this data entry
@@ -2112,7 +2244,7 @@ classdef IrisData
           d.protocols, ...
           d.displayProperties ...
           );
-        
+
         % determine stimulus settings
         nStimDev = numel(d.stimulusConfiguration);
         for si = 1:nStimDev
@@ -2123,7 +2255,7 @@ classdef IrisData
           configs = thisStimulus.(fNames{find(~contains(fNames,'Name'),1)});
           nCfg = numel(configs);
           if ~nCfg, continue; end
-          
+
           % loop and gather configs
           % we assume that if there are configs, they will be structs with fields:
           % name, and value. otherwise this will fail.
@@ -2140,7 +2272,7 @@ classdef IrisData
             [cfgFlat.name(:),cfgFlat.value(:)] ...
             ]; %#ok<AGROW>
         end
-        
+
         % determine device configuration settings
         nDevConfigs = numel(d.deviceConfiguration);
         for si = 1:nDevConfigs
@@ -2153,7 +2285,7 @@ classdef IrisData
           configs = thisConfig.(fNames{find(~contains(fNames,'Name'),1)});
           nCfg = numel(configs);
           if ~nCfg, continue; end
-          
+
           % loop and gather configs
           % we assume that if there are configs, they will be structs with fields:
           % name, and value. otherwise this will fail.
@@ -2170,7 +2302,7 @@ classdef IrisData
             [cfgFlat.name(:),cfgFlat.value(:)] ...
             ]; %#ok<AGROW>
         end
-        
+
         % Get unique fields giving priority to listed then protocols
         [thisNames,uqInds] = unique(thisProps(:,1),'stable');
         % update the prop names for output table
@@ -2179,10 +2311,10 @@ classdef IrisData
         thisProps = thisProps(uqInds,:);
         propCell{i} = thisProps;
       end
-      
+
       % now that we have all possible prop names, let's build a table
       propsCell4Table = cell(obj.nDatums,length(aggPropNames));
-      
+
       for i = 1:obj.nDatums
         thisProps = propCell{i};
         % find indices in aggnames that correspond to current props
@@ -2196,13 +2328,13 @@ classdef IrisData
         % correct empty cells with empty strings
         propsCell4Table(i,cellfun(@isempty,propsCell4Table(i,:),'unif',1)) = {''};
       end
-      
+
       flt = struct( ...
         'Table', cell2table(propsCell4Table,'VariableNames', aggPropNames'), ...
         'Datums', {propCell} ...
         );
     end
-    
+
     function fn = getFileFromIndex(obj,index)
       % GETFILEFROMINDEX Locate the filename for a given index or indices vector.
       if length(index) > 1
@@ -2224,7 +2356,7 @@ classdef IrisData
       end
       fn = string(keys(keyIndex));
     end
-    
+
     function props = getPropertyNames(obj)
       %  GETPROPERTYNAMES Collect properties from data display, protocol and base
       %  information.
@@ -2276,7 +2408,7 @@ classdef IrisData
       end
       props = unique(cat(1,propNames{:}));
     end
-    
+
     function varargout = isProperty(obj,varargin)
       props = obj.getPropertyNames();
       inputs = cellfun(@string,varargin,'UniformOutput',false);
@@ -2291,18 +2423,18 @@ classdef IrisData
         varargout{2} = string(names);
       end
     end
-    
+
     function ogIndex = getOriginalIndex(obj,index)
       % GETORIGINALINDEX Returns the original datum index given the input index or
       % indices.
-      
+
       if nargin < 2, index = 1:obj.nDatums; end
-      
+
       values = cell(obj.nDatums,1);
       for i = 1:obj.nDatums
         values{i} = obj.Data(i).index(:); %make columns in case multiple
       end
-      
+
       % map index(i) to values(i)
       ogIndex = cell(length(index),1);
       for i = 1:length(index)
@@ -2312,13 +2444,13 @@ classdef IrisData
         end
         ogIndex{i} = thisIdx;
       end
-      
+
       % if all mapped values are scalar, return a numeric vector
       if all(cellfun(@(v)numel(v)==1,ogIndex,'UniformOutput',true))
         ogIndex = cat(1,ogIndex{:});
       end
     end
-    
+
     function data = copyData(obj,inclusions)
       % COPYDATA Returns the data struct array from the desired inclusions (logical).
       %   Inclusions vector must be boolean and nDatums in length. This method copies
@@ -2335,11 +2467,11 @@ classdef IrisData
           'Inclusions input must be the same length as nDatums. Using defaults.' ...
           );
       end
-      
+
       subs = find(inclusions);
-      
-      data = obj.Data(subs); %#ok
-      
+
+      data = obj.Data(subs);
+
       % if any x or y is a function handle, evaluate it now.
       nCopies = length(data);
       for e = 1:nCopies
@@ -2354,7 +2486,7 @@ classdef IrisData
         end
       end
     end
-    
+
     function lst = getDeviceList(obj)
       % GETDEVICELIST Return a cell array (nDatums x nMaxDevices) of device names.
       lst = cell(obj.nDatums,obj.MaxDeviceCount);
@@ -2365,7 +2497,7 @@ classdef IrisData
       emptys = cellfun(@isempty,lst,'UniformOutput',true);
       lst(emptys) = {''}; % make empty slots chars
     end
-    
+
     function mat = getDataMatrix(obj,varargin)
       % GETDATAMATRIX Returns a struct containing X and Y data matrices.
       %   Usage:
@@ -2381,22 +2513,22 @@ classdef IrisData
       %     provided and this is true, then both lists are used.
       %
       %   Returns: Struct contianing
-      
+
       deviceOpts = ['all';obj.AvailableDevices];
       p = inputParser();
-      
+
       p.addParameter('devices', 'all', ...
         @(v)IrisData.ValidStrings(v,deviceOpts) ...
         );
-      
+
       p.addParameter('subs', 1:obj.nDatums, ...
         @(v)validateattributes(v,{'numeric','logical'},{'nonnegative'}) ...
         );
-      
+
       p.addParameter('respectInclusion', true, @islogical);
-      
+
       p.parse(varargin{:});
-      
+
       % validate subs
       subs = p.Results.subs;
       % test subs vector
@@ -2417,19 +2549,19 @@ classdef IrisData
       end
       % sort order for outputs
       [~,sortOrder] = sort(subs(inclusions));
-      
+
       % copy requested data
       data = obj.copyData(inclusions);
       data = data(sortOrder);
-      
+
       nData = sum(inclusions);
-      
+
       % determine device locations within data
       [~,devices] = IrisData.ValidStrings(p.Results.devices, deviceOpts);
       if contains({'all'},devices)
         devices = obj.AvailableDevices;
       end
-      
+
       % count number of requested devices
       nDevOut = length(devices);
       % init output
@@ -2439,13 +2571,13 @@ classdef IrisData
         'x', {cell(1,nDevOut)}, ...
         'y', {cell(1,nDevOut)} ...
         );
-      
+
       % Gather data by device
       for d = 1:nDevOut
         thisInds = obj.DeviceMap(devices{d});
         thisInds = thisInds(inclusions);
         thisInds = thisInds(sortOrder);
-        
+
         % get the lengths of data
         dataLengths(1:nData,1) = struct('x',[],'y',[],'units',struct());
         for i = 1:length(thisInds)
@@ -2455,7 +2587,7 @@ classdef IrisData
           units = data(i).units{thisInds(i)};
           dataLengths(i) = struct('x',xlen,'y',ylen,'units',units);
         end
-        
+
         units = [dataLengths.units].';
         [~,idx] = unique(string({units.x}.'),'rows','stable');
         [~,idy] = unique(string({units.y}.'),'rows','stable');
@@ -2463,13 +2595,13 @@ classdef IrisData
         % preallocate maximum sized vector for this device.
         maxLen = max([dataLengths.x,dataLengths.y]);
         [xvals,yvals] = deal(nan(maxLen,nData));
-        
+
         % gather data
         for i = 1:length(thisInds)
           if thisInds(i) < 0, continue; end
           thisX = data(i).x{thisInds(i)};
           thisY = data(i).y{thisInds(i)};
-          
+
           xvals(1:dataLengths(i).x,i) = thisX(:);
           yvals(1:dataLengths(i).y,i) = thisY(:);
         end
@@ -2479,9 +2611,9 @@ classdef IrisData
         mat.y{d} = yvals;
         mat.units{d} = units;
       end
-      
+
     end
-    
+
     function groups = getGroupBy(obj,varargin)
       % GETGROUPBY collects the grouping table and vectors from inputs.
       %   Supplying a vector, or vectors, of nDatum length will create a custom
@@ -2490,10 +2622,10 @@ classdef IrisData
       % Usage:
       %   (1) groups = Data.getGroupBy('lightAmplitude','protocolStartTime', ...);
       %   (2) groups = Data.getGroupBy(customGroupVector1, ..., customGroupVectorN)
-      
+
       % local constants
       validGroups = obj.getPropertyNames();
-      
+
       % validtate inputs
       if nargin < 2
         groupings = {'none'};
@@ -2506,7 +2638,7 @@ classdef IrisData
           groupings = [cIn(:);nIn(:)];
         end
       end
-      
+
       % validate inputs, either scalar string
       validInputs = cellfun( ...
         @(c) ...
@@ -2521,10 +2653,10 @@ classdef IrisData
         );
       groupings(~validInputs) = [];
       if isempty(groupings), error('Invalid grouping.'); end
-      
+
       % convert inputs to strings
       groupings = cellfun(@string,groupings,'UniformOutput',false);
-      
+
       % Create a table from inputs
       groupTable = table();
       %ids
@@ -2537,7 +2669,7 @@ classdef IrisData
           );
         % valid matches will be chars
         groupBy(~cellfun(@ischar,groupBy)) = [];
-        
+
         % collect the filter table
         filterTable = obj.Specs.Table;
         if any(strcmpi('none',groupBy))
@@ -2546,18 +2678,18 @@ classdef IrisData
         end
         groupTable = [groupTable,filterTable(:,groupBy)];
       end
-      
+
       % vectors
       vectors = groupings(~groupsAsIds);
       if ~isempty(vectors)
         groupTable = [groupTable,table(vectors{:})];
       end
-      
+
       % determine groups
       groups = IrisData.determineGroups(groupTable,true(obj.nDatums,1));
-      
+
     end
-    
+
     function domains = getDomains(obj,devices)
       % GETDOMAINS Gets the data ranges for each provided device (optional).
       if nargin < 2, devices = 'all'; end
@@ -2569,30 +2701,38 @@ classdef IrisData
       nDevs = numel(mat.device);
       domains(1:nDevs) = struct( ...
         'id', '', ...
-        'X', [0,1], ...
-        'Y', [0,1] ...
+        'X', [0;1], ...
+        'Y', [0;1] ...
         );
       for d = 1:nDevs
         domains(d).id = mat.device{d};
-        domains(d).X = IrisData.domain(mat.x{d}(:));
-        domains(d).Y = IrisData.domain(mat.y{d}(:));
+        domains(d).X = IrisData.domain(mat.x{d});
+        domains(d).Y = IrisData.domain(mat.y{d});
       end
     end
-    
-    function propTable = view(obj, varargin)
+
+    function propTable = view(obj, type)
       % VIEW Show a window containing 'properties', 'notes', or 'info'.
       %   propTable output will be a table object if only one of 'properties' or
       %   'notes'. If multiple cases are show, then the output will be a cell array
       %   of the corresponding tables. If 'info' is entered, the corresponding output
       %   will contain the Meta struct, the same as if IrisData.Meta was accessed.
+      
+      arguments
+        obj IrisData        
+      end
+      arguments (Repeating)
+        type (1,1) string {mustBeMember(type,{'properties','notes','info','data'})}
+      end
+
       if nargin < 2
         propTable = table();
         return;
       end
-      
+
       % validate input
-      [s,views] = IrisData.ValidStrings(varargin,{'properties','notes','info','data'});
-      
+      [s,views] = IrisData.ValidStrings(type,{'properties','notes','info','data'});
+
       if ~s
         fprintf( ...
           'Invalid entry, must be one of: %s\n', ...
@@ -2601,13 +2741,13 @@ classdef IrisData
         propTable = table();
         return;
       end
-      
+
       propTable = cell(numel(views),1);
-      
+
       figs = gobjects(numel(views),1);
       for v = 1:numel(views)
         figs(v) = uifigure('Name', views{v}, 'Visible', 'off');% is resizable
-        
+
         switch views{v}
           case 'properties'
             specs = obj.Specs;
@@ -2634,19 +2774,19 @@ classdef IrisData
             % make a grid
             tGrid = uigridlayout(figs(v),[1,2]);
             tGrid.ColumnWidth = {'3x','5x'};
-            
+
             hTree = uitree(tGrid);
             hTree.FontName = 'Times New Roman';
             hTree.FontSize = 16;
             hTree.Multiselect = 'off';
             hTree.SelectionChangedFcn = @getSelectedInfo;
-            
+
             pTab = uitable(tGrid);
             pTab.ColumnName = {'Property'; 'Value'};
             pTab.ColumnWidth = {130, 'auto'};
             pTab.RowName = {};
             pTab.CellSelectionCallback = @doCopyUITableCell;
-            
+
             % Populate ui tree
             fprintf('Collecting %s metadata...\n',views{v});
             pause(0.01);
@@ -2655,14 +2795,14 @@ classdef IrisData
             else
               recurseInfo(dS,'File',hTree);
             end
-            
+
             hTree.expand();
             firstNode = struct('SelectedNodes',hTree.Children(1));
             hTree.SelectedNodes = firstNode.SelectedNodes;
             pause(0.5);
-            
+
             figs(v).Visible = 'on';
-            
+
             getSelectedInfo(hTree,firstNode);
             continue
         end
@@ -2689,7 +2829,7 @@ classdef IrisData
         drawnow();
         pause(0.05);
       end
-      
+
       if numel(views) == 1
         propTable = propTable{:};
       end
@@ -2847,72 +2987,73 @@ classdef IrisData
         end
       end
     end %view
-    
+
     function handles = plot(obj,varargin)
       % PLOT Quickly plot the contianed data (or subs) on a new figure.
-      
+      % TODO: device units are mixed when dev. index 1 not plotted.
+
       limitByParams = {'Data','Axes','None'};
-      
+
       p = inputParser();
       p.KeepUnmatched = true;
-      
+
       p.addParameter('subs', 1:obj.nDatums, ...
         @(v)validateattributes(v,{'numeric','logical'},{'nonnegative'}) ...
         );
-      
+
       p.addParameter('respectInclusion', true, @islogical);
-      
+
       p.addParameter('legend', false, @islogical);
-      
+
       p.addParameter('colorized', true, @islogical);
-      
+
       p.addParameter('opacity', 1, ...
         @(x)validateattributes(x,{'numeric'},{'scalar','>=',0,'<=',1}) ...
         );
-      
+
       p.addParameter('devices', 'all', ...
         @(v)IrisData.ValidStrings(v,['all';obj.AvailableDevices]) ...
         );
-      
+
       p.addParameter('axes', [], ...
         @(x) ...
         isempty(x) || ...
         isa(x,'matlab.ui.control.UIAxes') || ...
         isa(x,'matlab.graphics.axis.Axes') ...
         );
-      
+
       p.addParameter('baselineRegion', 'None', ...
         @(v)IrisData.ValidStrings(v,obj.BASELINE_TYPES) ...
         );
-      
+
       p.addParameter( ...
         'baselineReference', 0, ...
         @(v) isscalar(v) && isnumeric(v) && (v >=0) ...
         );
-      
+
       p.addParameter('numBaselinePoints', 1000, @isnumeric);
-      
+
       p.addParameter('baselineOffsetPoints', 0, ...
         @(v)validateattributes(v,{'numeric'},{'nonnegative','scalar'}) ...
         );
-      
+
       p.addParameter('scaleFactor', 1, @isnumeric);
-      
+
       p.addParameter('interactive', true, @(x)isscalar(x) && islogical(x));
-      
+
       p.addParameter('lineParameters', {}, @iscell);
-      
+
       p.addParameter('axesLabels', true, @(x)isscalar(x) && islogical(x));
-      
+
       p.addParameter('computeYLimitBy', 'Data', ...
         @(v)IrisData.ValidStrings(v,limitByParams) ...
         );
       p.addParameter('computeXLimitBy', 'Data', ...
         @(v)IrisData.ValidStrings(v,limitByParams) ...
         );
-      
+
       p.parse(varargin{:});
-      
+
       % validate subs
       subs = p.Results.subs;
       % test subs vector
@@ -2932,9 +3073,9 @@ classdef IrisData
       end
       % redefine subs
       subs = find(inclusions);
-      
+
       allDevs = obj.AvailableDevices;
-      
+
       [~,devices] = IrisData.ValidStrings( ...
         p.Results.devices, ...
         ['all';allDevs] ...
@@ -2943,18 +3084,18 @@ classdef IrisData
       if ismember({'all'},devices)
         devices = allDevs;
       end
-      
+
       nDevices = numel(devices);
-      
+
       %validate baseline props
       [~,baseLoc] = IrisData.ValidStrings( ...
         p.Results.baselineRegion, ...
         obj.BASELINE_TYPES ...
         );
-      
+
       %get the data
       data = obj.copyData(inclusions);
-      
+
       % perform baseline:
       if ~strcmp(baseLoc,'None')
         data = IrisData.subtractBaseline( ...
@@ -2967,16 +3108,16 @@ classdef IrisData
           p.Results.baselineReference ...
           );
       end
-      
+
       % validate limit calculations
       [~,yLimBy] = IrisData.ValidStrings(p.Results.computeYLimitBy,limitByParams);
       [~,xLimBy] = IrisData.ValidStrings(p.Results.computeXLimitBy,limitByParams);
-      
+
       % fig params
       fn = fieldnames(p.Unmatched);
       fv = struct2cell(p.Unmatched);
       fPar = [fn(:),fv(:)]';
-      
+
       defaultFigParams = reshape( ...
         [{'Name', 'IrisData Plot'}, IrisData.FigureParameters], ...
         2,[] ...
@@ -2986,7 +3127,7 @@ classdef IrisData
         if ~any(overrideIdx), continue; end
         defaultFigParams{2,overrideIdx} = fPar{2,ipar};
       end
-      
+
       createAxes = isempty(p.Results.axes);
 
       if createAxes
@@ -2994,12 +3135,12 @@ classdef IrisData
         MIN_AX_WIDTH = 350;
         MIN_AX_HEIGHT = 230;
         MAX_COLS = 3;
-        
+
         s0 = get(groot,'MonitorPositions');
         s0 = s0(s0(:,1) == 1,3:4);
-        
+
         nRows = fix((nDevices-1)/MAX_COLS)+1;
-        
+
         dims = [ ...
           MAX_COLS*MIN_AX_WIDTH, ... %width is constant
           MIN_AX_HEIGHT * nRows ... % height is dependent
@@ -3011,7 +3152,7 @@ classdef IrisData
         % make the figure
         fig = figure(defaultFigParams{:},'Visible', 'off');
         fig.Position = dPos;
-        
+
         axs = gobjects(1,nDevices);
         %%% axes
         % determine positions
@@ -3024,14 +3165,14 @@ classdef IrisData
         for a = 1:nDevices
           colIdx = mod(a-1,nDevices)+1;
           rowIdx = fix((a-1)/MAX_COLS)+1;
-          
+
           aa = axes(fig, ...
             'units', 'pixels', ...
             'box', 'off', ...
             'FontName', 'Times New Roman', ...
             'FontSize', 12 ...
             );
-          
+
           aa.ActivePositionProperty = 'outerposition';
           aa.Position = [ ...
             xBounds(colIdx)+padding(4), ...
@@ -3039,9 +3180,9 @@ classdef IrisData
             xSize-sum(padding([2,4])), ...
             ySize-sum(padding([1,3])) ...
             ];
-          
+
           aa.Title.String = devices{a};
-          
+
           aa.YLabel.String = '';
           aa.YLabel.Units = 'pixels';
           aa.YLabel.Rotation = -90;
@@ -3050,7 +3191,7 @@ classdef IrisData
           aa.YLabel.Position(1) = 5; %x
           aa.YLabel.Position(2) = ySize-sum(padding([1,3]))-5; %y
           aa.YLabel.Position(3) = 1000;
-          
+
           aa.XLabel.String = '';
           aa.XLabel.Units = 'pixels';
           aa.XLabel.VerticalAlignment = 'bottom';
@@ -3058,49 +3199,49 @@ classdef IrisData
           aa.XLabel.Position(1) = 25; %x
           aa.XLabel.Position(2) = 5; %y
           aa.XLabel.Position(3) = 1000;
-          
+
           % draw the base lines
           aa.YBaseline.Visible = 'on';
           aa.YBaseline.LineWidth = 1.5;
           aa.YBaseline.LineStyle = '-';
           aa.YBaseline.Color = [aa.YBaseline.Color.*2,0.25];
-          
+
           aa.XBaseline.Visible = 'on';
           aa.XBaseline.LineWidth = 1.5;
           aa.XBaseline.LineStyle = '-';
           aa.XBaseline.Color = [aa.XBaseline.Color.*2,0.25];
-          
+
           % kill the axles
           aa.YAxis.Axle.Visible = 'off';
           aa.XAxis.Axle.Visible = 'off';
-          
+
           %store
           axs(a) = handle(aa);
         end
-        
+
       else
         axs = handle(p.Results.axes);
         fig = ancestor(axs,'figure', 'toplevel');
       end
-      
+
       hLines = gobjects(numel(data),nDevices);
-      
+
       if p.Results.colorized
         colors = IrisData.IrisColorMap(numel(data));
       else
         colors = IrisData.rep([1,2,3]+0.014,numel(data),1,'dims',{[],3});
       end
-      
+
       if ~isempty(p.Results.lineParameters)
         lp = p.Results.lineParameters;
       else
         lp = {'linewidth', 2};
       end
-      
+
       % create a scale factor vector for all devices
       % we assume the user entered a factor for the devices in the order that
       % obj.AvailableDevices returns
-      
+
       if isscalar(p.Results.scaleFactor)
         scaleFactor = IrisData.rep(p.Results.scaleFactor,nDevices);
       elseif numel(p.Results.scaleFactor) < nDevices
@@ -3117,7 +3258,7 @@ classdef IrisData
         % should be == nDevices in length.
         scaleFactor = p.Results.scaleFactor(1:nDevices);
       end
-      
+
       for i = 1:numel(data)
         thisDevCount = data(i).nDevices;
         thisIdx = subs(i);
@@ -3138,9 +3279,9 @@ classdef IrisData
           else
             ax = axs(1);
           end
-          
+
           thisScale = scaleFactor(thisDvIdx);
-          
+
           hLines(i,thisDvIdx) = line(ax, ...
             'Xdata',data(i).x{d}, ...
             'Ydata',data(i).y{d}.*thisScale, ...
@@ -3163,8 +3304,8 @@ classdef IrisData
           end
         end
       end
-      
-      
+
+
       for a = 1:nDevices
         % set the x and y limits
         doms = struct();
@@ -3214,17 +3355,17 @@ classdef IrisData
           otherwise
             % do nothing
         end
-        
+
         % set the x limits hard
         if isfield(doms,'x')
           axs(a).XLim = doms.x;
         end
-        
+
         % set a soft limit (padded) for y
         if isfield(doms,'y')
           axs(a).YLim = sort(doms.y + 0.025*diff(doms.y).*[-1;1]);
         end
-        
+
         if p.Results.axesLabels
           % add the units to the axes, assum units are the same for each datum
           % but different for each device
@@ -3238,22 +3379,22 @@ classdef IrisData
           axs(a).XLabel.Units = 'normalized';
         end
       end
-      
+
       if p.Results.legend
         for a = 1:numel(axs)
           legend(axs(a),'location','southeast');
         end
       end
-      
+
       % if this method created the axes, then turn the figure visible, otherwise
       % let the caller handle the figure visibility
       if createAxes
         fig.Visible = 'on';
       end
       drawnow();
-      
+
       handles = struct('Figure', handle(fig), 'Axes', handle(axs), 'Lines', hLines);
-      
+
       function lineClicked(src,~)
         parentAx = ancestor(src,'axes');
         lineHandles = parentAx.Children( ...
@@ -3263,15 +3404,15 @@ classdef IrisData
           'UniformOutput', true ...
           ) ...
           );
-        
+
         set(lineHandles,'linewidth',1.5);
         src.LineWidth = 2.5;
         uistack(src,'top');
         disp(src.DisplayName);
       end
-      
+
     end
-    
+
     function help(obj,method)
       % HELP Opens the help documentation for IrisData class or (optionally) method.
       if nargin < 2, method = ''; end
@@ -3285,7 +3426,7 @@ classdef IrisData
         doc(class(obj));
       end
     end
-    
+
     function explore(obj,method)
       % EXPLORE Loads IrisData into the editor and (optional) navigates to method
       % definition.
@@ -3300,13 +3441,13 @@ classdef IrisData
         edit(class(obj));
       end
     end
-    
+
   end
-  
+
   %% Assignment, Save and Load operations
-  
+
   methods
-    
+
     function varargout = subsref(obj,s)
       % SUBSREF   Subscript reference override for IrisData.
       %   SUBSREF will allow a key~map like behavior so we can do things like:
@@ -3318,7 +3459,7 @@ classdef IrisData
       %   called from within a method. To use this custom indexing option, we
       %   must then call obj.subsref(substruct(...)); To see an example, explore
       %   the saveobj method.
-      
+
       switch s(1).type
         case '.'
           % is obj.
@@ -3344,7 +3485,7 @@ classdef IrisData
                     varargout = {obj.Notes(inds.notes,:)};
                     return
                 end
-                
+
             end
           end
           % Meta
@@ -3358,7 +3499,7 @@ classdef IrisData
                     varargout = obj.Meta(inds);
                     return
                 end
-                
+
             end
           end
           % IndexMap
@@ -3420,7 +3561,7 @@ classdef IrisData
               varargout{1} = cat(1,d.(s(3).subs));
               return
             end
-            
+
           end
           % UserData
           if strcmp(s(1).subs,'UserData') && numel(s) > 1
@@ -3436,12 +3577,12 @@ classdef IrisData
         case '()'
           % first need to verify that obj is not an array. If it is, we will try
           % to return obj(subs) instead of proceeding
-          
+
           if ~isscalar(obj)
             [varargout{1:nargout}] = builtin('subsref', obj, s);
             return
           end
-          
+
           % In this case, IrisData(subs,[...]) was presented. We will return a new
           % instace of irisdata containing only the provided subs.
           % In the case that the call looks like IrisData(1:n,1:m,...), we will
@@ -3452,11 +3593,11 @@ classdef IrisData
           for ss = 1:length(s(1).subs)
             % grab a copy of the original object
             newObj = obj.saveobj();
-            
+
             % determine the subs wanted
             subs = unique([s(1).subs{ss}]);
             indexFile = obj.getFileFromIndex(subs);
-            
+
             [subFiles,ix,ic] = unique(indexFile,'stable');
             subFilesBool = ismember(newObj.Files,subFiles);
             dropFiles = newObj.Files(~subFilesBool);
@@ -3504,18 +3645,18 @@ classdef IrisData
           end
           return
       end
-      
+
       [varargout{1:nargout}] = builtin('subsref', obj, s);
     end
-    
+
     function obj = subsasgn(obj,s,varargin)
       % SUBSASGN Current uses default method.
       obj = builtin('subsasgn',obj,s,varargin{:});
     end
-    
+
     function s = saveobj(obj)
       % SAVEOBJ Returns a `struct` version of the IrisData object for saving/loading.
-      
+
       nFiles = length(obj.Files);
       s = struct();
       s.Meta = cell(1,nFiles);
@@ -3548,18 +3689,18 @@ classdef IrisData
           fv{f} = fcontents{f};
         end
       end
-      
+
       C = [fn,fv]';% matrix{
       C = C(:);%single vector
       s.UserData = C;
     end
-    
+
     function session = saveAsIrisSession(obj,pathname)
       % SAVEASIRISSESSION Saves or returns an Iris Session.
-      
+
       vf = iris.data.validFiles();
       fInfo = vf.getIDFromLabel('Session');
-      
+
       if nargin < 2
         % No pathname was provided, prompt user
         filterText = { ...
@@ -3568,7 +3709,7 @@ classdef IrisData
           };
         fn = fullfile( ...
           iris.pref.Iris.getDefault().UserDirectory, ...
-          [datestr(now,'HHMMSS'),fInfo.exts{1}] ...
+          string(datetime('now','format','HHmmss'))+fInfo.exts{1} ...
           );
         pathname = iris.app.Info.putFile( ...
           'Save Iris Session', ...
@@ -3621,11 +3762,11 @@ classdef IrisData
             end
           end
         end
-        
+
         % store
         session.Data{F} = thisTemplate;
       end
-      
+
       % save the session
       % if an empty path name was provided, return the session without saving to disk
       % We can use this method to load IrisData objects into Iris as sessions.
@@ -3646,34 +3787,34 @@ classdef IrisData
       end
       fprintf('  Success!\nFile saved at:\n"%s"\n',pathname);
     end
-    
+
     function obj = set(obj,fn,val)
       test = ismember(fn,'InclusionList');
       if ~any(test), error("Set can only be used on 'InclusionList'"); end
       if iscell(val), val = val{test}; end
       obj.InclusionList = val;
     end
-    
+
   end
-  
+
   %% Helper Methods
-  
+
   methods (Access = protected)
     %protected methods allow user to access these if they decide to create a custom
     %subclass. They are then also overridable.
-    
+
   end
-  
+
   %% Static Methods
-  
+
   methods (Static = true)
     % Methods that don't require object properties but should be included
     % to prevent excessive library additions to the user path.
-    
+
     function groupInfo = determineGroups(inputArray,inclusions,dropExcluded,isCustom)
       % DETERMINEGROUPS Create a grouping vector from a table or array input.
-      % 
-      
+      %
+
       if nargin < 4, isCustom = false; end % override algorithm if numeric input
       if nargin < 3, dropExcluded = true; end %work just as prior to 2021 release
       if nargin < 2, inclusions = true(size(inputArray,1),1); end
@@ -3751,15 +3892,12 @@ classdef IrisData
         % ensure 0 if exclusions are present
         Singular = Singular - 1;
       end
-      
-      % TODO: Remove tabulate (Stats) dependancy (implement histcounts)
-      tblt = tabulate(Singular);
 
-      % tblt arrives sorted because we let unique(groupVec) sort Singular. So we
-      % can map value and counts to rows of the groupTable
-      groupTable.Counts = tblt(:,2);
-      groupTable.SingularMap = tblt(:,1);
-      groupTable.Frequency = tblt(:,3);
+      % Produce summary table for group map
+      % *Singular is an integer index array
+      groupTable.Counts = histcounts(sort(Singular),nGroups).';% tblt(:,2);
+      groupTable.SingularMap = uGroups;% tblt(:,1);
+      groupTable.Frequency = groupTable.Counts./sum(groupTable.Counts).*100; % percent
 
       %output
       groupInfo = struct();
@@ -3800,14 +3938,15 @@ classdef IrisData
           grpID = grpID + 1;
         end
       end
+
     end
-    
+
     function varargout = ValidStrings(testString,varargin)
       % VALIDSTRINGS A modified version of matlab's validstring. VALIDSTRINGS accepts
       % a cellstr and returns up to 2 outputs, a boolean indicated if all strings in
       % testString passed validation (by best partial matching) in allowedStrings and
       % a cellstr containing the validated strings.
-      
+
       allowedStrings = "";
       nVargs = length(varargin);
       for v = 1:nVargs
@@ -3824,17 +3963,17 @@ classdef IrisData
             error('VALIDSTRINGS:UNSUPPORTEDTYPE','Unsuported input type, "%s".',class(thisInput));
         end
       end
-      
+
       % clear the empty
       allowedStrings(allowedStrings=="") = [];
-      
+
       if ~isstring(testString), testString = string(testString); end
-      
+
       % check if we want to ignore case by searching for the flag
       hasFlag = strcmpi("-any",allowedStrings);
       anywhere = any(hasFlag);
       allowedStrings(hasFlag) = [];
-      
+
       % loop and check each input string
       tf = false(length(testString),1);
       idx = nan(length(testString),1);
@@ -3862,7 +4001,7 @@ classdef IrisData
       varargout{2} = cellstr(testString);
       varargout{3} = idx;
     end
-    
+
     function [outputString,varargout] = unknownCell2Str(cellAr,sep,uniquify)
       % UNKNOWNCELL2STR Convert a cell's contents to a string (char array)
       if nargin < 3, uniquify = false; end
@@ -3899,22 +4038,22 @@ classdef IrisData
           case 'struct'
             thisS = cellAr{I};
             nStructs = numel(thisS);
-            
+
             fields = fieldnames(thisS);
             vals = struct2cell(thisS);
-            
+
             [valStrings,insideClass] = arrayfun( ...
               @(e)IrisData.unknownCell2Str(e,sep,false), ...
               vals, ...
               'UniformOutput', false ...
               );
-            
+
             insideStrings = cellfun(@(c)strjoin(c,', '), insideClass, 'UniformOutput',false);
             insideClasses = cell(nStructs,1);
             for i = 1:nStructs
               insideClasses{i} = strjoin(squeeze(insideStrings(:,:,i)),',');
             end
-            
+
             caClass{I} = cat(2, ...
               join(IrisData.rep(caClass(I),nStructs),sep), ...
               join(insideClasses,'; ') ...
@@ -3936,24 +4075,24 @@ classdef IrisData
         varargout{1} = caClass;
       end
     end
-    
+
     function newValue = cast(value,classList)
       %CAST Cast a character value to a specified class
       % Cast is different from the MATLAB base cast() function. This function expects
       % to cast booleans from 'true'/'false' to true/false. Further, cast will accept
       % nested classes from the classList using the following syntax: 'parent <
       % child'.
-      
-      
+
+
       classes = cellfun(@(l)strsplit(l,'<'),classList,'UniformOutput',false);
       nClass = numel(classes);
       nVal = numel(value);
       if nVal ~= nClass
         error('Class list must contain the same number of elements as the value list.');
       end
-      
+
       newValue = value;
-      
+
       for cl = 1:nClass
         this = strtrim(classes{cl});
         isNested = logical(numel(this)-1);
@@ -4005,7 +4144,7 @@ classdef IrisData
           otherwise
             disp(thisClass);
         end
-        
+
         if isNested
           nestClass = this{1};
           switch nestClass
@@ -4016,9 +4155,9 @@ classdef IrisData
           end
         end
       end
-      
+
     end
-    
+
     function tableDat = collapseUnique(d,columnAnchor,stringify,uniquify)
       % COLLAPSEUNIQUE Collapse repeated cell entries as determined by columnAnchor.
       if nargin < 4, uniquify = true; end
@@ -4053,26 +4192,26 @@ classdef IrisData
           'UniformOutput', false ...
           );
       end
-      
+
     end
-    
+
     function flat = flattenStructs(varargin)
       % FLATTENSTRUCT Flattens a struct array.
-      
+
       %extract structs
       structInds = cellfun(@isstruct,varargin,'unif',1);
-      
+
       S = varargin(structInds);
       varargin(structInds) = [];
-      
+
       p = inputParser();
       p.StructExpand = false;
       p.KeepUnmatched = true;
-      
+
       p.addParameter('stringify', false, @islogical);
       p.parse(varargin{:});
-      
-      
+
+
       [fields,values] = deal(cell(length(S),1));
       for i = 1:length(S)
         fields{i} = fieldnames(S{i});
@@ -4080,17 +4219,17 @@ classdef IrisData
       end
       fields = cat(1,fields{:});
       values = cat(1,values{:});
-      
+
       flatCell = IrisData.collapseUnique([fields,values],1,p.Results.stringify,false);
-      
+
       flatCell(:,1) = matlab.lang.makeValidName(flatCell(:,1));
-      
+
       flat = struct();
       for n = 1:size(flatCell,1)
         flat.(flatCell{n,1}) = flatCell{n,2};
       end
     end
-    
+
     function [S,varargout] = subtractBaseline(S,type,npts,ofst,nowarn,devices,reference)
       % SUBTRACTBASELINE Calculate a constant (or fit) value to subtract from each
       % "y" value in the data struct array, S.
@@ -4098,7 +4237,7 @@ classdef IrisData
       if nargin < 7, reference = 0; end
       if nargin < 6, devices = {'all'}; end
       if nargin < 5, nowarn = false; end
-      
+
       if ~iscellstr(devices), devices = cellstr(devices); end
       nData = numel(S);
       doFit = contains(lower(type),'sym');
@@ -4108,7 +4247,7 @@ classdef IrisData
       isSweep = false;% TODO: strcmpi(type,'sweep');
       isRef = false;% TODO: reference > 0 || isSweep;
       if isRef
-        if isSweep
+        if isSweep %#ok<UNRCH> 
           % compute the sweep from the references
           if numel(reference) < 2
             init = 1;
@@ -4138,11 +4277,11 @@ classdef IrisData
               rX = rX(:);
               rX = rX(:,ones(1,size(rY,2)));
             end
-            
+
             % get baseline indices for this device
             rLen = size(rY,1);
             rInds = IrisData.getBaselineIndices(rLen,type,npts,ofst);
-            
+
             % compute baseline parameters
             if doFit
               % fit a line to the <x(inds),y(inds)> and store the parameters
@@ -4154,9 +4293,9 @@ classdef IrisData
             end
           end
         end
-        
+
       end %isRef
-      
+
       for d = 1:nData
         this = S(d);
         ndevs = this.nDevices;
@@ -4166,7 +4305,7 @@ classdef IrisData
         for v = 1:ndevs
           thisY = this.y{v};
           thisX = this.x{v};
-          
+
           % check if this device should be baselined, if not, just return the
           % original data and set baselineValues to nans
           thisDev = this.devices{v};
@@ -4187,7 +4326,7 @@ classdef IrisData
                 thisX = thisX(:);
                 thisX = thisX(:,ones(1,size(thisY,2)));
               end
-              
+
               baselines = betas(1,:) + betas(2,:).*thisX;
             else
               % get the values computed from column-wise refY and sobtract them
@@ -4199,11 +4338,11 @@ classdef IrisData
             theseBaselines{v} = baselines;
             continue
           end
-          
+
           % collect indices for subtraction
           thisLen = size(thisY,1);
           inds = IrisData.getBaselineIndices(thisLen,type,npts,ofst);
-          
+
           if doFit
             % create fit based on inds for each line in the matrix
             bVal = zeros(size(thisY));
@@ -4229,7 +4368,7 @@ classdef IrisData
             % create matrix
             bVal = bVal(ones(thisLen,1),:);
           end
-          
+
           % update values
           this.y{v} = thisY - bVal;
           theseBaselines{v} = baselines;
@@ -4252,7 +4391,7 @@ classdef IrisData
         end
       end
     end
-    
+
     function inds = getBaselineIndices(thisLen,type,npts,ofst)
       switch lower(type)
         case {'start','beginning'}
@@ -4275,12 +4414,12 @@ classdef IrisData
       % make sure inds are unique
       inds = unique(inds); %sorted
     end
-    
+
     function S = butterFilter(S,type,freqs,ord,devs)
       % butterFilter Perform digital butterworth filtering of the data
       % 'y' value in structs in filtered in place
       % input struct S is expected to be of type returned by IrisData.copyData();
-      
+
       %determine filter parameters
       switch lower(type)
         case 'lowpass'
@@ -4314,30 +4453,30 @@ classdef IrisData
           else
             Fs = this.sampleRate(v);
           end
-          
+
           if any(flt./Fs >= 1)
             error("Filter frequencies must be less than the Nyquist frequency (%0.2fHz)",Fs/2);
           end
-          
+
           thisY = this.y{v};
           yLen = size(thisY,1);
-          
+
           % get column means for reducing the zero offset artifacts from filtering.
           mu = mean(thisY,1,'omitnan');
-          
+
           % find and replace nans with mu
           [rowNans,colNans] = find(isnan(thisY));
           for rc = 1:length(rowNans)
             thisY(rowNans(rc),colNans(rc)) = mu(colNans(rc));
           end
-          
+
           % pad the array with a few hundred samples of the local means
           npts = max(ceil([0.01*yLen;10]));
           preVals = mean(thisY(1:npts,:),1,'omitnan');
           postVals = mean(thisY((end-(npts-1)):end,:), 1, 'omitnan');
-          
+
           thisY = [preVals(ones(npts,1),:);thisY;postVals(ones(npts,1),:)]; %#ok
-          
+
           % subtract the colmeans
           thisY = thisY-mu;
           % build filter
@@ -4356,7 +4495,7 @@ classdef IrisData
         S(d) = this;
       end
     end
-    
+
     function S = scaleData(S,scaleFactor,devices,type)
       % SCALEDATA method to scale y data by a scalar value (per device).
       %   If scaleFactor is scalar, the same factor will be applied to all
@@ -4397,7 +4536,7 @@ classdef IrisData
         S(d) = this;
       end
     end
-    
+
     function A = fastrmField(S, fname)
       % FASTRMFIELD Removes supplied fieldnames from struct and returns struct of same size.
       fn = fieldnames(S);
@@ -4414,7 +4553,7 @@ classdef IrisData
       sz = size(S);
       fdat = struct2cell(S(end,end));
       A(sz(1),sz(2)) = cell2struct(fdat(fKeep), fn(fKeep),1);
-      
+
       % If input is longer than 1 in any dimension, fill in all the values
       if any(sz > 1)
         for i = 1:sz(1)
@@ -4424,17 +4563,17 @@ classdef IrisData
           end
         end
       end
-      
+
     end
-    
+
     function A = fastKeepField(S, fname)
-      
+
       fn = fieldnames(S);
       % which names to keep
       %fKeep = ~cellfun(@isempty, regexpi(fn,strjoin(fname,'|')));
       fKeep = false(numel(fn),1);
       for i = 1:numel(fn)
-        if utilities.ValidStrings(fn{i},fname)
+        if IrisData.ValidStrings(fn{i},fname)
           fKeep(i) = true;
         end
       end
@@ -4442,22 +4581,22 @@ classdef IrisData
       sz = size(S);
       fdat = struct2cell(S(end,end));
       A(sz(1),sz(2)) = cell2struct(fdat(fKeep), fn(fKeep),1);
-      
+
       % If input is longer than 1 in any dimension, fill in all the values
       if any(sz > 1)
-        
+
         for i = 1:sz(1)
           for j = 1:sz(2)
             fdat = struct2cell(S(i,j));
             A(i,j) = cell2struct(fdat(fKeep), fn(fKeep),1);
           end
         end
-        
+
       end
-      
+
     end
-    
-    
+
+
     function C = uniqueContents(cellAr)
       % UNIQUECONTENTS Validate cell contents for multiple cells.
       contents = cell(1,numel(cellAr));
@@ -4473,14 +4612,14 @@ classdef IrisData
         C = contents{1};
         return
       end
-      
+
       % if only 2 elements, return them
       n = length(contents);
       if n == 2
         C = contents;
         return
       end
-      
+
       % if more than 2, reduce to only unique values
       inds = 1:n;
       keep = ones(n,1);
@@ -4494,24 +4633,41 @@ classdef IrisData
         replicates(inds ~= i) = thisRep;
         keep(i) = min([i,find(replicates)]);
       end
-      
+
       %return
       C = contents(unique(keep));
     end
-    
-    function varargout = domain(varargin)
-      %DOMAIN min,max array for each input argument provided
-      %   Detailed explanation goes here
-      nIn = length(varargin);
+
+    function varargout = domain(inputData)
+      %DOMAIN min,max array for each input argument provided, operates col-wise on matrix.
+      arguments (Repeating)
+        inputData (:,:) {mustBeNumeric(inputData)}
+      end
+      nIn = length(inputData);
       varargout = cell(1,min([nargout,nIn]));
       for I = 1:min([max([1,nargout]),nIn])
-        thisRange = sort(varargin{I});
-        % drop nans
-        thisRange(isnan(thisRange)) = [];
-        varargout{I} = thisRange([1,end]);
+        thisRange = inputData{I};
+        sz = size(thisRange);
+        nanLoc = isnan(thisRange);
+        % convert to column matrix and replace nans with mean value
+        if any(nanLoc(:)) && all(sz > 1) % is matrix with nan, operate on columns
+          colMeans = mean(thisRange,1,'omitnan');
+          for col = 1:size(thisRange,2)
+            thisRange(nanLoc(:,col),col) = colMeans(col);
+          end
+        elseif any(nanLoc(:)) && ~all(sz > 1) % is vector with nan, reshape to column replace
+          thisRange = thisRange(:);
+          thisRange(nanLoc) = mean(thisRange,'omitnan');
+        elseif ~all(sz > 1) % is vector, no nan, reshape only
+          thisRange = thisRange(:);
+        end
+        % sort
+        thisRange = sort(thisRange); %col-wise
+        % retrieve first and last
+        varargout{I} = thisRange([1,end],:);
       end
     end
-    
+
     function p = centerFigPos(w, h)
       s = get(0, 'ScreenSize');
       if any([w<=1 && w>0,h<=1 && h>0])
@@ -4521,7 +4677,7 @@ classdef IrisData
         w = w*s(3);
         h = h*s(4);
       end
-      
+
       p = ...
         [...
         (s(3) - w) / 2, ...
@@ -4530,7 +4686,7 @@ classdef IrisData
         h...
         ];
     end
-    
+
     function outvec = rep( X, N, each, varargin )
       % REP  Repeat an element or vector N times with individual elements repeated each.
       %   REP willl repeat scalar, vector, or matrix N times. If 'each' is a scalar,
@@ -4554,7 +4710,7 @@ classdef IrisData
       %   >>m =
       %        1     2     2
       %
-      
+
       %%% Parse
       if nargin < 3 || strcmpi(each, 'dims')
         each = 1;
@@ -4562,9 +4718,9 @@ classdef IrisData
           varargin = ['dims', varargin(:)'];
         end
       end
-      
+
       p = inputParser;
-      
+
       addRequired(p, 'X', @(x) true);
       addOptional(p, 'N', 1, @(x)validateattributes(x,{'numeric'}, {'nonempty'}));
       addOptional(p, 'each', 1, ...
@@ -4575,13 +4731,13 @@ classdef IrisData
         @(x)validateattributes(x,{'logical','numeric'},{'nonempty'}));
       addParameter(p, 'squeeze', false, ...
         @(x)validateattributes(x,{'logical','numeric'},{'nonempty'}));
-      
+
       parse(p, X, N, each, varargin{:});
-      
+
       in = p.Results;
-      
+
       %%% Create Each vector
-      
+
       if numel(in.each) == 1
         in.each = each(ones(size(in.X)));
       else
@@ -4590,12 +4746,12 @@ classdef IrisData
             'Length of ''each'' must have %d elements (as in X)', numel(in.X));
         end
       end
-      
+
       if in.byRow
         in.X = in.X.';
         in.each = in.each';
       end
-      
+
       %%% Handle Rep input
       if in.N > 1
         sz = size(in.X);
@@ -4608,11 +4764,11 @@ classdef IrisData
         in.X = repmat(in.X,sz{:});
         in.each = repmat(in.each,sz{:});
       end
-      
+
       %%% Runlength decode
-      
+
       outvec = in.X; %if only N was supplied and all each are 1
-      
+
       if ~all(each == 1)
         in.RepVec = in.each;
         rr = in.RepVec > 0;
@@ -4622,9 +4778,9 @@ classdef IrisData
         tmp = in.X(rr);
         outvec = tmp(cumsum(b)); %an each argument was supplied
       end
-      
+
       %%% Reshape
-      
+
       if all(cellfun(@isempty,in.dims,'unif',1))
         outvec = outvec(:);
         return;
@@ -4632,15 +4788,15 @@ classdef IrisData
       if ~any(cellfun(@isempty, in.dims,'unif',1))
         in.dims = [in.dims{:}, {[]}];
       end
-      
+
       outvec = reshape(outvec, in.dims{:});
-      
+
       if in.squeeze
         outvec = squeeze(outvec);
       end
-      
+
     end
-    
+
     function cm = IrisColorMap(n)
       colorMatrix = [ ...
         72,94,97; ...
@@ -4667,16 +4823,16 @@ classdef IrisData
       cm(cm > 1) = 1; %correct interp
       cm(cm < 0) = 0; %correct interp
     end
-    
+
     function tf = isWithinRange(values,extents,inclusive)
       % ISWITHINRANGE Validates if a value is within a given range [inclusive by default]
       %  Set inclusive (3rd arg) to false if the value must be between but not
       %  matching provided extents. Inclusive argument may be a length 2 boolean to
       %  indicate if [start,end] should be inclusive. Default behavior is [true,true].
-      
+
       if nargin < 3, inclusive = [true,true]; end
       if numel(inclusive) < 2, inclusive = inclusive([1,1]); end
-      
+
       if inclusive(1)
         lComparitor = @ge;
       else
@@ -4687,21 +4843,21 @@ classdef IrisData
       else
         rComparitor = @lt;
       end
-      
+
       nVal= numel(values);
-      
+
       tf = false(nVal,2);
-      
+
       for i = 1:nVal
         tf(i,1) = lComparitor(values(i), extents(1));
         tf(i,2) = rComparitor(values(i), extents(2));
       end
-      
+
       tf = all(tf,2);
-      
-      
+
+
     end
-    
+
     function cellFields = recurseStruct(S,stringify,parentName,sep)
       % RECURSESTRUCT Turn structs into N by 2 cells.
       % Fields that are structs will be merged into a nx2 cells while appending parentName
@@ -4714,9 +4870,9 @@ classdef IrisData
         fields = fieldnames(s);
         values = struct2cell(s);
         structInds = cellfun(@isstruct, values, 'UniformOutput',1);
-        
+
         cellFields(end+(1:sum(~structInds)),:) = [fields(~structInds),values(~structInds)];
-        
+
         if any(structInds)
           structLoc = find(structInds);
           flatSubs = cell(0,2);
@@ -4728,7 +4884,7 @@ classdef IrisData
               conts = mat2cell(conts(:),ones(size(conts(:))),1); %#ok
               contNames = cellfun(@fieldnames,conts,'unif',0);
               contNames = cat(1,contNames{:});
-              
+
               structContents = cellfun(@struct2cell,conts,'unif',0);
               structContents = cat(1,structContents{:});
               out = [ ...
@@ -4739,7 +4895,7 @@ classdef IrisData
                 ), ...
                 structContents ...
                 ];
-              
+
             else
               out = IrisData.recurseStruct(values{structLoc(j)});
               out(:,1) = strcat(fields{structLoc(j)},{sep},out(:,1));
@@ -4749,17 +4905,17 @@ classdef IrisData
           cellFields(end+(1:size(flatSubs,1)),:) = flatSubs;
         end
       end
-      
+
       if ~isempty(parentName)
         cellFields(:,1) = strcat(parentName,{sep},cellFields(:,1));
       end
-      
+
       if stringify
         cellFields(:,2) = arrayfun(@IrisData.unknownCell2Str,cellFields(:,2),'UniformOutput',false);
       end
-      
+
     end
-    
+
     function lvl = determineDepth(s)
       % DETERMINEDEPTH Determine the depth of nested structs.
       lvl = 0;
@@ -4774,10 +4930,10 @@ classdef IrisData
           counts(i) = counts(i) + max(depths); % for subsequent levels
         end
       end
-      
+
       lvl = lvl + max(counts);
     end
-    
+
     function values = findParamCell(params,expression,anchor,returnIndex,exact,asStruct,first)
       %FINDPARAMCELL
       if nargin < 7, first = true; end
@@ -4785,7 +4941,7 @@ classdef IrisData
       if nargin < 5, exact = false; end
       fields = params(:,anchor);
       vals = params(:,returnIndex);
-      
+
       if ~iscell(expression), expression = cellstr(expression); end
       if exact
         idx = ismember(fields,expression);
@@ -4809,15 +4965,15 @@ classdef IrisData
         end
         idx = any(idx,2);
       end
-      
+
       if ~asStruct
         values = [fields(idx),vals(idx)];
       else
         values = cell2struct(vals(idx),fields(idx));
       end
-      
+
     end
-    
+
     function params = FigureParameters()
       params = { ...
         'Visible', 'off', ...
@@ -4851,7 +5007,7 @@ classdef IrisData
         'DefaultUitableFontsize', 12 ...
         };
     end
-    
+
     function obj = loadobj(s)
       % LOADOBJ Load helper to construct IrisData from saved instance.
       if isstruct(s)
@@ -4871,10 +5027,7 @@ classdef IrisData
         obj = s;
       end
     end
-    
-  end
-  
-  methods (Static=true,Hidden=true)
+
   end
 end
 

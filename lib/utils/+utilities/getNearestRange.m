@@ -29,11 +29,11 @@ for n = 1:nargout
   if isempty(xFirst)
     % passed the end of the vector.
     xFirst = nVals;
-  else
-    % iterate
-    xValue = [];
-    xIndex = [];
   end
+  % iterate
+  xValue = [];
+  xIndex = [];
+  
   
   % iterate
   searchRadius = 0;

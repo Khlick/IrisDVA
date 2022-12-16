@@ -228,7 +228,7 @@ function reportHeight(htmlComponent,oldH){
 //   "isOpen": true
 // }
 // data3 = {
-//   "Text": `[<span class="red">Aggregates</span>, <span class="red">Results</span>] = CurrentVoltageRamp(<span class="bold">Data</spna>, <span class="bold">GroupBy</spna>, <span class="bold">Preamble</spna>, <span class="bold">StimParam</spna>, <span class="bold">RampParams</spna>, <span class="bold">HoldParam</spna>, <span class="bold">CalciumRange</spna>, <span class="bold">gType</spna>, <span class="bold">gUnit</spna>, <span class="bold">figLabel</spna>, <span class="bold">Device</spna>, <span class="bold">bgDevice</spna>, <span class="bold">saveFig</spna>, <span class="bold">LedCalibrationFile</spna>, <span class="bold">LedCalibrationLabels</spna>, <span class="bold">NdCalibrationFile</spna>, <span class="bold">NdCalibrationLabels</spna>, <span class="bold">NdSources</spna>);`,
+//   "Text": `[<span class="red">Aggregates</span>, <span class="red">Results</span>] = CurrentVoltageRamp(<span class="bold">Data</spna>, <span class="bold">GroupBy</spna>, <span class="bold">Preamble</spna>, <span class="bold">StimParam</spna>, <span class="bold">RampParams</spna>, <span class="bold">HoldParam</spna>, <span class="bold">CalciumRange</spna>, <span class="bold">gType</spna>, <span class="bold">gUnit</spna>, <span class="bold">figLabel</span>, <span class="bold">Device</spna>, <span class="bold">bgDevice</span>, <span class="bold">saveFig</spna>, <span class="bold">LedCalibrationFile</spna>, <span class="bold">LedCalibrationLabels</spna>, <span class="bold">NdCalibrationFile</spna>, <span class="bold">NdCalibrationLabels</spna>, <span class="bold">NdSources</spna>);`,
 //   "Label": "Label",
 //   "Monospaced": true,
 //   "FontSize": 16,

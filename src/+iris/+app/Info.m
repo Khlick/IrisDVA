@@ -26,7 +26,7 @@ classdef Info < handle
       if ~nargin
         sub = 'public';
       end
-      status = {2,0,152};
+      status = {2,0,162};
       switch sub
         case 'major'
           v = sprintf('%d', status{1});
@@ -201,8 +201,8 @@ classdef Info < handle
         builtins = cellstr(ls(builtinDir));
         extendeds = cellstr(ls(extended));
       else
-        builtins = strtrim(regexp(ls(builtinDir),'(?<!.m)[\w\s]+\.m', 'match')).';
-        extendeds = strtrim(regexp(ls(extended),'(?<!.m)[\w\s]+\.m', 'match')).';
+        builtins = strtrim(regexp(ls(builtinDir),'[\w\d]+\.m', 'match')).';
+        extendeds = strtrim(regexp(ls(extended),'[\w\d]+\.m', 'match')).';
         if isempty(extendeds)
           extendeds{1} = '.';
         end

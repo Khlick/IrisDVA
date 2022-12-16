@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Sparkline</title>
+  <style>
+    .container {
+      padding: 0;
+      margin: auto;
+      width: 100%;
+      height: 100%;
+      overflow-x: hidden;
+      overflow-y: hidden;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- <body onload="setup(htmlComponent)"> -->
+  <div class="container">
+    <canvas id="target" width="120" height="40"></canvas>
+  </div>
+</body>
+
+<script type="text/javascript">
+  const cv = document.getElementById("target");
+  /**
+   * Setup function connecting html to MATLAb uithml functionality
+   */
+  function setup(htmlComponent) {
+    htmlComponent.addEventListener("DataChanged", (evt) => {
+      update(htmlComponent.Data);
+    });
+    update(htmlComponent.Data);
+  }
+
+  /**
+   * Update function to draw the sparkline on the canvas
+   * @param {numeric} inputData - raw array of values
+   */
+  function update(inputData) {
+    let w = inputData.width;
+    let h = inputData.height;
+    cv.width = w;
+    cv.height = h;
+
+    const plotData = inputData.Values.map((v, i) => {
+      return {
+        x: i,
+        y: v
+      }
+    });
+    // collect data limits for conversion to pixels
+    let maxXV = plotData.length - 1;
+    let minXV = 0;
+    let maxYV = Math.max(...inputData.Values);
+    let minYV = Math.min(...inputData.Values);
+    let zeroY = 0.5 * (inputData.Values[0] + inputData.Values[1]);
+
+    // conversion fcn
+    const toPixels = (x, min, max, conv) => (x - min) / (max - min) * conv;
+
+    const cx = cv.getContext('2d');
+
+    // clear
+    cx.clearRect(0, 0, w, h);
+    cx.strokeStyle = "rgb(200,210,255)";
+    cx.lineWidth = 1.0;
+
+    // draw the zero line
+    cx.beginPath();
+    cx.moveTo(
+      toPixels(minXV, minXV, maxXV, w), h - toPixels(zeroY, minYV, maxYV, h)
+    );
+    cx.lineTo(
+      toPixels(maxXV, minXV, maxXV, w), h - toPixels(zeroY, minYV, maxYV, h)
+    );
+    cx.stroke();
+    cx.closePath();
+
+    // draw the sparkline
+    let x0, y0, x1, y1;
+    cx.strokeStyle = "rgb(3,3,3)";
+    cx.lineWidth = 2.0;
+    cx.beginPath();
+    for (let pair = 1; pair < plotData.length; pair++) {
+      if (plotData[pair].y == null) {
+        continue;
+      }
+      x0 = toPixels(plotData[pair - 1].x, minXV, maxXV, w);
+      x1 = toPixels(plotData[pair].x, minXV, maxXV, w);
+      y0 = h - toPixels(plotData[pair - 1].y, minYV, maxYV, h);
+      y1 = h - toPixels(plotData[pair].y, minYV, maxYV, h);
+      cx.moveTo(x0, y0);
+      cx.lineTo(x1, y1);
+    }
+    cx.closePath();
+    cx.stroke();
+  }
+</script>
+
+</html>

@@ -100,6 +100,7 @@ switch type
     % create the boundary
     boundaryLine.values = rep(edges,1,2);
     boundaryLine.densities = [0;rep(counts,1,2);0];
+    boundaryLine.binWidth = mean(diff(edges));
   case "continuous"
     values = sortedData;
     % supply calculation support as 10% increase in domain range

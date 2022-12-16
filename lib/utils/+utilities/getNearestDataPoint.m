@@ -17,6 +17,10 @@ Ys = reshape(Ys,numel(Ys),[]);
 
 % locate the closes index to target.x
 xFirst = find(Xs >= target(1),1,'first');
+if isempty(xFirst)
+  % passed array length
+  xFirst = Xs(end);
+end
 % determine a smallest sampling frequency of the X values
 xDiff = min(mean(1./diff(Xs,1)));
 % iterate until we are close enough to a data point
