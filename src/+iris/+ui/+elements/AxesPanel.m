@@ -4,8 +4,8 @@ classdef AxesPanel < handle
     DataSelected
     PlotUpdated
   end
-  
-  properties (Constant=true)
+
+  properties (Constant = true)
     SCRIPT_ID = "axisLabel"
   end
 
@@ -96,13 +96,13 @@ classdef AxesPanel < handle
           % default for parent panel
           obj.Parent.BorderType = 'none';
           obj.Parent.FontName = Aes.uiFontName;
-          obj.Parent.BackgroundColor = [1,1,1];
+          obj.Parent.BackgroundColor = [1, 1, 1];
           drawnow();
       end
-      
+
       % set the parent location if specified
       if all(~pr.Results.location)
-        obj.Location = [obj.Parent.Layout.Row,obj.Parent.Layout.Column];
+        obj.Location = [obj.Parent.Layout.Row, obj.Parent.Layout.Column];
       else
         obj.Location = pr.Results.location;
         obj.Parent.Layout.Row = obj.Location(1);
@@ -111,24 +111,24 @@ classdef AxesPanel < handle
 
       % Parse object information and build axes
       obj.margins = pr.Results.margins;
-      
+
       % Create the Grid for holding components
       obj.Grid = uigridlayout(obj.Parent);
-      obj.Grid.ColumnWidth = {obj.margins(1)-8,'1x'};
-      obj.Grid.RowHeight = {'1x','1x',obj.margins(4)-8};
+      obj.Grid.ColumnWidth = {obj.margins(1) - 8, '1x'};
+      obj.Grid.RowHeight = {'1x', '1x', obj.margins(4) - 8};
       obj.Grid.ColumnSpacing = 0;
       obj.Grid.RowSpacing = 0;
       obj.Grid.Padding = [8 8 8 obj.margins(2)];
-      obj.Grid.BackgroundColor = [1,1,1,0];
-      
+      obj.Grid.BackgroundColor = [1, 1, 1, 0];
+
       % Create y label container
       obj.ylab = uihtml(obj.Grid);
-      obj.ylab.Layout.Row = [1,2];
+      obj.ylab.Layout.Row = [1, 2];
       obj.ylab.Layout.Column = 1;
 
       % Create the container
       obj.container = uipanel(obj.Grid, ...
-        'Visible', 'off', ...
+      'Visible', 'off', ...
         'BorderType', 'none', ...
         'FontName', Aes.uiFontName, ...
         'AutoResizeChildren', 'off' ...
@@ -137,7 +137,7 @@ classdef AxesPanel < handle
       obj.container.Units = 'pixels';
       obj.container.Layout.Row = 1;
       obj.container.Layout.Column = 2;
-      
+
       % Display Label
       obj.DisplayLabel = pr.Results.displayLabel;
       obj.dlab = uilabel(obj.Grid, 'Text', pr.Results.displayLabel);
@@ -153,7 +153,7 @@ classdef AxesPanel < handle
       % Create x label container
       obj.xlab = uihtml(obj.Grid);
       obj.xlab.Layout.Row = 3;
-      obj.xlab.Layout.Column = [1,2];
+      obj.xlab.Layout.Column = [1, 2];
 
       % Create the Axes on the container
       obj.Axes = axes(obj.container);
@@ -170,14 +170,17 @@ classdef AxesPanel < handle
       %}
       % set other properties on the axis, or allow override of default
       fields = fieldnames(pr.Unmatched);
+
       for f = string(fields(:))'
+
         try
           set(obj.Axes, f, pr.Unmatched.(f));
         catch
           continue
         end
+
       end
-      
+
       obj.toggleAxes(strcmp(pr.Results.displayMode, 'axes'));
 
       try
@@ -186,11 +189,11 @@ classdef AxesPanel < handle
         delete(obj);
         iris.app.Info.throwError(err.message);
       end
-      
+
       % Set Labels
       obj.YLabel = pr.Results.YLabel;
       obj.XLabel = pr.Results.XLabel;
-      
+
       obj.container.SizeChangedFcn = @obj.onContainerResized;
 
       addlistener(obj, 'DisplayLabel', 'PostSet', @obj.displayLabelChanged);
@@ -220,7 +223,7 @@ classdef AxesPanel < handle
       % position contains dims of the container, we will set margins
       % of the axes relative to this.
       dims = obj.Position(3:4);
-      pos = [1,1,dims(1) - m(3),dims(2)];
+      pos = [1, 1, dims(1) - m(3), dims(2)];
       %{
       % old method
       pos = [ ...
@@ -257,12 +260,14 @@ classdef AxesPanel < handle
       obj.Axes.Children(axChInds) = childLines;
       drawnow('update');
     end
-    
-    function d = constructData(obj,xy)
+
+    function d = constructData(obj, xy)
+
       arguments
         obj
-        xy (1,1) string {mustBeMember(xy,["X","Y"])}
+        xy (1, 1) string {mustBeMember(xy, ["X", "Y"])}
       end
+
       if xy == "X"
         isvert = false;
         lab = obj.XLabel;
@@ -270,23 +275,27 @@ classdef AxesPanel < handle
         isvert = true;
         lab = obj.YLabel;
       end
+
       d = struct( ...
         "String", lab, ...
         "FontSize", obj.Axes.FontSize, ...
         "Vertical", isvert, ...
-        "isValid",true ...
-        );
+        "isValid", true ...
+      );
     end
+
   end
 
   %% Callbacks
   methods (Access = protected)
 
     function onContainerResized(obj, source, ~)
+
       if obj.isShowingAxes
         drawnow();
         obj.Position = source.Position;
       end
+
     end
 
     function positionChanged(obj, ~, ~)
@@ -302,6 +311,7 @@ classdef AxesPanel < handle
         case 'Y'
           obj.ylab.Data = obj.YData;
       end
+
     end
 
     function onDataSelected(obj, source, event)
@@ -352,12 +362,12 @@ classdef AxesPanel < handle
       end
 
       doms = cellfun( ...
-        @(ln)[domain(ln.XData); domain(ln.YData)], ...
+        @(ln)[domain(ln.XData(:)), domain(ln.YData(:))], ...
         lineArray, ...
         'UniformOutput', false ...
       ); %#ok<CPROP>
-      doms = domain(cat(2, doms{:})')'; %#ok<CPROP>
-      d = struct('x', doms(1, :), 'y', doms(2, :));
+      doms = domain(cat(1, doms{:})); %#ok<CPROP>
+      d = struct('x', doms(:,1).', 'y', doms(:, 2).');
     end
 
     function n = get.nLines(obj)
@@ -369,14 +379,14 @@ classdef AxesPanel < handle
         iris.app.Info.getResourcePath(), ...
         "scripts", ...
         obj.SCRIPT_ID, ...
-        sprintf("%s.html",obj.SCRIPT_ID) ...
-        );
+        sprintf("%s.html", obj.SCRIPT_ID) ...
+      );
     end
 
     function d = get.XData(obj)
       d = obj.constructData("X");
     end
-    
+
     function d = get.YData(obj)
       d = obj.constructData("Y");
     end
@@ -389,7 +399,7 @@ classdef AxesPanel < handle
 
   %% Plotting/Updating
   methods (Access = public)
-    
+
     function update(obj, hD, hL)
       nExist = numel(obj.currentLines);
 
@@ -520,6 +530,7 @@ classdef AxesPanel < handle
         obj.Axes.XLimMode = 'manual';
         obj.Axes.XLim = obj.domain.x;
       end
+
     end
 
     function setHighlighted(obj, pos, defaultWidth, newColor)
@@ -584,6 +595,7 @@ classdef AxesPanel < handle
       if txt ~= ""
         obj.DisplayLabel = txt;
       end
+
       obj.toggleAxes(false);
     end
 
@@ -598,10 +610,10 @@ classdef AxesPanel < handle
       if bool
         % turn axes on
         ax = 'on';
-        rh = {'1x',0};
+        rh = {'1x', 0};
       else
         ax = 'off';
-        rh = {0,'1x'};
+        rh = {0, '1x'};
       end
 
       obj.Grid.RowHeight(1:2) = rh;

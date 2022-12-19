@@ -3315,13 +3315,13 @@ classdef IrisData
             if iscell(d)
               d = cat(2,d{:})';
             end
-            doms.x = IrisData.domain(d(:));
+            doms.x = IrisData.domain(d(:)).';
           case 'Axes'
             nChilds = numel(axs(a).Children);
             doms.x = nan(1,2);
             for axChild = 1:nChilds
               try %#ok<TRYNC>
-                doms.x = IrisData.domain([doms.x,axs(a).Children(axChild).XData]);
+                doms.x = IrisData.domain([doms.x,axs(a).Children(axChild).XData]).';
               end
             end
             if any(isnan(doms.x))
@@ -3338,13 +3338,13 @@ classdef IrisData
             if iscell(d)
               d = cat(2,d{:})';
             end
-            doms.y = IrisData.domain(d(:));
+            doms.y = IrisData.domain(d(:)).';
           case 'Axes'
             nChilds = numel(axs(a).Children);
             doms.y = nan(1,2);
             for axChild = 1:nChilds
               try %#ok<TRYNC>
-                doms.y = IrisData.domain([doms.y,axs(a).Children(axChild).YData]);
+                doms.y = IrisData.domain([doms.y,axs(a).Children(axChild).YData]).';
               end
             end
             if any(isnan(doms.y))
