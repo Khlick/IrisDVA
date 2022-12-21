@@ -3363,7 +3363,7 @@ classdef IrisData
 
         % set a soft limit (padded) for y
         if isfield(doms,'y')
-          axs(a).YLim = sort(doms.y + 0.025*diff(doms.y).*[-1;1]);
+          axs(a).YLim = sort(doms.y + 0.025*diff(doms.y).*[-1,1]);
         end
 
         if p.Results.axesLabels
@@ -3880,6 +3880,8 @@ classdef IrisData
 
       % get the group mapping
       [uGroups,groupIdx,Singular] = unique(groupVec,'rows');
+      nGroups = size(uGroups,1);
+
       groupTable = [array2table(uGroups,'VariableNames',idNames),inputTable(groupIdx,:)];
       groupTable.Combined = rowfun( ...
         @(x)join(string(x),'::'), ...
@@ -3896,7 +3898,7 @@ classdef IrisData
       % Produce summary table for group map
       % *Singular is an integer index array
       groupTable.Counts = histcounts(sort(Singular),nGroups).';% tblt(:,2);
-      groupTable.SingularMap = uGroups;% tblt(:,1);
+      groupTable.SingularMap = unique(Singular,'stable');% tblt(:,1);
       groupTable.Frequency = groupTable.Counts./sum(groupTable.Counts).*100; % percent
 
       %output
