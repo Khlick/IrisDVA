@@ -1,25 +1,28 @@
 classdef IrisModule < iris.infra.ModulePreferenceManager
+  %% IRISMODULE Superclass for constructing programmatic modules for Iris
+  % TODO: Iris should listen for module destruction, capture stored data and ask if
+  % the data should be loaded/appended onto the current session.
   events
     CloseRequested
     UICreated
     DataUpdated
     DestroyingModule % todo: Iris should listen for module destruction in moduleservice
   end
-  
-  properties %(Access = protected)
+
+  properties (Access = protected)
     Data
   end
-  
-  properties (SetAccess=private,GetAccess=protected)
+
+  properties (SetAccess = private, GetAccess = protected)
     container
     MenuOptions
     refreshMenu
     resetMenu
-    saveOnExit (1,1) logical = true
+    saveOnExit (1, 1) logical = true
   end
 
   % internal properties
-  properties (Access=private)
+  properties (Access = private)
     listeners
   end
 
@@ -42,9 +45,10 @@ classdef IrisModule < iris.infra.ModulePreferenceManager
       % run startup procedure to load defaults and preferences
       obj.runStartup();
       % parse data
-      try %#ok<TRYNC> 
+      try %#ok<TRYNC>
         obj.setData(data);
       end
+
       % show the figure
       obj.show();
     end
@@ -59,12 +63,12 @@ classdef IrisModule < iris.infra.ModulePreferenceManager
     end
 
     function tf = get.hasdata(obj)
-      tf = (~isempty(obj.Data) && isa(obj.Data,'IrisData'));
+      tf = (~isempty(obj.Data) && isa(obj.Data, 'IrisData'));
     end
 
     % destructor
     function delete(obj)
-      notify(obj,'DestroyingModule');
+      notify(obj, 'DestroyingModule');
       obj.save();
       obj.detachListeners();
       delete(obj.container);
@@ -72,26 +76,31 @@ classdef IrisModule < iris.infra.ModulePreferenceManager
 
     % set/get
     % MAIN METHOD FOR SETTING/UPDATING DATA!
-    function setData(obj,data,varargin)
+    function setData(obj, data, varargin)
+
       try
         obj.Data = data;
       catch dataErr
         rethrow(dataErr);
       end
+
     end
+
     % this method corresponds to the protected data property
-    function set.Data(obj,data)
+    function set.Data(obj, data)
+
       try
-        assert(isa(data,'IrisData') || isempty(data),"Data must be of type: 'IrisData'");
+        assert(isa(data, 'IrisData') || isempty(data), "Data must be of type: 'IrisData'");
       catch dataErr
         obj.show();
         rethrow(dataErr);
       end
+
       obj.Data = data;
-      notify(obj,'DataUpdated');
+      notify(obj, 'DataUpdated');
     end
 
-    function set.Position(obj,pos)
+    function set.Position(obj, pos)
       obj.container.Position = pos;
     end
 
@@ -99,36 +108,88 @@ classdef IrisModule < iris.infra.ModulePreferenceManager
       p = obj.container.Position;
     end
 
-    function set.Name(obj,name)
+    function set.Name(obj, name)
       obj.container.Name = name;
     end
 
     function name = get.Name(obj)
       name = obj.container.Name;
     end
-    
+
+    function d = getappdata(obj, args)
+
+      arguments
+        obj
+      end
+
+      arguments (Repeating)
+        args (1, 1) string
+      end
+
+      d = getappdata(obj.container, args{:});
+    end
+
     function close(obj)
       obj.onClose();
     end
 
+    %%% Utilities
+    function sFig = createContainerFigure(obj, title, width, height, visible)
+
+      arguments
+        obj
+        title (1, 1) string = "Module Figure"
+        width (1, 1) double = 800
+        height (1, 1) double = 600
+        visible (1, 1) logical = false
+      end
+
+      cntPar = IrisModule.getContainerProperties();
+      sFig = uifigure( ...
+        'Visible', 'off', ...
+        'NumberTitle', 'off', ...
+        'MenuBar', 'none', ...
+        'Toolbar', 'none', ...
+        'Color', [1, 1, 1], ...
+        'AutoResizeChildren', 'off', ...
+        'Resize', 'on', ...
+        'HandleVisibility', 'off', ...
+        'Tag', obj.PREF_KEY + "_window" ...
+      );
+
+      for p = 1:size(cntPar, 2)
+
+        try %#ok<TRYNC>
+          set(sFig, cntPar{1, p}, cntPar{2, p});
+        end
+
+      end
+
+      sFig.Name = title;
+      sFig.Position = IrisModule.getCenteredPosition(width, height);
+      drawnow();
+      sFig.Visible = visible;
+    end
+
   end
+
   %% Abstract methods
   %   These methods must be defined, even if just empty, in your module class
-  methods (Abstract=true,Access=protected)
+  methods (Abstract = true, Access = protected)
     createUI(obj)
     startupFcn(obj)
   end
 
   %% Changeble Methods
   % When overriding method, call these superclass methods first
-  methods (Access=protected)
+  methods (Access = protected)
 
     function loadPreferences(obj)
       if ~obj.isready, return; end
       % load previous position
-      pos = obj.getPref('Position',obj.Position);
+      pos = obj.getPref('Position', obj.Position);
       obj.Position = pos;
-      obj.Name = obj.getPref('Name',obj.PREF_KEY);
+      obj.Name = obj.getPref('Name', obj.PREF_KEY);
     end
 
     function savePreferences(obj)
@@ -141,6 +202,7 @@ classdef IrisModule < iris.infra.ModulePreferenceManager
       if obj.saveOnExit
         obj.savePreferences();
       end
+
       delete(obj);
     end
 
@@ -168,16 +230,16 @@ classdef IrisModule < iris.infra.ModulePreferenceManager
     function hide(obj)
       obj.container.Visible = "off";
     end
-    
+
     function recenter(obj)
       pos = obj.Position;
-      obj.Position = IrisModule.getCenteredPosition(pos(3),pos(4));
+      obj.Position = IrisModule.getCenteredPosition(pos(3), pos(4));
     end
 
   end
 
   %% Internal Methods
-  methods (Access=private)
+  methods (Access = private)
 
     function constructContainer(obj)
       obj.container = uifigure( ...
@@ -192,12 +254,15 @@ classdef IrisModule < iris.infra.ModulePreferenceManager
         'Tag', obj.PREF_KEY, ...
         'CloseRequestFcn', ...
         @(src, evnt)obj.onClose() ...
-        );
+      );
       params = IrisModule.getContainerProperties();
+
       for p = 1:size(params, 2)
+
         try %#ok<TRYNC>
           set(obj.container, params{1, p}, params{2, p});
         end
+
       end
 
       try
@@ -205,13 +270,12 @@ classdef IrisModule < iris.infra.ModulePreferenceManager
         obj.addMenus();
       catch creationErr
         delete(obj);
-        rethrow(creationErr);
+        IrisModule.throwError(creationErr.message);
       end
-      
 
       % notify creation to allow subclass to inject functionality before stored
       % preferences are loaded.
-      notify(obj,'UICreated');
+      notify(obj, 'UICreated');
     end
 
     function runStartup(obj)
@@ -222,19 +286,19 @@ classdef IrisModule < iris.infra.ModulePreferenceManager
     end
 
     function addMenus(obj)
-      obj.MenuOptions = uimenu(obj.container,'Text','Options');
+      obj.MenuOptions = uimenu(obj.container, 'Text', 'Options');
 
       obj.refreshMenu = uimenu( ...
         obj.MenuOptions, ...
-        "Text","Refresh View", ...
-        "MenuSelectedFcn",@(s,e)obj.onRefreshView() ...
-        );
-      
+        "Text", "Refresh View", ...
+        "MenuSelectedFcn", @(s, e)obj.onRefreshView() ...
+      );
+
       obj.resetMenu = uimenu( ...
         obj.MenuOptions, ...
         "Text", "Rest Preferences", ...
-        "MenuSelectedFcn",@(s,e)obj.onResetPreferences() ...
-        );
+        "MenuSelectedFcn", @(s, e)obj.onResetPreferences() ...
+      );
     end
 
   end
@@ -250,9 +314,9 @@ classdef IrisModule < iris.infra.ModulePreferenceManager
     function lsn = getListenerByEvent(obj, eventName)
       % always return cell array
       loc = ismember( ...
-        cellfun(@(l)l.EventName, obj.listeners, 'UniformOutput', false), ...
+      cellfun(@(l)l.EventName, obj.listeners, 'UniformOutput', false), ...
         eventName ...
-        );
+      );
 
       if ~any(loc)
         lsn = {};
@@ -290,39 +354,45 @@ classdef IrisModule < iris.infra.ModulePreferenceManager
         delete(obj.listeners{1});
         obj.listeners(1) = [];
       end
+
       % convert to cell array
       obj.listeners = {};
     end
 
   end
 
-
   %% Helper Methods (Static)
   methods (Static)
-    
-    function p = getCenteredPosition(w,h,screenId)
+
+    function p = getCenteredPosition(w, h, screenId)
       G = get(groot);
+
       if nargin < 3
-        if ~strcmp(G.Units,'pixels')
-          screenUnits = get(groot,'Units');
-          set(groot,'Units','pixels');
+
+        if ~strcmp(G.Units, 'pixels')
+          screenUnits = get(groot, 'Units');
+          set(groot, 'Units', 'pixels');
           G = get(groot);
-          set(groot,'Units',screenUnits);
+          set(groot, 'Units', screenUnits);
         end
+
         % locate main monitor
         mons = G.MonitorPositions;
-        loc = mons(:,1:2) == 1;
-        screenId = find(all(loc,2),1,'first');
+        loc = mons(:, 1:2) == 1;
+        screenId = find(all(loc, 2), 1, 'first');
         if isempty(screenId), screenId = 1; end
       end
-      
-      s = G.MonitorPositions(screenId,:);
-      if any([w<=1 && w>0,h<=1 && h>0])
-        if ~all([w<=1 && w>0,h<=1 && h>0])
+
+      s = G.MonitorPositions(screenId, :);
+
+      if any([w <= 1 && w > 0, h <= 1 && h > 0])
+
+        if ~all([w <= 1 && w > 0, h <= 1 && h > 0])
           error('If w & h are normalized, must be (0,1].');
         end
-        w = w*s(3);
-        h = h*s(4);
+
+        w = w * s(3);
+        h = h * s(4);
       end
 
       p = [(s(3) - w) / 2 + s(1) - 1, (s(4) - h) / 2 + s(2) - 1, w, h];
@@ -330,57 +400,136 @@ classdef IrisModule < iris.infra.ModulePreferenceManager
 
     function params = getContainerProperties()
       params = { ...
-        'DefaultAxesInterruptible', 'off', ...
-        'DefaultAxesFontName', 'Times New Roman', ...
-        'DefaultAxesFontsize', 11, ...
-        'DefaultAxesColor', [1, 1, 1, 0], ...
-        'DefaultAxesBox', 'off', ...
-        'DefaultAxesXLimMode', 'manual', ...
-        'DefaultAxesYLimMode', 'manual', ...
-        'DefaultTextFontName', 'Times New Roman', ...
-        'DefaultTextBackgroundColor', [1, 1, 1, 0], ...
-        'DefaultUipanelUnits', 'pixels', ...
-        'DefaultUipanelPosition', [20, 20, 260, 221], ...
-        'DefaultUipanelBackgroundColor', [1, 1, 1], ...
-        'DefaultUipanelBorderType', 'line', ...
-        'DefaultUipanelFontname', 'Times New Roman', ...
-        'DefaultUipanelFontunits', 'pixels', ...
-        'DefaultUipanelFontsize', 14, ...
-        'DefaultUipanelAutoresizechildren', 'off', ...
-        'DefaultUipanelInterruptible', 'off', ...
-        'DefaultUitabgroupUnits', 'pixels', ...
-        'DefaultUitabgroupPosition', [20, 20, 250, 210], ...
-        'DefaultUitabgroupAutoresizechildren', 'off', ...
-        'DefaultUitabUnits', 'pixels', ...
-        'DefaultUitabAutoresizechildren', 'off', ...
-        'DefaultUibuttongroupUnits', 'pixels', ...
-        'DefaultUibuttongroupPosition', [20, 20, 260, 210], ...
-        'DefaultUibuttongroupBordertype', 'line', ...
-        'DefaultUibuttongroupFontname', 'Times New Roman', ...
-        'DefaultUibuttongroupFontunits', 'pixels', ...
-        'DefaultUibuttongroupFontsize', 14, ...
-        'DefaultUibuttongroupAutoresizechildren', 'off', ...
-        'DefaultUibuttongroupInterruptible', 'off', ...
-        'DefaultUitabBackgroundColor', [1, 1, 1], ...
-        'DefaultUitableBackgroundColor', [1, 1, 1], ...
-        'DefaultUitableFontname', 'Times New Roman', ...
-        'DefaultUitableFontunits', 'pixels', ...
-        'DefaultUitableFontsize', 11, ...
-        'DefaultUitableBusyAction', 'cancel', ...
-        'DefaultUitableInterruptible', 'off', ...
-        'DefaultLineInterruptible', 'off', ...
-        'DefaultUicontainerBackgroundColor', [1, 1, 1], ...
-        'DefaultUicontrolFontName', 'Times New Roman', ...
-        'DefaultUicontrolInterruptible', 'off', ...
-        'defaultUicontrolBackgroundColor', [1, 1, 1, 0], ...
-        'defaultUigridcontainerBackgroundColor', [1, 1, 1], ...
-        'defaultUiflowcontainerBackgroundColor', [1, 1, 1], ...
-        'DefaultHgjavacomponentBackgroundColor', [1, 1, 1], ...
-        'DefaultUitabBackgroundColor', [1,1,1], ...
-        'Icon', fullfile(iris.app.Info.getResourcePath, 'icn', 'favicon.png')
-        };
+                  'DefaultAxesInterruptible', 'off', ...
+                  'DefaultAxesFontName', 'Times New Roman', ...
+                  'DefaultAxesFontsize', 11, ...
+                  'DefaultAxesColor', [1, 1, 1, 0], ...
+                  'DefaultAxesBox', 'off', ...
+                  'DefaultAxesXLimMode', 'manual', ...
+                  'DefaultAxesYLimMode', 'manual', ...
+                  'DefaultTextFontName', 'Times New Roman', ...
+                  'DefaultTextBackgroundColor', [1, 1, 1, 0], ...
+                  'DefaultUipanelUnits', 'pixels', ...
+                  'DefaultUipanelPosition', [20, 20, 260, 221], ...
+                  'DefaultUipanelBackgroundColor', [1, 1, 1], ...
+                  'DefaultUipanelBorderType', 'line', ...
+                  'DefaultUipanelFontname', 'Times New Roman', ...
+                  'DefaultUipanelFontunits', 'pixels', ...
+                  'DefaultUipanelFontsize', 14, ...
+                  'DefaultUipanelAutoresizechildren', 'off', ...
+                  'DefaultUipanelInterruptible', 'off', ...
+                  'DefaultUitabgroupUnits', 'pixels', ...
+                  'DefaultUitabgroupPosition', [20, 20, 250, 210], ...
+                  'DefaultUitabgroupAutoresizechildren', 'off', ...
+                  'DefaultUitabUnits', 'pixels', ...
+                  'DefaultUitabAutoresizechildren', 'off', ...
+                  'DefaultUibuttongroupUnits', 'pixels', ...
+                  'DefaultUibuttongroupPosition', [20, 20, 260, 210], ...
+                  'DefaultUibuttongroupBordertype', 'line', ...
+                  'DefaultUibuttongroupFontname', 'Times New Roman', ...
+                  'DefaultUibuttongroupFontunits', 'pixels', ...
+                  'DefaultUibuttongroupFontsize', 14, ...
+                  'DefaultUibuttongroupAutoresizechildren', 'off', ...
+                  'DefaultUibuttongroupInterruptible', 'off', ...
+                  'DefaultUitabBackgroundColor', [1, 1, 1], ...
+                  'DefaultUitableBackgroundColor', [1, 1, 1], ...
+                  'DefaultUitableFontname', 'Times New Roman', ...
+                  'DefaultUitableFontunits', 'pixels', ...
+                  'DefaultUitableFontsize', 11, ...
+                  'DefaultUitableBusyAction', 'cancel', ...
+                  'DefaultUitableInterruptible', 'off', ...
+                  'DefaultLineInterruptible', 'off', ...
+                  'DefaultUicontainerBackgroundColor', [1, 1, 1], ...
+                  'DefaultUicontrolFontName', 'Times New Roman', ...
+                  'DefaultUicontrolInterruptible', 'off', ...
+                  'defaultUicontrolBackgroundColor', [1, 1, 1, 0], ...
+                  'defaultUigridcontainerBackgroundColor', [1, 1, 1], ...
+                  'defaultUiflowcontainerBackgroundColor', [1, 1, 1], ...
+                  'DefaultHgjavacomponentBackgroundColor', [1, 1, 1], ...
+                  'DefaultUitabBackgroundColor', [1, 1, 1], ...
+                  'Icon', fullfile(iris.app.Info.getResourcePath, 'icn', 'favicon.png')
+                };
 
       params = reshape(params, 2, []);
+    end
+
+    %Get file
+    function [p, varargout] = getFile(title, filter, defaultName, varargin)
+      %%GETFILE box title, filterSpec, startDefault
+      if nargin < 2
+        filter = '*';
+      end
+
+      if nargin < 3
+        defaultName = '';
+      end
+
+      [filename, pathname, fdx] = uigetfile(filter, title, defaultName, varargin{:});
+
+      try
+        filename = cellstr(filename);
+      catch
+        p = [];
+        [varargout{1:(nargout - 1)}] = deal([]);
+        return;
+      end
+
+      p = strcat(pathname, filename);
+      nOut = nargout - 1;
+      [varargout{1:2}] = deal(fdx, pathname);
+      varargout(nOut + 1:end) = [];
+    end
+
+    %Put file
+    function [p, varargout] = putFile(title, filter, defaultName)
+      %%GETFILE box title, filterSpec, startDefault
+      if nargin < 2
+        filter = '*.*';
+      end
+
+      if nargin < 3
+        defaultName = '';
+      end
+
+      [filename, pathname, fdx] = uiputfile(filter, title, defaultName);
+      % check for cancel
+      if isequal(filename, 0) || isequal(pathname, 0)
+        p = [];
+        [varargout{1:(nargout - 1)}] = deal([]);
+        return;
+      end
+
+      p = fullfile(pathname, filename);
+      nOut = nargout - 1;
+      [varargout{1:3}] = deal(filename, pathname, fdx);
+      varargout(nOut + 1:end) = [];
+    end
+
+    function showWarning(msg)
+      st = dbstack('-completenames', 1);
+
+      if isempty(st)
+        st = dbstack('-completenames', 0);
+      end
+
+      id = upper(strrep(st(1).name, '.', ':'));
+      warnCall = sprintf( ...
+        'warning(''%s:%s'',''%s'');', ...
+        upper(iris.app.Info.name), ...
+        id, ...
+        regexprep(msg, '''', '''''') ...
+      );
+      evalin('caller', warnCall);
+    end
+
+    function throwError(msg)
+      st = dbstack('-completenames', 1);
+      id = upper(strrep(st(1).name, '.', ':'));
+      warnCall = MException( ...
+        sprintf("%s:%s", upper(iris.app.Info.name), id), ...
+        msg ...
+      );
+      throwAsCaller(warnCall);
     end
 
   end

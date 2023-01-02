@@ -1595,7 +1595,7 @@ classdef IrisData
     end
 
     function varargout = Split(obj,varargin)
-      % SPLIT Split the data by a valid filter array, 'none' or 'device'. See
+      % SPLIT Split the data by a valid filter array, 'none' or 'devices'. See
       % obj.getPropertyNames();
       % Supplying 'none' here works differently than in Aggregate method. Here,
       % supplying 'groupBy', parameter as 'none' will split each datum into its
