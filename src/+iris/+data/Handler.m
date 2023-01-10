@@ -434,6 +434,7 @@ classdef Handler < matlab.mixin.Copyable
 
       %h = obj.copySubs(subs);
       h = copy(obj);
+      h = h.subset(subs);
       % gather saveobj and merge fields into single
       d = h.Data.getDatumsAsStructs();
       d = utilities.fastKeepField(d, ...
