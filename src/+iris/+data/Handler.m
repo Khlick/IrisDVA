@@ -68,7 +68,9 @@ classdef Handler < matlab.mixin.Copyable
 
     function cleanup(obj)
       % CLEANUP Remove any datums marked as "not included".
+      % TODO: Reevaluation of membership causes issue with Notes indices
       drop = obj.Tracker.cleanup();
+      if isempty(drop), return; end
       obj.Data(drop) = [];
 
       filesToDrop = cellfun( ...
@@ -200,10 +202,16 @@ classdef Handler < matlab.mixin.Copyable
           [a, b] = ismember(existingNotes(:, 1), newNoteContent(:, 1));
           newNoteContent(b(b ~= 0), :) = [];
 
-          if isempty(newNoteContent)
+          if isempty(newNoteContent) && any(a)
+            % has overlapping notes, append this file name to the existing file name
             fileLoc = find(a, 1, 'first') - 1;
             existingNotes{fileLoc, 2} = strjoin([existingNotes(fileLoc, 2), files{f}], ';');
             thisMembership.notes = [fileLoc, find(a)'];
+            obj.Notes = existingNotes;
+          elseif isempty(newNoteContent)
+            % new notes are simply empty
+            existingNotes(end+1, 1:2) = thisNote(1,:); %#ok<AGROW>
+            thisMembership.notes = size(existingNotes);
             obj.Notes = existingNotes;
           else
             newNote = [thisNote(newNoteFileIdx, :); newNoteContent];
@@ -233,6 +241,10 @@ classdef Handler < matlab.mixin.Copyable
 
     function obj = subset(obj, subs)
       % SUBSET Reduce the current data object to desired subset indices.
+      subs = unique(subs);
+      if numel(subs) == obj.nDatum
+        return
+      end
       currentInclusions = obj.Tracker.getStatus().inclusions;
       obj.Tracker(:) = 0;
       obj.Tracker(subs) = 1;
@@ -419,31 +431,66 @@ classdef Handler < matlab.mixin.Copyable
       %   class converted directly to a struct. The iData (IrisData) object returned is
       %   constructed from a subset of the handler, thus we first copy the handler,
       %   then subset the copy
-      h = obj.copySubs(subs);
+
+      %h = obj.copySubs(subs);
+      h = copy(obj);
+      % gather saveobj and merge fields into single
       d = h.Data.getDatumsAsStructs();
-
-      for i = 1:length(subs)
-        % reassign id, we are keeping original inds elsewhere
-        d(i).id = sprintf('Epoch%04d', i);
+      d = utilities.fastKeepField(d, ...
+        [ ...
+        "id","devices","sampleRate","units", ...
+        "protocols","displayProperties","stimulusConfiguration", ...
+        "deviceConfiguration","inclusion","x","y","index","nDevices" ...
+        ] ...
+        );
+      for idx = 1:numel(d)
+        d(idx).id = sprintf("Datum%03d",idx);
       end
+      s = h.saveobj();
 
-      % create a struct from the handler copy
-      s = struct();
-      s.Meta = cell(1, h.nFiles);
-      s.Data = cell(1, h.nFiles); %empty
-      s.Notes = cell(1, h.nFiles); %empty
-
-      for F = 1:h.nFiles
-        mbrs = h.membership{F};
-        s.Meta{F} = obj.Meta{mbrs.Meta};
-        s.Data{F} = h.Data(mbrs.data).getDatumsAsStructs();
-        s.Notes{F} = h.Notes(mbrs.notes, :);
+      % meta
+      m = utilities.flattenStructs(s.Meta{:},uniquify=false);
+      if isfield(m,'Devices')
+        devs = cat(2,m.Devices{:});
+        m.Devices = {utilities.getUniqueStructs(devs,'Name')};
       end
-
-      s.Files = h.fileList;
-      s.Membership = h.getParentMap();
-      s.OrignalIndices = obj.getParentMap(subs);
-
+      if isfield(m,'Sources')
+        src = cat(2,m.Sources{:});
+        m.Sources = {utilities.getUniqueStructs(src)};
+      end
+      fn = fieldnames(m);
+      for f = string(fn).'
+        if isstruct(m.(f){1})
+          ss = cat(2,m.(f){:});
+          m.(f) = utilities.getUniqueStructs(ss);
+          continue
+        end
+        if ( ...
+            iscell(m.(f)) && ~iscellstr(m.(f){1}) ...
+            ) && ~( ...
+              any(cellfun(@ischar,m.(f))) || ...
+              any(cellfun(@isstring,m.(f))) ...
+            )
+          m.(f) = [m.(f){:}];
+        end
+        if isempty(m.(f))
+          m.(f) = {''};
+        end
+        m.(f) = utilities.unknownCell2Str(m.(f),' |',false);
+      end
+      s.Meta = {m};
+      s.Data = {d};
+      s.Notes = {cat(1,s.Notes{:})};
+      s.Files = strjoin(s.Files," | ");
+      
+      s.Membership = containers.Map();
+      s.Membership(s.Files) = struct( ...
+        Meta= 1, ...
+        data= 1:numel(d), ...
+        notes= 1:size(s.Notes{1},1), ...
+        File= 1 ...
+        );
+      
       % create the IrisData Object
       iData = IrisData(s);
     end
@@ -572,9 +619,14 @@ classdef Handler < matlab.mixin.Copyable
       s.Notes = cell(1, obj.nFiles);
 
       for F = 1:obj.nFiles
-        mbrs = obj.fileMap(obj.fileList{F});
+        thisFile = obj.fileList{F};
+        mbrs = obj.fileMap(thisFile);
         s.Data{F} = obj.Data(mbrs.data).saveobj();
-        s.Notes{F} = obj.Notes(mbrs.notes, :);
+        thisNote = obj.Notes(mbrs.notes, :);
+        if contains(thisNote{1,1},'File')
+          thisNote{1,2} = char(thisFile);
+        end
+        s.Notes{F} = thisNote;
         s.Meta{F} = obj.Meta{mbrs.Meta};
       end
 
