@@ -522,8 +522,12 @@ classdef IrisData
         thisGroupLog = groupVector == thisGroupNum;
         thisGroupedInfo = IrisData.flattenStructs(data(thisGroupLog));
         % reduce certain fields to unique values
-        if iscell(thisGroupedInfo.id)
-          thisGroupedInfo.id = strjoin(thisGroupedInfo.id, ',');
+        if iscellstr(thisGroupedInfo.id)
+          % is cell string, e.g., {'a','b'}
+          thisGroupedInfo.id = strjoin(thisGroupedInfo.id{:}, ',');
+        elseif iscell(thisGroupedInfo.id)
+          % is cell array of strings?
+          thisGroupedInfo.id = strjoin(cat(2,thisGroupedInfo.id{:}),',');
         end
         unitStructs = IrisData.uniqueContents( ...
           thisGroupedInfo.units ...
@@ -1275,12 +1279,13 @@ classdef IrisData
 
       % loop and drop the device from each datum
       for dx = 1:n
+        if devIdx(dx) < 1, continue; end
         this = data(dx);
-        this.devices(devIdx) = [];
-        this.sampleRate(devIdx) = [];
-        this.units(devIdx) = [];
-        this.x(devIdx) = [];
-        this.y(devIdx) = [];
+        this.devices(devIdx(dx)) = [];
+        this.sampleRate(devIdx(dx)) = [];
+        this.units(devIdx(dx)) = [];
+        this.x(devIdx(dx)) = [];
+        this.y(devIdx(dx)) = [];
         this.nDevices = numel(this.devices);
         data(dx) = this;
       end

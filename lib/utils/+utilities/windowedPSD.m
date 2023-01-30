@@ -7,10 +7,13 @@ arguments
   windowParams.windowOverlap (1,1) double  = fix(length(Y)/5)/fs / 2;
   windowParams.windowFx (1,1) string {isValidWindow(windowParams.windowFx)} = "hann"
   windowParams.deMeanWindows (1,1) logical = false
+  windowParams.linearizeWindows (1,1) logical = false
   fftParams.NFFT (1,1) double = 2^nextpow2(length(Y))
   fftParams.TruncateFrequency (1,1) uint64 = 0
-  ciParams.returnCI (1,1) logical = true
+  ciParams.returnCI (1,1) logical = false
+  ciParams.returnBoot (1,1) logical = false
   ciParams.confidenceType (1,1) string = "BCa"
+  ciParams.nBootstraps (1,1) uint64 {mustBeGreaterThan(ciParams.nBootstraps,0)} = 2000
 end
 
 if windowParams.windowOverlap >= windowParams.windowDuration
@@ -77,10 +80,13 @@ parfor k = 1:K
   sig = Y(ix); %#ok<*PFBNS>
   % Handle missing data
   sig(isnan(sig)) = mean(sig,'omitnan');
-  if windowParams.deMeanWindows
+  if windowParams.linearizeWindows
     % remove linear
     cfs = polyfit(x,sig,1);
     sig = sig - polyval(cfs,x);
+  end
+  if windowParams.deMeanWindows
+    sig = sig - mean(sig);
   end
   sig = sig .* h;
   % center the signal and compute nfft size fourier
@@ -91,7 +97,7 @@ end
 
 % average and correct for windowing
 if ciParams.returnCI
-  B = 10000;
+  B = double(ciParams.nBootstraps);
   ci = zeros(size(mags,1),2);
   for b = 1:size(mags,1)
     boots = bootstrap.getBootstraps( ...
@@ -112,6 +118,8 @@ if ciParams.returnCI
       'knives', knives ...
       );
   end
+elseif ciParams.returnBoot
+  ci = mags .* factor;
 else
   ci = nan(0,2);
 end

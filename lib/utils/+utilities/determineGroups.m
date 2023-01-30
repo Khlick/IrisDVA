@@ -55,10 +55,12 @@ end
 
 % Drop exclusions
 if dropExcluded
+  % remove ~inclusions from input groups
   vecLen = sum(inclusions);
   groupVec(~inclusions,:) = [];
   inputTable(~inclusions,:) = [];
 else
+  % set ~inclusions to 0 to force their own grouping
   vecLen = height(inputTable);
   groupVec(~inclusions,:) = 0;
 end
@@ -67,7 +69,7 @@ end
 
 % get the group mapping
 [uGroups,groupIdx,Singular] = unique(groupVec,'rows');
-nGroups = numel(uGroups);
+nGroups = size(uGroups,1);
 
 groupTable = [array2table(uGroups,'VariableNames',idNames),inputTable(groupIdx,:)];
 groupTable.Combined = rowfun( ...
@@ -77,7 +79,7 @@ groupTable.Combined = rowfun( ...
   'OutputFormat', 'uniform' ...
   );
 % get counts
-if any(~uGroups)
+if any(~uGroups,"all")
   % ensure 0 if exclusions are present
   Singular = Singular - 1;
 end

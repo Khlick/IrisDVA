@@ -195,19 +195,19 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
 
       end
 
-      v = version('-release');
-      v = str2double(regexprep(v, '[^\d]*', ''));
+      % v = version('-release');
+      % v = str2double(regexprep(v, '[^\d]*', ''));
 
-      if v < 2021
-        % This overcomes some "infinite" loop in MATLAB, which appears to be a workaround for "g1658467".
-        % The consequences of doing this are unclear.
-        % See also MATLAB\R20###\toolbox\matlab\uitools\uicomponents\components\...
-        %            +matlab\+ui\+internal\+controller\FigureController.m\flushCoalescer()
-        % See  https://gist.github.com/Dev-iL/398a38ae03c6ef9ebf935d46884ce74d
-        obj.synchronizer = struct(struct(struct(obj.container).Controller).PeerModelInfo).Synchronizer;
-        obj.synchronizer.setCoalescerMinDelay(0);
-        obj.synchronizer.setCoalescerMaxDelay(5);
-      end
+      % if v < 2021
+      %   % This overcomes some "infinite" loop in MATLAB, which appears to be a workaround for "g1658467".
+      %   % The consequences of doing this are unclear.
+      %   % See also MATLAB\R20###\toolbox\matlab\uitools\uicomponents\components\...
+      %   %            +matlab\+ui\+internal\+controller\FigureController.m\flushCoalescer()
+      %   % See  https://gist.github.com/Dev-iL/398a38ae03c6ef9ebf935d46884ce74d
+      %   obj.synchronizer = struct(struct(struct(obj.container).Controller).PeerModelInfo).Synchronizer;
+      %   obj.synchronizer.setCoalescerMinDelay(0);
+      %   obj.synchronizer.setCoalescerMaxDelay(5);
+      % end
 
       % now gather the web window for the container
       drawnow();
@@ -219,7 +219,7 @@ classdef (Abstract) UIContainer < iris.infra.UIWindow
         try
           obj.window = mlapptools.getWebWindow(obj.container);
         catch x
-          %log this
+          %log this?
           continue
         end
 
